@@ -2,6 +2,10 @@
   <div>
     <div id="seadragon-viewer"/>
 
+    <div v-if="state_restorer.showing" class="toolbox state-toolbox">
+      <v-slider step="1" dense hide-details v-model="state_restorer.undo" :max="state_restorer.max_undo" label="Undo"/>
+    </div>
+
     <div v-if="drawer" class="toolbox drawing-toolbox">
       <div class="zoom-shortcuts">
         <v-menu top :close-on-click="true" offset-y>
@@ -47,25 +51,28 @@
           <v-icon>mdi-brush</v-icon>
         </v-btn>
       </div>
-      <div v-if="editing.element != null">
-        <v-slider step="1" dense hide-details v-model="editing.undo" :max="editing.max_undo" label="Undo"/>
-        <div class="zoom-shortcuts">
-          <v-btn text icon
-                 @click="editing.mode = 'mover'"
-                 :color="'mover' === editing.mode ? 'primary' : 'grey'">
-            <v-icon>mdi-vector-polyline-edit</v-icon>
-          </v-btn>
-          <v-btn text icon
-                 @click="editing.mode = 'eraser'"
-                 :color="'eraser' === editing.mode ? 'primary' : 'grey'">
-            <v-icon>mdi-vector-polyline-minus</v-icon>
-          </v-btn>
-          <v-btn text icon
-                 @click="editing.mode = 'creator'"
-                 :color="'creator' === editing.mode ? 'primary' : 'grey'">
-            <v-icon>mdi-vector-polyline-plus</v-icon>
-          </v-btn>
-        </div>
+
+      <div v-if="editing.element != null" class="zoom-shortcuts">
+        <v-btn text icon
+               @click="editing.mode = 'mover'"
+               :color="'mover' === editing.mode ? 'primary' : 'grey'">
+          <v-icon>mdi-vector-polyline-edit</v-icon>
+        </v-btn>
+        <v-btn text icon
+               @click="editing.mode = 'eraser'"
+               :color="'eraser' === editing.mode ? 'primary' : 'grey'">
+          <v-icon>mdi-vector-polyline-minus</v-icon>
+        </v-btn>
+        <v-btn text icon
+               @click="editing.mode = 'creator'"
+               :color="'creator' === editing.mode ? 'primary' : 'grey'">
+          <v-icon>mdi-vector-polyline-plus</v-icon>
+        </v-btn>
+        <v-btn text icon
+               @click="editing.mode = 'free'"
+               :color="'free' === editing.mode ? 'primary' : 'grey'">
+          <v-icon>mdi-lead-pencil</v-icon>
+        </v-btn>
       </div>
     </div>
 
@@ -102,8 +109,11 @@
                 editing: {
                     element: null,
                     mode: "mover",
+                },
+                state_restorer: {
+                    showing: true,
                     undo: 0,
-                    max_undo: 0,
+                    max_undo: 0
                 }
             }
         },
@@ -154,16 +164,12 @@
                 SliceDrawer.default_opacity = new_opacity
                 SliceDrawer.update()
             },
-            undo: function (value) {
-                SliceDrawer.currently_editing.points_history = value
-                SliceDrawer.update()
-            },
             "editing.mode": function (value) {
                 SliceDrawer.editorMode = value
             },
-            "editing.undo": function (value) {
+            "state_restorer.undo": function (value) {
                 if (!this.no_model_action) {
-                    SliceDrawer.currently_editing.restoreState(value)
+                    SliceDrawer.stateRestorer.restoreToPoint(value)
                 }
                 this.no_model_action = false
             },
@@ -208,6 +214,17 @@
                     },
                     onClick: (element) => {
                         this.$emit("region-clicked", element)
+                    },
+                    onStateRestorerEvent: (stateRestorer) => {
+                        // console.log("test: ", stateRestorer)
+                        this.no_model_action = true
+                        if (stateRestorer != null) {
+                            this.state_restorer.showing = true
+                            this.state_restorer.max_undo = stateRestorer.states.length - 1
+                            this.state_restorer.undo = stateRestorer.current_state_point
+                        } else {
+                            this.state_restorer.showing = false
+                        }
                     },
                     onEditingEvent: () => {
                         this.no_model_action = true
@@ -278,6 +295,12 @@
     left: 32px;
     /*-webkit-box-shadow: 0px 0px 19px -6px #000000;*/
     /*box-shadow: 0px 0px 19px -6px #000000;*/
+  }
+
+  .state-toolbox {
+    left: 32px;
+    width: 150px;
+    bottom: 120px;
   }
 
   .navigation-toolbox {

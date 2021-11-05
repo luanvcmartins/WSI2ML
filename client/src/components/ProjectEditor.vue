@@ -26,8 +26,6 @@
             @click:append-outer="add_label"
     />
     <v-btn @click="save" outlined style="position: absolute; right:16px">Save</v-btn>
-    <!--    <v-select chips multiple :items="users" item-text="username" item-value="id"/>-->
-    <!--  </v-form>-->
   </div>
 </template>
 

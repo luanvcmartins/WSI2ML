@@ -15,9 +15,8 @@ Vue.use(VueAxios, {
             if (store.state.token != null) {
                 const token = store.state.token
 
-                if (token) {
+                if (token)
                     config.headers.Authorization = `Bearer ${token}`
-                }
             }
 
             return config

@@ -23,6 +23,7 @@ const freeDrawingDefaultKeyboardBehavior = function (func, e) {
                 drawer.callback.onFinishNewDrawing(drawer.currently_drawing)
                 // Complete the drawing preview by resetting it
                 drawer.currently_drawing = null
+                drawer.stateRestorer.cancel()
             }
             if (e.keyCode === 32) {
                 this.drawer_panning = false
@@ -33,10 +34,22 @@ const freeDrawingDefaultKeyboardBehavior = function (func, e) {
                 // User pressed ESC, we will reset the drawing
                 optimizePath(drawer.currently_drawing.points) // todo remove
                 drawer.currently_drawing = null
+                drawer.stateRestorer.cancel()
                 drawer.set_canvas_pan(true)
             }
             break
     }
+}
+
+const lineFunction = function (point1, point2, point3) {
+    const line1_slope = (point2.y - point1.y) / (point2.x - point1.x)
+    const line2_slope = (point3.y - point2.y) / (point3.x - point2.x)
+    const line1_b = point1.x * line1_slope - point1.y
+    const line2_b = point3.x * line2_slope - point3.y
+    return [
+        {slope: line1_slope, b: line1_b},
+        {slope: line2_slope, b: line2_b},
+    ]
 }
 
 /**
@@ -55,19 +68,22 @@ const optimizePath = function (points) {
             const point1 = points[i - 1]
             const point2 = points[i]
             const point3 = points[i + 1]
-            const line1_slope = (point2.y - point1.y) / (point2.x - point1.x)
-            const line2_slope = (point3.y - point2.y) / (point3.x - point2.x)
-            const line1_b = point1.x * line1_slope - point1.y
-            const line2_b = point3.x * line2_slope - point3.y
-            const distance = Math.hypot(point1.x - point2.x, point1.y - point2.y) +
-                Math.hypot(point2.x - point3.x, point2.y - point3.y)
-            if (distance < 7) {
-                toRemove.push(i)
-            } else if (line1_slope === line2_slope && line1_b === line2_b) {
+            const lineFunc = lineFunction(point1, point2, point3)
+            if (lineFunc[0].slope === lineFunc[1].slope && lineFunc[0].b === lineFunc[1].b) {
                 // we could introduce a margin
                 toRemove.push(i)
             }
         }
+
+        for (let i = 1; i < points.length; i++) {
+            const point1 = points[i - 1]
+            const point2 = points[i]
+            const distance1 = Math.hypot(point1.x - point2.x, point1.y - point2.y)
+            if (distance1 < 3) {
+                toRemove.push(i)
+            }
+        }
+
         console.log(toRemove.length, "points removed from", points.length, "(" + ((toRemove.length / points.length) * 100) + "%)")
         console.log("Size (before): ", points.length)
         points = points.filter((item, idx) => !toRemove.includes(idx))
@@ -93,7 +109,7 @@ const polygonTool = {
         switch (func) {
             case "dblClick":
                 // On double click, we will create a new drawing if there none in the moment
-                if (drawer.currently_drawing == null)
+                if (drawer.currently_drawing == null) {
                     drawer.currently_drawing = {
                         type: "polygon",
                         points: [imagePosition, imagePosition],
@@ -101,9 +117,13 @@ const polygonTool = {
                         path: null,
                         color: drawer.drawing_color
                     }
-                else
+
+                    drawer.stateRestorer = StateRestorer.init(drawer, drawer.currently_drawing)
+                } else {
                     // On double click we will continue the drawing by adding the new
                     drawer.currently_drawing.points.push(imagePosition)
+                    drawer.stateRestorer.addRestorePoint("point")
+                }
                 break
             case "move":
                 if (drawer.currently_drawing != null) {
@@ -126,15 +146,18 @@ const polygonTool = {
                         drawer.currently_drawing.points.pop()
                         drawer.callback.onFinishNewDrawing(drawer.currently_drawing)
                         drawer.currently_drawing = null
+                        drawer.stateRestorer.cancel()
                     }
                     if (e.keyCode === 27) {
                         // User pressed ESC, undo the drawing
                         if (drawer.currently_drawing.points.length > 3)
                             // Undo the last point added
                             drawer.currently_drawing.points.splice(drawer.currently_drawing.points.length - 2, 1)
-                        else
+                        else {
                             // Cancel the drawing
                             drawer.currently_drawing = null
+                            drawer.stateRestorer.cancel()
+                        }
                         drawer.update()
                     }
                     break
@@ -176,6 +199,7 @@ const rectTool = {
                     // report the drawing is over
                     drawer.callback.onFinishNewDrawing(drawer.currently_drawing)
                     drawer.currently_drawing = null
+                    drawer.stateRestorer.cancel()
                 }
                 drawer.update()
                 break
@@ -194,6 +218,7 @@ const rectTool = {
                 if (e.keyCode === 27) {
                     // User pressed ESC, we will cancel the drawing
                     drawer.currently_drawing = null
+                    drawer.stateRestorer.cancel()
                     drawer.update()
                 }
                 break
@@ -216,7 +241,7 @@ const freeTool = {
             case "press":
                 drawer.set_canvas_pan(false)
                 if (!this.drawer_panning)
-                    if (drawer.currently_drawing == null)
+                    if (drawer.currently_drawing == null) {
                         drawer.currently_drawing = {
                             type: "polygon",
                             points: [imagePosition],
@@ -225,11 +250,15 @@ const freeTool = {
                             color: drawer.drawing_color,
                             _enabled: true
                         }
-                    else drawer.currently_drawing._enabled = true
+
+                        drawer.stateRestorer = StateRestorer.init(drawer, drawer.currently_drawing)
+                    } else drawer.currently_drawing._enabled = true
                 break
             case "move":
-                if (!this.drawer_panning && drawer.currently_drawing != null && drawer.currently_drawing._enabled)
+                if (!this.drawer_panning && drawer.currently_drawing != null && drawer.currently_drawing._enabled) {
                     drawer.currently_drawing.points.push(imagePosition)
+                    drawer.stateRestorer.addRestorePoint("point")
+                }
                 break
             case "release":
                 if (drawer.currently_drawing != null)
@@ -387,30 +416,56 @@ const PathMeshMover = {
 
 const PathMeshCreator = {
     editor: null,
+    cursor: null,
+    instance: null,
+
+    checkPathCreation(position) {
+        const points = this.editor.element.points
+        for (let i = 1; i < points.length; i++) {
+            const point1 = points[i - 1]
+            const point2 = points[i]
+            const left = Math.min(point1.x, point2.x) - 10
+            const right = Math.max(point1.x, point2.x) + 10
+            const top = Math.min(point1.y, point2.y) - 10
+            const bottom = Math.max(point1.y, point2.y) + 10
+
+            if (left < position.x && position.x < right &&
+                top < position.y && position.y < bottom) {
+                return i
+            }
+        }
+        return null
+    },
 
     mouseEvent: function (func, e) {
         const editor = this.editor
         const drawer = editor.instance
+        const position = drawer._mousePointToImagePoint(e.position)
         switch (func) {
+            case "move":
+                if (drawer.ctx.isPointInPath(editor.element.path, e.position.x, e.position.y)) {
+                    const newIndex = this.checkPathCreation(position)
+                    // console.log("check", newIndex)
+                    if (newIndex != null) {
+                        this.cursor = {position: position, index: newIndex}
+                    } else {
+                        this.cursor = null
+                    }
+                    drawer.update()
+                } else {
+                    if (this.cursor != null) {
+                        this.cursor = null
+                        drawer.update()
+                    }
+                }
+                break
             case "click":
-                const position = drawer._mousePointToImagePoint(e.position)
-
                 if (drawer.ctx.isPointInPath(editor.element.path, e.position.x, e.position.y)) {
                     const points = editor.element.points
-                    for (let i = 1; i < points.length; i++) {
-                        const point1 = points[i - 1]
-                        const point2 = points[i]
-                        const left = Math.min(point1.x, point2.x) - 10
-                        const right = Math.max(point1.x, point2.x) + 10
-                        const top = Math.min(point1.y, point2.y) - 10
-                        const bottom = Math.max(point1.y, point2.y) + 10
-
-                        if (left < position.x && position.x < right &&
-                            top < position.y && position.y < bottom) {
-                            editor.addRestorePoint("created")
-                            points.splice(i, 0, position)
-                            break
-                        }
+                    const newIndex = this.checkPathCreation(position)
+                    if (newIndex != null) {
+                        editor.addRestorePoint("created")
+                        points.splice(newIndex, 0, position)
                     }
                     console.log("Ended")
                     editor.create_controls()
@@ -420,8 +475,176 @@ const PathMeshCreator = {
         }
     },
 
+    draw(ctx) {
+        const instance = this.instance
+        // Drawing the reference cursor where the new point will appear
+        ctx.beginPath()
+        if (this.cursor != null) {
+            const points = this.editor.element.points
+            const position = instance._imagePointToCanvasPoint(this.cursor.position.x, this.cursor.position.y)
+            ctx.ellipse(position.x, position.y, 5, 5, 0, 2 * Math.PI, 0, false)
+            const prevPoint = instance._imagePointToCanvasPoint(points[this.cursor.index - 1].x, points[this.cursor.index - 1].y)
+            const nextPoint = instance._imagePointToCanvasPoint(points[this.cursor.index].x, points[this.cursor.index].y)
+            ctx.moveTo(prevPoint.x, prevPoint.y)
+            ctx.lineTo(position.x, position.y)
+            ctx.lineTo(nextPoint.x, nextPoint.y)
+            ctx.fill()
+            ctx.stroke()
+        }
+    },
+
     init(editor) {
         this.editor = editor
+        this.instance = editor.instance
+        return this
+    }
+}
+
+const PathMeshFreeEditor = {
+    currently_drawing: null,
+    current_path: null,
+    editor: null,
+    editing: false,
+    panning: false,
+    mouseEvent(func, e) {
+        const editor = this.editor
+        const element = editor.element
+        const instance = editor.instance
+        const position = editor.instance._mousePointToImagePoint(e.position)
+        switch (func) {
+            case "press":
+                if (this.currently_drawing == null) {
+                    if (editor.instance.ctx.isPointInPath(editor.element.path, e.position.x, e.position.y)) {
+                        this.currently_drawing = []
+                        this.editing = true
+                        instance.set_canvas_pan(false)
+                    }
+                } else {
+                    this.editing = true
+                    instance.set_canvas_pan(false)
+                }
+                break
+            case "move":
+                if (this.panning) return
+                if (this.currently_drawing != null && this.editing) {
+                    this.currently_drawing.push(position)
+                    editor.instance.update()
+                }
+                break
+            case "release":
+                this.editing = false
+                instance.set_canvas_pan(true)
+                break
+        }
+    },
+
+    polygonOrientation(points) {
+        let sum = 0
+        const li = points.length
+        for (let i = 1; i < li; i++)
+            sum += (points[i].x - points[i - 1].x) * (points[i].y + points[i - 1].y)
+        sum += (points[li-1].x - points[li - 2].x) * (points[li-1].y + points[li - 2].y)
+        return sum > 0
+    },
+
+    keyboardEvent: function (func, e) {
+        const drawer = this.editor.instance
+        switch (func) {
+            case "keyUp":
+                if (e.keyCode === 32) {
+                    drawer.set_canvas_pan(false)
+                    this.panning = false
+                } else if (e.keyCode === 27) {
+                    drawer.set_canvas_pan(true)
+                    this.currently_drawing = null
+                    drawer.update()
+                } else if (e.keyCode === 13) {
+                    drawer.set_canvas_pan(true)
+                    const intersects = (path, point) => {
+                        const canvasPoint = drawer._imagePointToCanvasPoint(point.x, point.y)
+                        return drawer.ctx.isPointInPath(path, canvasPoint.x, canvasPoint.y, "nonzero")
+                    }
+                    const originalToRemove = this.editor.element.points.map((item, index) => {
+                        if (intersects(this.current_path, item)) return index
+                    }).filter(item => item != null)
+                    const additionToRemove = this.currently_drawing.map((item, index) => {
+                        if (intersects(this.editor.element.path, item)) return index
+                    }).filter(item => item != null)
+                    console.log("Original To Remove", originalToRemove, additionToRemove)
+                    const newOriginalPath = this.editor.element.points.filter((i, idx) => !originalToRemove.includes(idx))
+                    const newAdditionPath = this.currently_drawing.filter((i, idx) => !additionToRemove.includes(idx))
+                    console.log("newOriginalPath:", newOriginalPath)
+                    console.log("newAdditionPath:", newAdditionPath)
+
+                    const originalX = this.polygonOrientation(newOriginalPath)
+                    const additionX = this.polygonOrientation(newAdditionPath)
+                    console.log("Order:", originalX, additionX)
+                    if (additionX !== originalX) {
+                        console.log("Reversing array")
+                        // newAdditionPath.reverse()
+                    }
+
+                    let oIndex = 1, aIndex = 0
+                    const newPath = [newOriginalPath[0]]
+                    do {
+                        const cPoint = newPath[newPath.length - 1]
+                        const oPoint = newOriginalPath[oIndex]
+                        const aPoint = newAdditionPath[aIndex]
+
+                        const oDistance = oIndex < newOriginalPath.length ? Math.hypot(cPoint.x - oPoint.x, cPoint.y - oPoint.y) : -1
+                        const aDistance = aIndex < newAdditionPath.length ? Math.hypot(cPoint.x - aPoint.x, cPoint.y - aPoint.y) : -1
+
+                        console.log("Iteration | ", cPoint, oIndex, aIndex, "|", oDistance, aDistance)
+                        if (oDistance === -1 && aDistance === -1) {
+                            break
+                        } else if (aDistance === -1 || (oDistance !== -1 && oDistance < aDistance)) {
+                            newPath.push(oPoint)
+                            oIndex++
+                        } else if (oDistance === -1 || (aDistance !== -1 && oDistance > aDistance)) {
+                            newPath.push(aPoint)
+                            aIndex++
+                        }
+                    } while (oIndex < newOriginalPath.length || aIndex < newAdditionPath.length)
+                    this.editor.element.points = optimizePath(newPath)
+                    this.editor.instance.update()
+                    return false
+                    // const newToRemove =
+                }
+                break
+            case "keyDown":
+                if (e.keyCode === 32) {
+                    drawer.set_canvas_pan(true)
+                    this.panning = true
+                }
+                break
+        }
+
+        // We are going to handle the input
+        return true
+    },
+
+
+    draw(ctx) {
+        const points = this.currently_drawing
+        if (points != null) {
+            const path = new Path2D()
+            const firstPosition = this.editor.instance._imagePointToCanvasPoint(points[0].x, points[0].y)
+            ctx.beginPath()
+            path.moveTo(firstPosition.x, firstPosition.y)
+
+            points.forEach(point => {
+                const position = this.editor.instance._imagePointToCanvasPoint(point.x, point.y)
+                path.lineTo(position.x, position.y)
+            })
+            path.closePath()
+            this.current_path = path
+            ctx.stroke(path)
+        }
+    },
+
+    init(editor) {
+        this.editor = editor
+        this.currently_drawing = null
         return this
     }
 }
@@ -471,6 +694,11 @@ const PathMeshEditor = {
     keyboardEvent: function (func, e) {
         const drawer = this.instance
 
+        if (typeof this.mode.keyboardEvent === "function") {
+            if (this.mode.keyboardEvent(func, e))
+                return
+        }
+
         console.log(func, e)
         switch (func) {
             case "keyUp":
@@ -509,6 +737,10 @@ const PathMeshEditor = {
             ctx.stroke()
             control._canvas_pos = position
         })
+
+
+        if (typeof this.mode.draw === "function")
+            this.mode.draw(ctx)
     },
 
     create_controls: function () {
@@ -524,6 +756,8 @@ const PathMeshEditor = {
             this.mode = PathMeshMover.init(this)
         } else if (mode === "creator") {
             this.mode = PathMeshCreator.init(this)
+        } else if (mode === "free") {
+            this.mode = PathMeshFreeEditor.init(this)
         }
     },
 
@@ -540,8 +774,54 @@ const PathMeshEditor = {
         return this
     }
 }
+
+
 /* the conversion from pixel to shape may be done with a search algorithm.
 The points are the pixels which were unable to find add one of its side to the search*/
+
+const StateRestorer = {
+    instance: null,
+    element: null,
+    states: [],
+    current_state_point: 0,
+
+    addRestorePoint(event) {
+        if (this.states.length > 0 && this.current_state_point !== this.states.length - 1) {
+            // We are overriding the past, we will clear the states
+            this.states.splice(this.current_state_point, this.states.length - this.current_state_point)
+            console.log("clearing future:", this.states.length)
+        }
+        this.states.push({
+            type: event,
+            points: this.element.points.map(item => { // todo not all elements have points
+                return {x: item.x, y: item.y}
+            })
+        })
+        this.current_state_point = this.states.length - 1
+        this.instance.callback.onStateRestorerEvent(this)
+        // todo report state changed
+    },
+
+    restoreToPoint(value) {
+        console.log("restoreToPoint", value)
+        this.element.points = this.states[value].points
+        this.instance.update()
+        this.current_state_point = value
+        this.instance.callback.onStateRestorerEvent(this)
+    },
+    cancel() {
+        this.instance.stateRestorer = null
+        this.states = null
+        this.instance.callback.onStateRestorerEvent(null)
+    },
+    init(instance, element) {
+        this.instance = instance
+        this.element = element
+        this.states = []
+        instance.callback.onStateRestorerEvent(this)
+        return this
+    }
+}
 
 export default {
     elements: [
@@ -566,6 +846,7 @@ export default {
      */
     elementsOnScreen: [],
 
+    stateRestorer: null,
 
     /**
      * The current drawing tool
@@ -686,7 +967,6 @@ export default {
             this.currently_editing.draw(ctx)
 
         this._lastUpdate = Date.now()
-        // console.log("Drawing", this.elementsOnScreen.length, "of", this.elements.length)
     },
 
     _draw_element: function (element) {
