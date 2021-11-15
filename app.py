@@ -5,19 +5,21 @@ from flask_jwt_extended import JWTManager
 from config import app_config
 from flask_migrate import Migrate
 import os
+import sys
 
 db = SQLAlchemy()
 jwt = JWTManager()
 migrate = Migrate()
 
 
-def create_app():
+def create_app(context="development"):
     app = Flask(__name__,
                 static_folder="./client/dist/static",
                 template_folder="./client/dist")
-    app.config.from_object(app_config["development"])
+    app.config.from_object(app_config[context])
     app.config.from_pyfile('config.py')
 
+    print("Starting server in context:", context)
     from api.user import user_api
     from api.session import session_api
     from api.project import project_api
@@ -52,5 +54,5 @@ def create_app():
 
 
 if __name__ == '__main__':
-    app = create_app()
+    app = create_app("development" if len(sys.argv) == 1 else sys.argv[1])
     app.run(port=2000, host="0.0.0.0")

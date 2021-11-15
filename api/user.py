@@ -25,6 +25,19 @@ def new():
     return jsonify(user.to_json())
 
 
+@user_api.route("edit", methods=["POST"])
+@jwt_required()
+def edit():
+    if not current_user.is_admin:
+        return jsonify({"msg": "Not an admin!"}), 401
+
+    new_user = request.json
+    user = db.session.query(models.User).get(new_user["id"])
+    user.update(new_user)
+    db.session.commit()
+    return jsonify(user.to_json())
+
+
 @user_api.route("list")
 @jwt_required()
 def list():

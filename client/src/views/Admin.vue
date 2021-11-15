@@ -8,12 +8,16 @@
               <v-toolbar-title class="title">Tasks</v-toolbar-title>
             </v-expansion-panel-header>
             <v-expansion-panel-content>
+              <v-tabs v-model="task_type">
+                <v-tab>Annotations</v-tab>
+                <v-tab>Revisions</v-tab>
+              </v-tabs>
               <v-data-table
-                      :headers="config.task_headers"
-                      :items="tasks"
+                      :headers="config.task_headers[task_type]"
+                      :items="tasks[task_type]"
                       :items-per-page="5">
-                 <template v-slot:item.slides="{ item }">
-                  <v-chip-group >
+                <template v-slot:item.slides="{ item }">
+                  <v-chip-group>
                     <v-chip style="pointer-events: none;"
                             outlined :readonly="true"
                             v-for="slide in item.slides">
@@ -27,6 +31,22 @@
                       {{ user.name }}
                     </v-chip>
                   </v-chip-group>
+                </template>
+                <template v-slot:item.revisions="{ item }">
+                  <v-chip-group active-class="primary--text">
+                    <v-chip style="pointer-events: none;" :readonly="true" v-for="user_task in item.revisions" dark>
+                      {{ user_task.user.name }}
+                    </v-chip>
+                  </v-chip-group>
+                </template>
+                <template v-slot:item.actions="{ item }">
+                  <v-icon small class="mr-2" @click="edit_task(item)"> mdi-pencil</v-icon>
+                  <v-tooltip bottom>
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-icon small v-bind="attrs" v-on="on" @click> mdi-delete</v-icon>
+                    </template>
+                    <span>Not implemented</span>
+                  </v-tooltip>
                 </template>
               </v-data-table>
               <v-card-actions>
@@ -45,8 +65,19 @@
               <v-data-table
                       :headers="config.user_headers"
                       :items="users"
-                      :items-per-page="5"/>
-
+                      :items-per-page="5">
+                <template v-slot:item.actions="{ item }">
+                  <v-icon small class="mr-2" @click="edit_user(item)">
+                    mdi-pencil
+                  </v-icon>
+                  <v-tooltip bottom>
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-icon small v-bind="attrs" v-on="on" @click> mdi-delete</v-icon>
+                    </template>
+                    <span>Not implemented</span>
+                  </v-tooltip>
+                </template>
+              </v-data-table>
               <v-card-actions>
                 <v-spacer></v-spacer>
                 <v-btn text @click="new_user">New user</v-btn>
@@ -74,6 +105,17 @@
                     </v-chip>
                   </v-chip-group>
                 </template>
+                <template v-slot:item.actions="{ item }">
+                  <v-icon small class="mr-2" @click="edit_project(item)">
+                    mdi-pencil
+                  </v-icon>
+                  <v-tooltip bottom>
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-icon small v-bind="attrs" v-on="on" @click> mdi-delete</v-icon>
+                    </template>
+                    <span>Not implemented</span>
+                  </v-tooltip>
+                </template>
               </v-data-table>
 
               <v-card-actions>
@@ -90,9 +132,9 @@
         <v-toolbar-title>Information editor</v-toolbar-title>
       </v-toolbar>
       <v-container>
-        <user-editor v-if="mode === 'user'" v-model="editing"/>
-        <project-editor v-else-if="mode === 'project'" v-model="editing"/>
-        <task-editor v-else-if="mode === 'task'" v-model="editing"/>
+        <user-editor v-if="mode === 'user'" v-model="editing" v-on:done="done"/>
+        <project-editor v-else-if="mode === 'project'" v-model="editing" v-on:done="done"/>
+        <task-editor v-else-if="mode === 'task'" v-model="editing" v-on:done="done"/>
       </v-container>
     </v-navigation-drawer>
   </v-container>
@@ -109,40 +151,57 @@
         components: {TaskEditor, ProjectEditor, UserEditor},
         watch: {
             editing: function (new_value, old_value) {
-                if (old_value != null && old_value.id == null) {
-                    if (new_value != null && new_value.id != null) {
-                        if (this.mode === "user")
-                            this.users.push(new_value)
-                        else if (this.mode === "project")
-                            this.projects.push(new_value)
-                        else if (this.mode === "task")
-                            this.tasks.push(new_value)
-                        this.drawer = false
-                    }
+                // if (old_value != null && old_value.id == null) {
+                //     if (new_value != null && new_value.id != null && !this.is_editing) {
+                //         if (this.mode === "user")
+                //             this.users.push(new_value)
+                //         else if (this.mode === "project")
+                //             this.projects.push(new_value)
+                //         else if (this.mode === "task")
+                //             this.tasks.push(new_value)
+                //         this.drawer = false
+                //     }
                     // this.drawer = false
-                }
+                // }
             }
         },
         data: () => {
             return {
                 drawer: false,
                 mode: 'user',
-                editing: {},
+                is_editing: false,
+                editing: null,
                 users: [],
                 projects: [],
                 tasks: [],
+                task_type: "annotations",
                 config: {
-                    task_headers: [
-                        {
-                            text: 'id',
-                            align: 'start',
-                            sortable: false,
-                            value: 'id',
-                        },
-                        {text: 'Slides', value: 'slides'},
-                        {text: 'Project', value: 'project.name'},
-                        {text: 'Users', value: 'assigned'}
-                    ],
+                    task_headers: {
+                        0: [
+                            {
+                                text: 'id',
+                                align: 'start',
+                                sortable: false,
+                                value: 'id',
+                            },
+                            {text: 'Slides', value: 'slides'},
+                            {text: 'Project', value: 'project.name'},
+                            {text: 'Users', value: 'assigned'},
+                            {text: "Actions", value: 'actions'}
+                        ],
+                        1: [
+                            {
+                                text: 'id',
+                                align: 'start',
+                                sortable: false,
+                                value: 'id',
+                            },
+                            {text: 'Project', value: 'project.name'},
+                            {text: 'To review', value: 'revisions'},
+                            {text: 'Users', value: 'assigned'},
+                            {text: "Actions", value: 'actions'}
+                        ]
+                    },
                     user_headers: [
                         {
                             text: 'id',
@@ -153,6 +212,7 @@
                         {text: 'Name', value: 'name'},
                         {text: 'Username (login)', value: 'username'},
                         {text: 'Is admin?', value: 'is_admin'},
+                        {text: 'Actions', value: 'actions'},
                     ],
                     project_header: [
                         {
@@ -162,12 +222,28 @@
                             value: 'name',
                         },
                         {text: 'Description', value: 'description'},
-                        {text: "Labels", value: 'labels'}
+                        {text: "Labels", value: 'labels'},
+                        {text: "Actions", value: 'actions'}
                     ]
                 }
             }
         },
         methods: {
+            done(which) {
+                this.drawer = false
+                this.editing = null
+                switch (which) {
+                    case 'user':
+                        this.load_users()
+                        break
+                    case 'project':
+                        this.load_projects()
+                        break
+                    case 'task':
+                        this.load_tasks()
+                        break
+                }
+            },
             new_user() {
                 this.editing = {
                     username: "",
@@ -177,8 +253,9 @@
                 this.drawer = true
             },
 
-            edit_user(id) {
-                this.editing = this.users[id]
+            edit_user(user) {
+                this.is_editing = true
+                this.editing = user
                 this.mode = "user"
                 this.drawer = true
             },
@@ -194,12 +271,27 @@
                 this.drawer = true
             },
 
+            edit_project(project) {
+                this.is_editing = true
+                this.editing = project
+                this.mode = "project"
+                this.drawer = true
+            },
+
             new_task() {
                 this.editing = {
                     name: "",
+                    type: 0,
                     slides: [],
                     assigned: []
                 }
+                this.mode = "task"
+                this.drawer = true
+            },
+
+            edit_task(task) {
+                this.is_editing = true
+                this.editing = task
                 this.mode = "task"
                 this.drawer = true
             },

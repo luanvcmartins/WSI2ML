@@ -2,77 +2,87 @@
   <div>
     <div id="seadragon-viewer"/>
 
-    <div v-if="state_restorer.showing" class="toolbox state-toolbox">
-      <v-slider step="1" dense hide-details v-model="state_restorer.undo" :max="state_restorer.max_undo" label="Undo"/>
-    </div>
+    <div v-if="drawer" class="drawing-tool-container">
 
-    <div v-if="drawer" class="toolbox drawing-toolbox">
-      <div class="zoom-shortcuts">
-        <v-menu top :close-on-click="true" offset-y>
-          <template v-slot:activator="{ on, attrs }">
-            <v-btn text v-bind="attrs" v-on="on">
-              <v-avatar
-                      class="mr-2"
-                      :color="`rgb(${selected_label.color[0]},${selected_label.color[1]},${selected_label.color[2]})`"
-                      size="26"/>
-              {{selected_label.name}}
-            </v-btn>
-          </template>
-          <v-list>
-            <v-list-item @click="selected_label = item" v-for="(item, index) in labels" :key="index">
-              <v-list-item-avatar>
-                <v-avatar :color="`rgb(${item.color[0]},${item.color[1]},${item.color[2]})`" size="26"></v-avatar>
-              </v-list-item-avatar>
-              <v-list-item-content>
-                <v-list-item-title>{{ item.name }}</v-list-item-title>
-              </v-list-item-content>
-            </v-list-item>
-          </v-list>
-        </v-menu>
-      </div>
-      <v-divider></v-divider>
-      <div v-if="editing.element == null">
-        <v-btn text icon @click="selected_tool = 'polygon'"
-               :color="'polygon' === this.selected_tool ? 'primary' : 'grey'">
-          <v-icon>mdi-vector-polygon</v-icon>
-        </v-btn>
-        <v-btn text icon @click="selected_tool = 'rect'"
-               :color="'rect' === this.selected_tool ? 'primary' : 'grey'">
-          <v-icon>mdi-vector-rectangle</v-icon>
-        </v-btn>
-        <v-btn text icon
-               @click="selected_tool = 'free'"
-               :color="'free' === this.selected_tool ? 'primary' : 'grey'">
-          <v-icon>mdi-lead-pencil</v-icon>
-        </v-btn>
-        <v-btn text icon
-               @click="selected_tool = 'brush'"
-               :color="'brush' === this.selected_tool ? 'primary' : 'grey'">
-          <v-icon>mdi-brush</v-icon>
-        </v-btn>
+      <div class="tool-item">
+        <div class="zoom-shortcuts" v-if="task_type === 0">
+          <v-menu top :close-on-click="true" offset-y>
+            <template v-slot:activator="{ on, attrs }">
+              <v-btn text v-bind="attrs" v-on="on">
+                <v-avatar
+                        class="mr-2"
+                        :color="`rgb(${selected_label.color[0]},${selected_label.color[1]},${selected_label.color[2]})`"
+                        size="26"/>
+                {{selected_label.name}}
+              </v-btn>
+            </template>
+            <v-list>
+              <v-list-item @click="selected_label = item" v-for="(item, index) in labels" :key="index">
+                <v-list-item-avatar>
+                  <v-avatar :color="`rgb(${item.color[0]},${item.color[1]},${item.color[2]})`" size="26"></v-avatar>
+                </v-list-item-avatar>
+                <v-list-item-content>
+                  <v-list-item-title>{{ item.name }}</v-list-item-title>
+                </v-list-item-content>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </div>
+
+        <v-divider></v-divider>
+        <div v-if="task_type === 0 && editing.element == null" class="zoom-shortcuts">
+          <v-btn text icon @click="selected_tool = 'polygon'"
+                 :color="'polygon' === this.selected_tool ? 'primary' : 'grey'">
+            <v-icon>mdi-vector-polygon</v-icon>
+          </v-btn>
+          <v-btn text icon @click="selected_tool = 'rect'"
+                 :color="'rect' === this.selected_tool ? 'primary' : 'grey'">
+            <v-icon>mdi-vector-rectangle</v-icon>
+          </v-btn>
+          <v-btn text icon
+                 @click="selected_tool = 'free'"
+                 :color="'free' === this.selected_tool ? 'primary' : 'grey'">
+            <v-icon>mdi-lead-pencil</v-icon>
+          </v-btn>
+          <v-btn text icon
+                 @click="selected_tool = 'brush'"
+                 :color="'brush' === this.selected_tool ? 'primary' : 'grey'">
+            <v-icon>mdi-brush</v-icon>
+          </v-btn>
+        </div>
+
+        <div v-if="editing.element != null" class="zoom-shortcuts">
+          <v-btn text icon
+                 @click="editing.mode = 'mover'"
+                 :color="'mover' === editing.mode ? 'primary' : 'grey'">
+            <v-icon>mdi-vector-polyline-edit</v-icon>
+          </v-btn>
+          <v-btn text icon
+                 @click="editing.mode = 'eraser'"
+                 :color="'eraser' === editing.mode ? 'primary' : 'grey'">
+            <v-icon>mdi-vector-polyline-minus</v-icon>
+          </v-btn>
+          <v-btn text icon
+                 @click="editing.mode = 'creator'"
+                 :color="'creator' === editing.mode ? 'primary' : 'grey'">
+            <v-icon>mdi-vector-polyline-plus</v-icon>
+          </v-btn>
+          <v-btn text icon
+                 @click="editing.mode = 'free'"
+                 :color="'free' === editing.mode ? 'primary' : 'grey'">
+            <v-icon>mdi-lead-pencil</v-icon>
+          </v-btn>
+        </div>
       </div>
 
-      <div v-if="editing.element != null" class="zoom-shortcuts">
-        <v-btn text icon
-               @click="editing.mode = 'mover'"
-               :color="'mover' === editing.mode ? 'primary' : 'grey'">
-          <v-icon>mdi-vector-polyline-edit</v-icon>
-        </v-btn>
-        <v-btn text icon
-               @click="editing.mode = 'eraser'"
-               :color="'eraser' === editing.mode ? 'primary' : 'grey'">
-          <v-icon>mdi-vector-polyline-minus</v-icon>
-        </v-btn>
-        <v-btn text icon
-               @click="editing.mode = 'creator'"
-               :color="'creator' === editing.mode ? 'primary' : 'grey'">
-          <v-icon>mdi-vector-polyline-plus</v-icon>
-        </v-btn>
-        <v-btn text icon
-               @click="editing.mode = 'free'"
-               :color="'free' === editing.mode ? 'primary' : 'grey'">
-          <v-icon>mdi-lead-pencil</v-icon>
-        </v-btn>
+
+      <div v-if="state_restorer.showing" class="tool-item">
+        <v-slider step="1" dense hide-details v-model="state_restorer.undo" :max="state_restorer.max_undo"
+                  label="Undo"/>
+      </div>
+
+      <div class="tool-item" v-if="info.length > 0">
+        <p class="instruction-item" v-for="instruction in info">{{instruction}}</p>
       </div>
     </div>
 
@@ -99,6 +109,11 @@
 
     export default {
         name: "SliceViewer",
+        computed: {
+            task_type: function () {
+                return this.$store.state.session.type
+            }
+        },
         data: () => {
             return {
                 selected_label: null,
@@ -111,10 +126,11 @@
                     mode: "mover",
                 },
                 state_restorer: {
-                    showing: true,
+                    showing: false,
                     undo: 0,
                     max_undo: 0
-                }
+                },
+                info: []
             }
         },
         watch: {
@@ -124,6 +140,13 @@
                     this.labeled_regions = new_value
                     SliceDrawer.elements = new_value
                     SliceDrawer.update()
+                }
+            },
+            task_type: {
+                immediate: true,
+                handler(new_value) {
+                    console.log("task_type", new_value)
+                    SliceDrawer.enabled = new_value === 0
                 }
             },
             labels: {
@@ -185,9 +208,17 @@
                 this.no_model_action = true
                 SliceDrawer.editElement(element.data)
             },
-
+            saveEdition(element) {
+                // this.editing.element = element
+                // this.no_model_action = true
+                SliceDrawer.concludeEdit()
+            },
+            cancelEdit() {
+                SliceDrawer.cancelEdit()
+            },
         },
         mounted() {
+            console.log("drawEvents:", this.drawEvents)
             this.$nextTick(() => {
                 const viewer = OpenSeadragon({
                     id: "seadragon-viewer",
@@ -204,16 +235,27 @@
                     },
                 })
 
+                const delegateCallback = (callback, ...args) => {
+                    if (callback != null) {
+                        callback(...args)
+                    }
+                }
+
                 this.viewer = viewer
                 SliceDrawer.init(viewer, {
-                    onHover: function (element) {
+                    onHover: (element) => {
                         console.log("onHover: ", element)
+                        console.log("drawEvents: ", this.drawEvents)
+                        delegateCallback(this.drawEvents.onHover, element)
+                        // if (this.drawEvents != null && this.drawEvents.onHover != null)
+                        //     this.drawEvents.onHover(element)
                     },
-                    onLeave: function (element) {
+                    onLeave: (element) => {
                         console.log("onLeave: ", element)
+                        delegateCallback(this.drawEvents.onLeave, element)
                     },
                     onClick: (element) => {
-                        this.$emit("region-clicked", element)
+                        delegateCallback(this.drawEvents.onClick, element)
                     },
                     onStateRestorerEvent: (stateRestorer) => {
                         // console.log("test: ", stateRestorer)
@@ -225,12 +267,14 @@
                         } else {
                             this.state_restorer.showing = false
                         }
+                        delegateCallback(this.drawEvents.onStateRestorerEvent, stateRestorer)
                     },
                     onEditingEvent: () => {
                         this.no_model_action = true
                         const lastStateIndex = SliceDrawer.currently_editing.history.length - 1
                         this.editing.max_undo = lastStateIndex
                         this.editing.undo = lastStateIndex
+                        delegateCallback(this.drawEvents.onEditingEvent)
                     },
                     onFinishNewDrawing: (element) => {
                         // Creating a new label object:
@@ -238,6 +282,9 @@
                             label: this.selected_label,
                             data: element
                         })
+                    },
+                    onInfoUpdate: (messages) => {
+                        this.info = messages
                     },
                     onFinishedEditing: (changed, element_data) => {
                         if (changed) {
@@ -251,6 +298,7 @@
                             })
                         }
                         this.editing.element = null
+                        delegateCallback(this.drawEvents.onFinishedEditing, changed, element_data)
                     }
                 })
                 this.viewer.addHandler("zoom", (e) => {
@@ -269,7 +317,8 @@
             value: {type: Array},
             tileSources: {type: String},
             labelsVisibility: {type: Object},
-            regionOpacity: {type: Number}
+            regionOpacity: {type: Number},
+            drawEvents: {}
         }
     }
 </script>
@@ -288,6 +337,31 @@
     border-radius: 8px;
     background-color: #f1f1f1;
     padding: 8px;
+  }
+
+  .drawing-tool-container {
+    position: absolute;
+    left: 16px;
+    bottom: 16px;
+    height: 500px;
+    display: flex;
+    flex-direction: column-reverse;
+  }
+
+  .tool-item {
+    flex-flow: column;
+    border-radius: 8px;
+    background-color: #f1f1f1;
+    padding: 8px;
+    margin-top: 4px;
+    margin-bottom: 4px;
+  }
+
+  .instruction-item {
+    font-size: small;
+    font-weight: normal;
+    width: 100%;
+    margin: 0;
   }
 
   .drawing-toolbox {

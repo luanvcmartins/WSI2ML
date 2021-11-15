@@ -1,12 +1,12 @@
 <template>
   <div>
-<!--  <v-form v-if="user != null">-->
+    <!--  <v-form v-if="user != null">-->
     <v-text-field label="Name" v-model="user.name"></v-text-field>
     <v-text-field label="Username" v-model="user.username"></v-text-field>
-    <v-text-field label="Password" v-model="user.password"></v-text-field>
+    <v-text-field label="Password" type="password" v-model="user.password"></v-text-field>
     <v-checkbox v-model="user.is_admin" label="Is user admin?"></v-checkbox>
     <v-btn @click="save" outlined style="position: absolute; right:16px">Save</v-btn>
-<!--  </v-form>-->
+    <!--  </v-form>-->
   </div>
 </template>
 
@@ -34,10 +34,11 @@
             save() {
                 if (this.user.id != null) {
                     // update user profile information
-                    this.$post("user/update", this.user)
+                    this.$post("user/edit", this.user)
                         .then(resp => {
                             this.user = resp
                             this.$emit("input", this.user)
+                            this.$emit("done", "user")
                         })
                         .catch(err => {
                             alert(err)
@@ -48,6 +49,7 @@
                         .then(resp => {
                             this.user = resp
                             this.$emit("input", this.user)
+                            this.$emit("done", "user")
                         })
                         .catch(err => {
                             alert(err)

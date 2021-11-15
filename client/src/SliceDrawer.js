@@ -99,9 +99,39 @@ const optimizePath = function (points) {
     return points
 }
 
+const nullTool = {
+    name: "None",
+    mouseEvent: function (func, e) {
+    },
+    keyboardEvent: function (func, e) {
+    },
+    init(instance) {
+        return this
+    }
+}
+
 const polygonTool = {
     name: "polygon",
     instance: null,
+
+    info(...help) {
+        let info = []
+        if (help.includes("start"))
+            info.push("[db-Click] To put the first point")
+        if (help.includes("start-2"))
+            info.push("[db-Click] To put the second point")
+        if (help.includes("save"))
+            info.push("[Enter] To save annotation")
+        if (help.includes("undo"))
+            info.push("[Esc] To undo")
+        if (help.includes("continue"))
+            info.push("[Click] To continue dragging")
+        if (help.includes("point"))
+            info.push("[db-Click] To add a point")
+        if (help.includes("cancel"))
+            info.push("[Esc] To cancel")
+        this.instance.callback.onInfoUpdate(info)
+    },
 
     mouseEvent: function (func, e) {
         const drawer = this.instance
@@ -119,10 +149,12 @@ const polygonTool = {
                     }
 
                     drawer.stateRestorer = StateRestorer.init(drawer, drawer.currently_drawing)
+                    this.info("start-2", "cancel")
                 } else {
                     // On double click we will continue the drawing by adding the new
                     drawer.currently_drawing.points.push(imagePosition)
                     drawer.stateRestorer.addRestorePoint("point")
+                    this.info("save", "undo", "point")
                 }
                 break
             case "move":
@@ -147,16 +179,20 @@ const polygonTool = {
                         drawer.callback.onFinishNewDrawing(drawer.currently_drawing)
                         drawer.currently_drawing = null
                         drawer.stateRestorer.cancel()
+                        this.info("")
                     }
                     if (e.keyCode === 27) {
                         // User pressed ESC, undo the drawing
-                        if (drawer.currently_drawing.points.length > 3)
+                        if (drawer.currently_drawing.points.length > 3) {
                             // Undo the last point added
                             drawer.currently_drawing.points.splice(drawer.currently_drawing.points.length - 2, 1)
-                        else {
+
+                            this.info("save", "point", drawer.currently_drawing.points.length > 3 ? "undo" : "cancel")
+                        } else {
                             // Cancel the drawing
                             drawer.currently_drawing = null
                             drawer.stateRestorer.cancel()
+                            this.info("")
                         }
                         drawer.update()
                     }
@@ -166,6 +202,7 @@ const polygonTool = {
 
     init(instance) {
         this.instance = instance
+        this.info("start")
         return this
     }
 }
@@ -173,6 +210,18 @@ const polygonTool = {
 const rectTool = {
     name: "rect",
     instance: null,
+
+    info(...help) {
+        let info = []
+        if (help.includes("start"))
+            info.push("[db-Click] To start rect")
+        if (help.includes("save"))
+            info.push("[db-Click] To finish and save")
+        if (help.includes("cancel"))
+            info.push("[Esc] To cancel")
+        this.instance.callback.onInfoUpdate(info)
+    },
+
     mouseEvent: function (func, e) {
         const drawer = this.instance
         const imagePosition = drawer._mousePointToImagePoint(e.position)
@@ -186,6 +235,7 @@ const rectTool = {
                         is_hover: false,
                         color: drawer.drawing_color
                     }
+                    this.info("save", "cancel")
                 } else {
                     // We will stop the drawing.
                     // We will assure point1 < point2
@@ -200,6 +250,7 @@ const rectTool = {
                     drawer.callback.onFinishNewDrawing(drawer.currently_drawing)
                     drawer.currently_drawing = null
                     drawer.stateRestorer.cancel()
+                    this.info("start")
                 }
                 drawer.update()
                 break
@@ -218,14 +269,16 @@ const rectTool = {
                 if (e.keyCode === 27) {
                     // User pressed ESC, we will cancel the drawing
                     drawer.currently_drawing = null
-                    drawer.stateRestorer.cancel()
+                    // drawer.stateRestorer.cancel()
                     drawer.update()
+                    this.info("start")
                 }
                 break
         }
     },
     init(instance) {
         this.instance = instance
+        this.info("start")
         return this
     }
 }
@@ -234,13 +287,29 @@ const freeTool = {
     name: "free",
     instance: null,
     drawer_panning: false,
+
+    info(...help) {
+        let info = []
+        if (help.includes("pan"))
+            info.push("[Space] To drag the image")
+        if (help.includes("start"))
+            info.push("[Click] To start drawing")
+        if (help.includes("save"))
+            info.push("[Enter] To save annotation")
+        if (help.includes("continue"))
+            info.push("[Click] To continue drawing")
+        if (help.includes("cancel"))
+            info.push("[Esc] To cancel")
+        this.instance.callback.onInfoUpdate(info)
+    },
+
     mouseEvent: function (func, e) {
         const drawer = this.instance
         const imagePosition = drawer._mousePointToImagePoint(e.position)
         switch (func) {
             case "press":
                 drawer.set_canvas_pan(false)
-                if (!this.drawer_panning)
+                if (!this.drawer_panning) {
                     if (drawer.currently_drawing == null) {
                         drawer.currently_drawing = {
                             type: "polygon",
@@ -252,17 +321,25 @@ const freeTool = {
                         }
 
                         drawer.stateRestorer = StateRestorer.init(drawer, drawer.currently_drawing)
-                    } else drawer.currently_drawing._enabled = true
+                    } else
+                        drawer.currently_drawing._enabled = true
+
+                    this.info("pan")
+                }
+                // return true
                 break
             case "move":
                 if (!this.drawer_panning && drawer.currently_drawing != null && drawer.currently_drawing._enabled) {
                     drawer.currently_drawing.points.push(imagePosition)
                     drawer.stateRestorer.addRestorePoint("point")
+                    // this.info("start", "pan")
+                    // return true
                 }
                 break
             case "release":
                 if (drawer.currently_drawing != null)
                     drawer.currently_drawing._enabled = false
+                this.info("continue", "pan", "save", "cancel")
 
                 break
         }
@@ -272,6 +349,7 @@ const freeTool = {
     init(instance) {
         this.instance = instance
         instance.set_canvas_pan(false)
+        this.info("start", "pan")
         return this
     }
 }
@@ -543,7 +621,7 @@ const PathMeshFreeEditor = {
         const li = points.length
         for (let i = 1; i < li; i++)
             sum += (points[i].x - points[i - 1].x) * (points[i].y + points[i - 1].y)
-        sum += (points[li-1].x - points[li - 2].x) * (points[li-1].y + points[li - 2].y)
+        sum += (points[li - 1].x - points[li - 2].x) * (points[li - 1].y + points[li - 2].y)
         return sum > 0
     },
 
@@ -683,8 +761,11 @@ const PathMeshEditor = {
     },
 
     intersectsControl: function (mousePosition, position) {
-        return mousePosition.x > position.x - 25 && mousePosition.x < position.x + 25 &&
-            mousePosition.y > position.y - 25 && mousePosition.y < position.y + 25
+        const drawer = this.instance
+        const areaRadius = (drawer._viewportLocation.max.y - drawer._viewportLocation.min.y) / drawer.canvas.clientWidth * 25
+        // console.log("intersects radius:", areaRadius, drawer._viewportLocation)
+        return mousePosition.x > position.x - areaRadius && mousePosition.x < position.x + areaRadius &&
+            mousePosition.y > position.y - areaRadius && mousePosition.y < position.y + areaRadius
     },
 
     mouseEvent: function (func, e) {
@@ -712,7 +793,7 @@ const PathMeshEditor = {
                     drawer.currently_editing = null
                     drawer.update()
                 } else if (e.keyCode === 13) {
-                    // Notify the editing has ended without changes
+                    // Notify the editing has ended with changes
                     drawer.callback.onFinishedEditing(true, this.element)
                     // Disable the editing tool and update view
                     drawer.currently_editing = null
@@ -720,6 +801,17 @@ const PathMeshEditor = {
                 }
                 break
         }
+    },
+
+    cancel() {
+        const drawer = this.instance
+        this.element.points = this.original_points
+        this.element.color = this.original_color
+        // Notify the editing has ended without changes
+        drawer.callback.onFinishedEditing(false, this.element)
+        // Disable the editing tool and update view
+        drawer.currently_editing = null
+        drawer.update()
     },
 
     draw(ctx) {
@@ -760,6 +852,7 @@ const PathMeshEditor = {
             this.mode = PathMeshFreeEditor.init(this)
         }
     },
+
 
     init(instance, element, mode) {
         this.instance = instance
@@ -841,6 +934,11 @@ export default {
     ],
 
     /**
+     * When false, SliceDrawer doesn't allow any drawing
+     */
+    enabled: true,
+
+    /**
      * Elements currently being rendering are added to this list. This list is mostly used to check
      * mouse interaction with the elements.
      */
@@ -852,7 +950,8 @@ export default {
      * The current drawing tool
      */
     set tool(name) {
-        this.new_tool = this.tools[name]
+        this.new_tool = this.tools[name]()
+        console.log("tool: ", name, this.new_tool, this.tools)
         this.set_canvas_pan(true)
         this.viewer.canvas.focus()
     },
@@ -920,6 +1019,20 @@ export default {
         this.currently_editing.addRestorePoint("editing")
     },
 
+    concludeEdit() {
+        // Disable the editing tool and update view
+        console.log("concludeEdit:", this.currently_editing.element)
+        this.callback.onFinishedEditing(true, this.currently_editing.element)
+        this.currently_editing = null
+        this.update()
+    },
+
+    cancelEdit() {
+        this.currently_editing.cancel()
+        this.currently_editing = null
+        this.update()
+    },
+
     resize: function () {
         this.canvas.width = this.viewer.canvas.clientWidth
         this.canvas.height = this.viewer.canvas.clientHeight
@@ -940,17 +1053,22 @@ export default {
         // console.log("update called")
         // todo change for a system in which, depending on the number of elements on the screen, the elements fade on mouse down and show again on mouse up
         if (this.ctx == null) return
+
         const ctx = this.ctx
         if (this._lastUpdate > Date.now() - (this.elementsOnScreen.length / 5)) {
             return
         }
         ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height)
+        if (this.elements == null) {
+            return
+        }
+
         const viewportMin = this._viewportLocation.min
         const viewportMax = this._viewportLocation.max
         this.elementsOnScreen = []
         this.elements.forEach(element => {
-            if (this.filtering[element.label.name]) {
-                // We will only when the label of the element isn't filter out
+            if (this.filtering[element.label.name] && element.data != null) {
+                // We will only draw when the label of the element isn't filter out
                 const firstPoint = element.data.points[0]
                 if ((firstPoint.x > viewportMin.x && firstPoint.x < viewportMax.x)
                     && (firstPoint.y > viewportMin.y && firstPoint.y < viewportMax.y)) {
@@ -1139,10 +1257,11 @@ export default {
                 this.new_tool.mouseEvent('dblClick', e)
             },
             moveHandler: (e) => {
-                if (this.currently_editing == null)
-                    this.new_tool.mouseEvent('move', e)
-                else
-                    this.currently_editing.mouseEvent('move', e)
+                if (this.currently_editing == null) {
+                    if (this.new_tool.mouseEvent('move', e)) return
+                } else {
+                    if (this.currently_editing.mouseEvent('move', e)) return
+                }
 
                 // When not drawing, we will check for collision with the mouse pointer for interactivity
                 if (this.currently_editing == null) {
@@ -1162,25 +1281,12 @@ export default {
                                 callback.onLeave(element)
 
                         drawingData.is_hover = intersects
-                        // console.log("Intersects: ", intersects, " update required:", updateRequired, "mouse position:", e.position.x, e.position.y)
                     })
 
                     if (updateRequired) {
                         this.viewer.canvas.style.cursor = "hand"
                         this.update()
                     }
-                } else {
-
-                    // Check for interaction with the points
-                    // const mousePosition = this._mousePointToImagePoint(e.position)
-                    // this.currently_editing.controls.forEach(control => {
-                    //     const position = control._canvas_pos
-                    //     const intersects = mousePosition.x > position.x - 5 && mousePosition.x < position.x + 5 &&
-                    //         mousePosition.y > position.y - 5 && mousePosition.y < position.y + 5
-                    //     if (intersects) {
-                    //
-                    //     }
-                    // })
                 }
             },
             keyDownHandler: (e) => {
@@ -1198,12 +1304,13 @@ export default {
         })
 
         this.tools = {
-            "polygon": polygonTool.init(this),
-            "free": freeTool.init(this),
-            "rect": rectTool.init(this),
-            "brush": brushTool.init(this)
+            "polygon": () => polygonTool.init(this),
+            "free": () => freeTool.init(this),
+            "rect": () => rectTool.init(this),
+            "brush": () => brushTool.init(this),
+            "none": () => nullTool.init(this)
         }
-        this.tool = "polygon"
+        this.tool = this.enabled ? "polygon" : "none"
 
         this.resize(Viewer.canvas.width, Viewer.canvas.height)
     }

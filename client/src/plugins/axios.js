@@ -6,8 +6,8 @@ import store from '@/store'
 Vue.use(VueAxios, {
     axios,
     config: {
-        baseURL: '/api',
-        // baseURL: 'http://192.168.0.2:2000/api',
+        // baseURL: '/api',
+        baseURL: 'http://192.168.0.2:2000/api',
     },
     interceptors: {
         beforeRequest(config, axiosInstance) {

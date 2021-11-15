@@ -26,11 +26,12 @@ DEEPZOOM_TILE_QUALITY = 75
 
 
 class Session:
-    def __init__(self, slides) -> None:
+    def __init__(self, slides, user_task) -> None:
         self._session_slides = {slide['id']: slide for slide in slides}
         default_slide = openslide.open_slide(slides[0]['file'])
         self._slides_instance = {slides[0]['id']: default_slide}
         self._slides_zoom = {slides[0]['id']: DeepZoomGenerator(default_slide)}
+        self.user_task = user_task
 
     def get_info(self):
         return {k: {
