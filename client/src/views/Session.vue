@@ -145,7 +145,7 @@
                 return this.$route.params.session_id
             },
             tile_sources: function () {
-                return "http://localhost:2000/api/session/" + this.session_id + "/" + this.current_slide + ".dzi"
+                return "/api/session/" + this.session_id + "/" + this.current_slide + ".dzi"
             },
             project_labels: function () {
                 return this.$store.state.session.task.project.labels
