@@ -1,5 +1,5 @@
 import OpenSeadragon from "openseadragon";
-
+import _ from "lodash"
 
 const freeDrawingDefaultKeyboardBehavior = function (func, e) {
     const drawer = this.instance
@@ -10,7 +10,7 @@ const freeDrawingDefaultKeyboardBehavior = function (func, e) {
                 // console.log("drawer_panning", this.drawer_panning)
                 drawer.set_canvas_pan(true)
                 if (drawer.currently_drawing != null)
-                    drawer.currently_drawing._enabled = false
+                    drawer.currently_drawing.meta._enabled = false
             }
             break
         case "keyUp":
@@ -18,12 +18,12 @@ const freeDrawingDefaultKeyboardBehavior = function (func, e) {
                 // User pressed ENTER, we will save the drawing
                 drawer.set_canvas_pan(true)
                 // Before saving, we remove the redundant points for this shape
-                drawer.currently_drawing.points = optimizePath(drawer.currently_drawing.points)
+                drawer.currently_drawing.geometry.points = optimizePath(drawer.currently_drawing.geometry.points)
                 // Call the onFinishNewDrawing callback, which handles what happens to the shape
-                drawer.callback.onFinishNewDrawing(drawer.currently_drawing)
+                drawer.callback.onFinishNewDrawing(drawer.currently_drawing.geometry)
                 // Complete the drawing preview by resetting it
                 drawer.currently_drawing = null
-                drawer.stateRestorer.cancel()
+                if (drawer.stateRestorer != null) drawer.stateRestorer.cancel()
             }
             if (e.keyCode === 32) {
                 this.drawer_panning = false
@@ -32,9 +32,8 @@ const freeDrawingDefaultKeyboardBehavior = function (func, e) {
             }
             if (e.keyCode === 27) {
                 // User pressed ESC, we will reset the drawing
-                optimizePath(drawer.currently_drawing.points) // todo remove
                 drawer.currently_drawing = null
-                drawer.stateRestorer.cancel()
+                if (drawer.stateRestorer != null) drawer.stateRestorer.cancel()
                 drawer.set_canvas_pan(true)
             }
             break
@@ -113,6 +112,7 @@ const nullTool = {
 const polygonTool = {
     name: "polygon",
     instance: null,
+    geometry: null,
 
     info(...help) {
         let info = []
@@ -140,19 +140,21 @@ const polygonTool = {
             case "dblClick":
                 // On double click, we will create a new drawing if there none in the moment
                 if (drawer.currently_drawing == null) {
-                    drawer.currently_drawing = {
+                    this.geometry = {
                         type: "polygon",
-                        points: [imagePosition, imagePosition],
-                        is_hover: false,
-                        path: null,
-                        color: drawer.drawing_color
+                        points: [imagePosition, imagePosition]
+                    }
+                    drawer.currently_drawing = {
+                        label: drawer.current_label,
+                        geometry: this.geometry,
+                        meta: {}
                     }
 
-                    drawer.stateRestorer = StateRestorer.init(drawer, drawer.currently_drawing)
+                    drawer.stateRestorer = StateRestorer.init(drawer, this.geometry)
                     this.info("start-2", "cancel")
                 } else {
                     // On double click we will continue the drawing by adding the new
-                    drawer.currently_drawing.points.push(imagePosition)
+                    this.geometry.points.push(imagePosition)
                     drawer.stateRestorer.addRestorePoint("point")
                     this.info("save", "undo", "point")
                 }
@@ -160,7 +162,7 @@ const polygonTool = {
             case "move":
                 if (drawer.currently_drawing != null) {
                     // On mouse move we will update the preview if we currently drawing
-                    drawer.currently_drawing.points[drawer.currently_drawing.points.length - 1] = imagePosition
+                    this.geometry.points[this.geometry.points.length - 1] = imagePosition
                     drawer.update()
                 }
                 break
@@ -175,19 +177,19 @@ const polygonTool = {
                 case "keyUp":
                     if (e.keyCode === 13) {
                         // User pressed enter, we will complete the drawing
-                        drawer.currently_drawing.points.pop()
-                        drawer.callback.onFinishNewDrawing(drawer.currently_drawing)
+                        this.geometry.points.pop()
+                        drawer.callback.onFinishNewDrawing(this.geometry)
                         drawer.currently_drawing = null
                         drawer.stateRestorer.cancel()
                         this.info("")
                     }
                     if (e.keyCode === 27) {
                         // User pressed ESC, undo the drawing
-                        if (drawer.currently_drawing.points.length > 3) {
+                        if (drawer.currently_drawing.geometry.points.length > 3) {
                             // Undo the last point added
-                            drawer.currently_drawing.points.splice(drawer.currently_drawing.points.length - 2, 1)
+                            this.geometry.points.splice(this.geometry.points.length - 2, 1)
 
-                            this.info("save", "point", drawer.currently_drawing.points.length > 3 ? "undo" : "cancel")
+                            this.info("save", "point", this.geometry.points.length > 3 ? "undo" : "cancel")
                         } else {
                             // Cancel the drawing
                             drawer.currently_drawing = null
@@ -210,6 +212,7 @@ const polygonTool = {
 const rectTool = {
     name: "rect",
     instance: null,
+    geometry: null,
 
     info(...help) {
         let info = []
@@ -229,25 +232,28 @@ const rectTool = {
             case "dblClick":
                 if (drawer.currently_drawing == null) {
                     // We will start the drawing
-                    drawer.currently_drawing = {
+                    this.geometry = {
                         type: this.name,
-                        points: [imagePosition, imagePosition],
-                        is_hover: false,
-                        color: drawer.drawing_color
+                        points: [imagePosition, imagePosition]
+                    }
+                    drawer.currently_drawing = {
+                        label: drawer.current_label,
+                        geometry: this.geometry,
+                        meta: {}
                     }
                     this.info("save", "cancel")
                 } else {
                     // We will stop the drawing.
                     // We will assure point1 < point2
                     ['x', 'y'].map(dim => {
-                        if (drawer.currently_drawing.points[0][dim] > drawer.currently_drawing.points[1][dim]) {
-                            const temp = drawer.currently_drawing.points[0][dim]
-                            drawer.currently_drawing.points[0][dim] = drawer.currently_drawing.points[1][dim]
-                            drawer.currently_drawing.points[1][dim] = temp
+                        if (this.geometry.points[0][dim] > this.geometry.points[1][dim]) {
+                            const temp = this.geometry.points[0][dim]
+                            this.geometry.points[0][dim] = this.geometry.points[1][dim]
+                            this.geometry.points[1][dim] = temp
                         }
                     })
                     // report the drawing is over
-                    drawer.callback.onFinishNewDrawing(drawer.currently_drawing)
+                    drawer.callback.onFinishNewDrawing(this.geometry)
                     drawer.currently_drawing = null
                     drawer.stateRestorer.cancel()
                     this.info("start")
@@ -256,7 +262,7 @@ const rectTool = {
                 break
             case "move":
                 if (drawer.currently_drawing != null) {
-                    drawer.currently_drawing.points[1] = imagePosition
+                    drawer.currently_drawing.geometry.points[1] = imagePosition
                     drawer.update()
                 }
                 break
@@ -287,6 +293,7 @@ const freeTool = {
     name: "free",
     instance: null,
     drawer_panning: false,
+    geometry: null,
 
     info(...help) {
         let info = []
@@ -311,26 +318,27 @@ const freeTool = {
                 drawer.set_canvas_pan(false)
                 if (!this.drawer_panning) {
                     if (drawer.currently_drawing == null) {
-                        drawer.currently_drawing = {
+                        this.geometry = {
                             type: "polygon",
                             points: [imagePosition],
-                            is_hover: false,
-                            path: null,
-                            color: drawer.drawing_color,
-                            _enabled: true
+                        }
+                        drawer.currently_drawing = {
+                            label: drawer.current_label,
+                            geometry: this.geometry,
+                            meta: {_enabled: true}
                         }
 
-                        drawer.stateRestorer = StateRestorer.init(drawer, drawer.currently_drawing)
+                        drawer.stateRestorer = StateRestorer.init(drawer, this.geometry)
                     } else
-                        drawer.currently_drawing._enabled = true
+                        drawer.currently_drawing.meta._enabled = true
 
                     this.info("pan")
                 }
                 // return true
                 break
             case "move":
-                if (!this.drawer_panning && drawer.currently_drawing != null && drawer.currently_drawing._enabled) {
-                    drawer.currently_drawing.points.push(imagePosition)
+                if (!this.drawer_panning && drawer.currently_drawing != null && drawer.currently_drawing.meta._enabled) {
+                    this.geometry.points.push(imagePosition)
                     drawer.stateRestorer.addRestorePoint("point")
                     // this.info("start", "pan")
                     // return true
@@ -338,7 +346,7 @@ const freeTool = {
                 break
             case "release":
                 if (drawer.currently_drawing != null)
-                    drawer.currently_drawing._enabled = false
+                    drawer.currently_drawing.meta._enabled = false
                 this.info("continue", "pan", "save", "cancel")
 
                 break
@@ -360,6 +368,7 @@ const brushTool = {
     instance: null,
     size: 500,
     drawer_panning: false,
+    geometry: null,
 
     mouseEvent: function (func, e) {
         const drawer = this.instance
@@ -370,23 +379,26 @@ const brushTool = {
                 drawer.set_canvas_pan(false)
 
                 if (drawer.currently_drawing == null) {
-                    drawer.currently_drawing = {
+                    this.geometry = {
                         type: "brush",
                         size: this.size,
-                        is_hover: false,
-                        points: [imagePosition],
-                        color: drawer.drawing_color,
-                        _enabled: true
+                        points: [imagePosition]
                     }
+                    drawer.currently_drawing = {
+                        label: drawer.current_label,
+                        geometry: this.geometry,
+                        meta: {_enabled: true}
+                    }
+                    // drawer.stateRestorer = StateRestorer.init(drawer, this.geometry)
                 }
                 break
             case "move":
-                if (!this.drawer_panning && drawer.currently_drawing != null && drawer.currently_drawing._enabled)
-                    drawer.currently_drawing.points.push(imagePosition)
+                if (!this.drawer_panning && drawer.currently_drawing != null && drawer.currently_drawing.meta._enabled)
+                    this.geometry.points.push(imagePosition)
                 break
             case "release":
                 if (drawer.currently_drawing != null)
-                    drawer.currently_drawing._enabled = false
+                    drawer.currently_drawing.meta._enabled = false
                 drawer.set_canvas_pan(true)
 
                 break
@@ -428,8 +440,8 @@ const PathMeshEraser = {
                     editor.controls.some(control => {
                         if (editor.intersectsControl(mousePosition, control.point)) {
                             // We will remove this line
-                            const index = editor.element.points.indexOf(control.point)
-                            editor.element.points.splice(index, 1)
+                            const index = editor.geometry.points.indexOf(control.point)
+                            editor.geometry.points.splice(index, 1)
                             editor.controls.splice(index, 1)
                             editor.addRestorePoint("erased")
                             return true // stop iterating
@@ -498,7 +510,7 @@ const PathMeshCreator = {
     instance: null,
 
     checkPathCreation(position) {
-        const points = this.editor.element.points
+        const points = this.editor.geometry.points
         for (let i = 1; i < points.length; i++) {
             const point1 = points[i - 1]
             const point2 = points[i]
@@ -521,7 +533,7 @@ const PathMeshCreator = {
         const position = drawer._mousePointToImagePoint(e.position)
         switch (func) {
             case "move":
-                if (drawer.ctx.isPointInPath(editor.element.path, e.position.x, e.position.y)) {
+                if (drawer.ctx.isPointInPath(editor.annotation.meta.path, e.position.x, e.position.y)) {
                     const newIndex = this.checkPathCreation(position)
                     // console.log("check", newIndex)
                     if (newIndex != null) {
@@ -538,8 +550,8 @@ const PathMeshCreator = {
                 }
                 break
             case "click":
-                if (drawer.ctx.isPointInPath(editor.element.path, e.position.x, e.position.y)) {
-                    const points = editor.element.points
+                if (drawer.ctx.isPointInPath(editor.annotation.meta.path, e.position.x, e.position.y)) {
+                    const points = editor.geometry.points
                     const newIndex = this.checkPathCreation(position)
                     if (newIndex != null) {
                         editor.addRestorePoint("created")
@@ -558,7 +570,7 @@ const PathMeshCreator = {
         // Drawing the reference cursor where the new point will appear
         ctx.beginPath()
         if (this.cursor != null) {
-            const points = this.editor.element.points
+            const points = this.editor.geometry.points
             const position = instance._imagePointToCanvasPoint(this.cursor.position.x, this.cursor.position.y)
             ctx.ellipse(position.x, position.y, 5, 5, 0, 2 * Math.PI, 0, false)
             const prevPoint = instance._imagePointToCanvasPoint(points[this.cursor.index - 1].x, points[this.cursor.index - 1].y)
@@ -586,13 +598,13 @@ const PathMeshFreeEditor = {
     panning: false,
     mouseEvent(func, e) {
         const editor = this.editor
-        const element = editor.element
+        const annotation = editor.annotation
         const instance = editor.instance
         const position = editor.instance._mousePointToImagePoint(e.position)
         switch (func) {
             case "press":
                 if (this.currently_drawing == null) {
-                    if (editor.instance.ctx.isPointInPath(editor.element.path, e.position.x, e.position.y)) {
+                    if (editor.instance.ctx.isPointInPath(annotation.meta.path, e.position.x, e.position.y)) {
                         this.currently_drawing = []
                         this.editing = true
                         instance.set_canvas_pan(false)
@@ -642,14 +654,14 @@ const PathMeshFreeEditor = {
                         const canvasPoint = drawer._imagePointToCanvasPoint(point.x, point.y)
                         return drawer.ctx.isPointInPath(path, canvasPoint.x, canvasPoint.y, "nonzero")
                     }
-                    const originalToRemove = this.editor.element.points.map((item, index) => {
+                    const originalToRemove = this.editor.geometry.points.map((item, index) => {
                         if (intersects(this.current_path, item)) return index
                     }).filter(item => item != null)
                     const additionToRemove = this.currently_drawing.map((item, index) => {
-                        if (intersects(this.editor.element.path, item)) return index
+                        if (intersects(this.editor.geometry.path, item)) return index
                     }).filter(item => item != null)
                     console.log("Original To Remove", originalToRemove, additionToRemove)
-                    const newOriginalPath = this.editor.element.points.filter((i, idx) => !originalToRemove.includes(idx))
+                    const newOriginalPath = this.editor.geometry.points.filter((i, idx) => !originalToRemove.includes(idx))
                     const newAdditionPath = this.currently_drawing.filter((i, idx) => !additionToRemove.includes(idx))
                     console.log("newOriginalPath:", newOriginalPath)
                     console.log("newAdditionPath:", newAdditionPath)
@@ -683,7 +695,7 @@ const PathMeshFreeEditor = {
                             aIndex++
                         }
                     } while (oIndex < newOriginalPath.length || aIndex < newAdditionPath.length)
-                    this.editor.element.points = optimizePath(newPath)
+                    this.editor.geometry.points = optimizePath(newPath)
                     this.editor.instance.update()
                     return false
                     // const newToRemove =
@@ -728,7 +740,8 @@ const PathMeshFreeEditor = {
 }
 
 const PathMeshEditor = {
-    element: null,
+    annotation: null,
+    geometry: null,
     controls: [],
     instance: null,
     mode: null,
@@ -744,7 +757,7 @@ const PathMeshEditor = {
         }
         this.history.push({
             type: event,
-            points: this.element.points.map(item => {
+            points: this.geometry.points.map(item => {
                 return {x: item.x, y: item.y}
             })
         })
@@ -754,7 +767,7 @@ const PathMeshEditor = {
 
     restoreState: function (value) {
         console.log("restoreState", value, this.history)
-        this.element.points = this.history[value].points
+        this.geometry.points = this.history[value].points
         this.create_controls()
         this.instance.update()
         this.current_history_point = value
@@ -785,16 +798,16 @@ const PathMeshEditor = {
             case "keyUp":
                 if (e.keyCode === 27) {
                     // User pressed ESC. The edition is cancelled and the shape must be restored
-                    this.element.points = this.original_points
-                    this.element.color = this.original_color
+                    this.geometry.points = this.original_points
+                    this.geometry.color = this.original_color
                     // Notify the editing has ended without changes
-                    drawer.callback.onFinishedEditing(false, this.element)
+                    drawer.callback.onFinishedEditing(false, this.geometry)
                     // Disable the editing tool and update view
                     drawer.currently_editing = null
                     drawer.update()
                 } else if (e.keyCode === 13) {
                     // Notify the editing has ended with changes
-                    drawer.callback.onFinishedEditing(true, this.element)
+                    drawer.callback.onFinishedEditing(true, this.geometry)
                     // Disable the editing tool and update view
                     drawer.currently_editing = null
                     drawer.update()
@@ -805,10 +818,10 @@ const PathMeshEditor = {
 
     cancel() {
         const drawer = this.instance
-        this.element.points = this.original_points
-        this.element.color = this.original_color
+        this.geometry.points = this.original_points
+        this.geometry.color = this.original_color
         // Notify the editing has ended without changes
-        drawer.callback.onFinishedEditing(false, this.element)
+        drawer.callback.onFinishedEditing(false, this.geometry)
         // Disable the editing tool and update view
         drawer.currently_editing = null
         drawer.update()
@@ -836,7 +849,7 @@ const PathMeshEditor = {
     },
 
     create_controls: function () {
-        this.controls = this.element.points.map(point => {
+        this.controls = this.geometry.points.map(point => {
             return {point: point}
         })
     },
@@ -854,13 +867,16 @@ const PathMeshEditor = {
     },
 
 
-    init(instance, element, mode) {
+    init(instance, annotation, mode) {
         this.instance = instance
-        this.original_points = element.points.map(point => {
+        this.annotation = annotation
+        const geometry = annotation.geometry
+        this.geometry = geometry
+        this.original_points = geometry.points.map(point => {
             return {x: point.x, y: point.y}
         })
-        this.original_color = element.color.map(color => color)
-        this.element = element
+        this.original_color = geometry.color != null ? geometry.color.map(color => color) : [0, 0, 0]
+        this.geometry = geometry
         this.create_controls()
         this.create_mode(mode)
         this.history = []
@@ -874,7 +890,7 @@ The points are the pixels which were unable to find add one of its side to the s
 
 const StateRestorer = {
     instance: null,
-    element: null,
+    geometry: null,
     states: [],
     current_state_point: 0,
 
@@ -886,7 +902,7 @@ const StateRestorer = {
         }
         this.states.push({
             type: event,
-            points: this.element.points.map(item => { // todo not all elements have points
+            points: this.geometry.points.map(item => { // todo not all elements have points
                 return {x: item.x, y: item.y}
             })
         })
@@ -897,7 +913,7 @@ const StateRestorer = {
 
     restoreToPoint(value) {
         console.log("restoreToPoint", value)
-        this.element.points = this.states[value].points
+        this.geometry.points = this.states[value].points
         this.instance.update()
         this.current_state_point = value
         this.instance.callback.onStateRestorerEvent(this)
@@ -907,9 +923,9 @@ const StateRestorer = {
         this.states = null
         this.instance.callback.onStateRestorerEvent(null)
     },
-    init(instance, element) {
+    init(instance, geometry) {
         this.instance = instance
-        this.element = element
+        this.geometry = geometry
         this.states = []
         instance.callback.onStateRestorerEvent(this)
         return this
@@ -917,21 +933,9 @@ const StateRestorer = {
 }
 
 export default {
-    elements: [
-        // {
-        //     data: {
-        //         type: "rect",
-        //         is_hover: false,
-        //         path: null,
-        //         points: [
-        //             {x: 5000, y: 5000},
-        //             {x: 10000, y: 10000}
-        //         ],
-        //         color: [255, 0, 0]
-        //     },
+    annotations: [],
 
-        // }
-    ],
+    current_label: null,
 
     /**
      * When false, SliceDrawer doesn't allow any drawing
@@ -1012,8 +1016,8 @@ export default {
      */
     _viewportLocation: {min: [], max: []},
 
-    editElement(element_data) {
-        this.currently_editing = PathMeshEditor.init(this, element_data, "mover")
+    editElement(annotation) {
+        this.currently_editing = PathMeshEditor.init(this, annotation, "mover")
         this.update()
         // Finally, we save the first state as a restoration point for the user
         this.currently_editing.addRestorePoint("editing")
@@ -1021,8 +1025,8 @@ export default {
 
     concludeEdit() {
         // Disable the editing tool and update view
-        console.log("concludeEdit:", this.currently_editing.element)
-        this.callback.onFinishedEditing(true, this.currently_editing.element)
+        console.log("concludeEdit:", this.currently_editing.geometry)
+        this.callback.onFinishedEditing(true, this.currently_editing.geometry)
         this.currently_editing = null
         this.update()
     },
@@ -1050,7 +1054,7 @@ export default {
     },
 
     update: function () {
-        // console.log("update called")
+        // console.log("update called", this.annotations)
         // todo change for a system in which, depending on the number of elements on the screen, the elements fade on mouse down and show again on mouse up
         if (this.ctx == null) return
 
@@ -1059,26 +1063,26 @@ export default {
             return
         }
         ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height)
-        if (this.elements == null) {
+        if (this.annotations == null) {
             return
         }
 
         const viewportMin = this._viewportLocation.min
         const viewportMax = this._viewportLocation.max
         this.elementsOnScreen = []
-        this.elements.forEach(element => {
-            if (this.filtering[element.label.name] && element.data != null) {
+        this.annotations.forEach(annotation => {
+            if (this.filtering[annotation.label.name] && annotation.geometry != null) {
                 // We will only draw when the label of the element isn't filter out
-                const firstPoint = element.data.points[0]
+                const firstPoint = annotation.geometry.points[0]
                 if ((firstPoint.x > viewportMin.x && firstPoint.x < viewportMax.x)
                     && (firstPoint.y > viewportMin.y && firstPoint.y < viewportMax.y)) {
-                    this._draw_element(element.data)
-                    this.elementsOnScreen.push(element)
+                    this._draw_annotation(annotation)
+                    this.elementsOnScreen.push(annotation)
                 }
             }
         })
         if (this.currently_drawing != null)
-            this._draw_element(this.currently_drawing)
+            this._draw_annotation(this.currently_drawing)
 
         // We are editing a element, let's draw the controls
         if (this.currently_editing != null)
@@ -1087,46 +1091,55 @@ export default {
         this._lastUpdate = Date.now()
     },
 
-    _draw_element: function (element) {
-        switch (element.type) {
+    _draw_annotation: function (annotation) {
+        switch (annotation.geometry.type) {
             case "polygon":
-                this._update_polygon(element)
+                this._update_polygon(annotation)
                 break
             case "rect":
-                this._update_rect(element)
+                this._update_rect(annotation)
                 break
             case "brush":
-                this._update_brush(element)
+                this._update_brush(annotation)
                 break
         }
     },
 
-    _update_polygon: function (polygon_data) {
+    _gen_color(rgb) {
+        return `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`
+    },
+
+    _update_polygon: function (annotation, color) {
         const ctx = this.ctx
-        const points = polygon_data.points
-        const color_code = `${polygon_data.color[0]}, ${polygon_data.color[1]}, ${polygon_data.color[2]}`
+        const points = annotation.geometry.points
+        const color_code = this._gen_color(color == null ? annotation.label.color : color)
         const path = this._update_path(points)
 
         const startPoint = this._imagePointToCanvasPoint(points[0].x, points[0].y)
         path.lineTo(startPoint.x, startPoint.y)
-        polygon_data.path = path
-        ctx.fillStyle = `rgba(${color_code}, ${polygon_data.is_hover ? '0.6' : this.default_opacity})`
+        annotation.meta.path = path
+        ctx.fillStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.default_opacity})`
+        ctx.strokeStyle = `rgb(${color_code})`
+        ctx.lineWidth = 1
         ctx.fill(path)
-        // ctx.stroke()
+        ctx.stroke(path)
     },
 
-    _update_rect: function (rect_data) {
+    _update_rect: function (annotation, color) {
         // console.log(rect_data)
         const ctx = this.ctx
-        const position = this._imagePointToCanvasPoint(rect_data.points[0].x, rect_data.points[0].y)
-        const limits = this._imagePointToCanvasPoint(rect_data.points[1].x, rect_data.points[1].y)
-        const color_code = `${rect_data.color[0]}, ${rect_data.color[1]}, ${rect_data.color[2]}`
+        const position = this._imagePointToCanvasPoint(annotation.geometry.points[0].x, annotation.geometry.points[0].y)
+        const limits = this._imagePointToCanvasPoint(annotation.geometry.points[1].x, annotation.geometry.points[1].y)
+        const color_code = this._gen_color(color == null ? annotation.label.color : color)
         ctx.beginPath()
         ctx.rect(position.x, position.y, limits.x - position.x, limits.y - position.y)
-        rect_data._canvas_points = [position, limits]
+        annotation.meta._canvas_points = [position, limits]
         // console.log("_update_rect", position.x, position.y, position.x - limits.x, position.y - limits.y)
-        ctx.fillStyle = `rgba(${color_code}, ${rect_data.is_hover ? '0.6' : this.default_opacity})`
+        ctx.fillStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.default_opacity})`
+        ctx.strokeStyle = `rgb(${color_code})`
+        ctx.lineWidth = 1
         ctx.fill()
+        ctx.stroke()
     },
 
     _update_path: function (points) {
@@ -1141,36 +1154,57 @@ export default {
         return path
     },
 
-    _update_brush: function (brush_data) {
+    _update_brush: function (annotation) {
         const ctx = this.ctx
-        const points = brush_data.points
-        const color_code = `${brush_data.color[0]}, ${brush_data.color[1]}, ${brush_data.color[2]}`
+        const points = annotation.geometry.points
+        const color_code = this._gen_color(annotation.label.color)
         // console.log("lineWidth", lineWidth)
-        ctx.lineWidth = this._imagePointToCanvasPoint(brush_data.size, 0).x - this._imagePointToCanvasPoint(0, 0).x
+        ctx.lineWidth = this._imagePointToCanvasPoint(annotation.geometry.size, 0).x - this._imagePointToCanvasPoint(0, 0).x
         ctx.lineCap = "round"
         ctx.lineJoin = "round"
-        ctx.strokeStyle = `rgba(${color_code}, ${brush_data.is_hover ? '0.6' : this.default_opacity})`
+        ctx.strokeStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.default_opacity})`
 
         const path = this._update_path(points)
 
-        brush_data.path = path
+        annotation.meta.path = path
         ctx.stroke(path)
     },
 
-    _check_intersects: function (element_data, mousePosition) {
-        if (element_data.type === "rect") {
-            const point1 = element_data._canvas_points[0]
-            const point2 = element_data._canvas_points[1]
+    _check_intersects: function (annotation, mousePosition) {
+        if (annotation.geometry.type === "rect") {
+            const point1 = annotation.meta._canvas_points[0]
+            const point2 = annotation.meta._canvas_points[1]
             return mousePosition.x > point1.x && mousePosition.x < point2.x &&
                 mousePosition.y > point1.y && mousePosition.y < point2.y
-        } else if (element_data.type === "polygon" || element_data.type === "brush") {
-            return this.ctx.isPointInPath(element_data.path, mousePosition.x, mousePosition.y, "nonzero")
+        } else if (annotation.geometry.type === "polygon" || annotation.geometry.type === "brush") {
+            return this.ctx.isPointInPath(annotation.meta.path, mousePosition.x, mousePosition.y, "nonzero")
         }
     },
 
     set_canvas_pan(enabled) {
         this.viewer.panHorizontal = enabled
         this.viewer.panVertical = enabled
+    },
+
+    peep(annotation) {
+        const viewer = this.viewer
+        let xmin = 10000000, xmax = -1, ymin = 10000000, ymax = -1
+        annotation.geometry.points.forEach(coord => {
+            if (coord.x < xmin) xmin = coord.x
+            if (coord.x > xmax) xmax = coord.x
+            if (coord.y < ymin) ymin = coord.y
+            if (coord.y > ymax) ymax = coord.y
+        })
+        const panTo = viewer.viewport.imageToViewportCoordinates((xmax + xmin) / 2, (ymax + ymin) / 2)
+        console.log("panTo:", panTo, " | ", xmin, xmax, ymin, ymax)
+        viewer.viewport.panTo(panTo, false)
+        const tiledImage = viewer.world.getItemAt(0)
+        const yZoom = tiledImage.source.dimensions.y / (ymax - ymin)
+        // const xZoom = viewer.viewport.getContainerSize().x / (xmax - xmin)
+        const xZoom = tiledImage.source.dimensions.x / (xmax - xmin)
+        const zoom = (yZoom < xZoom ? yZoom : xZoom)
+        viewer.viewport.zoomTo(zoom - (zoom * 0.5), false)
+        // console.log("targetZoom:", targetZoom, tiledImage.source.dimensions.x, "|", viewer.viewport.getContainerSize().x)
     },
 
     /**
@@ -1247,7 +1281,7 @@ export default {
                     this.currently_editing.mouseEvent('click', e)
                 else {
                     this.elementsOnScreen.forEach((element) => {
-                        if (element.data.is_hover) {
+                        if (element.meta.is_hover) {
                             this.callback.onClick(element)
                         }
                     })
@@ -1267,20 +1301,19 @@ export default {
                 if (this.currently_editing == null) {
                     // We only check for interaction when not in editing mode.
                     let updateRequired = false
-                    this.elementsOnScreen.forEach((element) => {
-                        const drawingData = element.data
-                        const intersects = this._check_intersects(element.data, e.position)
-                        const statusUpdateRequired = drawingData.is_hover !== intersects
+                    this.elementsOnScreen.forEach((annotation) => {
+                        const intersects = this._check_intersects(annotation, e.position)
+                        const statusUpdateRequired = annotation.meta.is_hover !== intersects
                         updateRequired = updateRequired || (intersects && statusUpdateRequired) || statusUpdateRequired
 
                         // Handling element interaction listeners:
                         if (statusUpdateRequired)
                             if (intersects)
-                                callback.onHover(element)
+                                callback.onHover(annotation)
                             else
-                                callback.onLeave(element)
+                                callback.onLeave(annotation)
 
-                        drawingData.is_hover = intersects
+                        annotation.meta.is_hover = intersects
                     })
 
                     if (updateRequired) {
@@ -1315,3 +1348,4 @@ export default {
         this.resize(Viewer.canvas.width, Viewer.canvas.height)
     }
 }
+export {optimizePath}

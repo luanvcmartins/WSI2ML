@@ -224,11 +224,12 @@ class Annotation(db.Model):
             "user_task_id": self.user_task_id,
             "slide_id": self.slide_id,
             "label": self.label.to_json(),
-            "data": self.data
+            "geometry": self.data,
+            "meta": {}
         }
         if with_feedback:
             annotation['feedback'] = feedback.to_dict() if feedback is not None else \
-                {"label_id": self.label_id, "data": None, "feedback": None}
+                {"label_id": self.label_id, "geometry": None, "feedback": None}
         return annotation
 
 

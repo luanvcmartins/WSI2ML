@@ -16,10 +16,10 @@
           </template>
           <v-card>
             <v-color-picker hide-inputs :swatches-max-height="100" show-swatches
-                            v-model="color_picked"></v-color-picker>
+                            v-model="color_picked" ></v-color-picker>
             <v-card-actions>
               <v-spacer></v-spacer>
-              <v-btn color="primary" text @click="color_menu[item.name] = false">Done</v-btn>
+              <v-btn color="primary" text @click="closeColorPicker(item.name)">Done</v-btn>
             </v-card-actions>
           </v-card>
         </v-menu>
@@ -37,11 +37,16 @@
             append-outer-icon="add"
             @click:append-outer="add_label"
     />
-    <v-btn @click="save" outlined style="position: absolute; right:16px">Save</v-btn>
+    <v-card-actions>
+      <v-spacer></v-spacer>
+      <v-btn @click="save" outlined>Save</v-btn>
+    </v-card-actions>
   </div>
 </template>
 
 <script>
+
+    import _ from "lodash";
 
     export default {
         name: "ProjectEditor",
@@ -49,13 +54,14 @@
             value: {
                 immediate: true,
                 handler: function (new_value) {
-                    this.project = new_value
+                    this.project = _.cloneDeep(new_value)
                 }
             },
 
             color_picked: function (new_value) {
                 // this.editing_label.color = `${new_value.rgba.r};${new_value.rgba.g};${new_value.rgba.b}`
-                this.editing_label.color = [new_value.rgba.r, new_value.rgba.g, new_value.rgba.b]
+                if (this.editing_label != null)
+                    this.editing_label.color = [new_value.rgba.r, new_value.rgba.g, new_value.rgba.b]
             }
         },
         data: () => {
@@ -74,6 +80,11 @@
             }
         },
         methods: {
+            closeColorPicker(itemName) {
+                this.color_menu[itemName] = false
+                this.editing_label = null
+                this.color_picked = null
+            },
             check_path(input) {
                 if (input === "") {
                     this.path_errors = ["Path required"]
@@ -104,6 +115,7 @@
 
             change_color(item) {
                 this.editing_label = item
+
             },
 
             gen_color(item) {
@@ -119,7 +131,7 @@
                             .then(resp => {
                                 this.project = resp
                                 this.$emit("input", this.project)
-                            this.$emit("done", "project")
+                                this.$emit("done", "project")
                             })
                             .catch(err => {
                                 alert(err)
@@ -129,7 +141,7 @@
                             .then(resp => {
                                 this.project = resp
                                 this.$emit("input", this.project)
-                            this.$emit("done", "project")
+                                this.$emit("done", "project")
                             })
                             .catch(err => {
                                 alert(err)

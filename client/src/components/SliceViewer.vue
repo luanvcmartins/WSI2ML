@@ -138,14 +138,13 @@
                 immediate: true,
                 handler: function (new_value) {
                     this.labeled_regions = new_value
-                    SliceDrawer.elements = new_value
+                    SliceDrawer.annotations = new_value
                     SliceDrawer.update()
                 }
             },
             task_type: {
                 immediate: true,
                 handler(new_value) {
-                    console.log("task_type", new_value)
                     SliceDrawer.enabled = new_value === 0
                 }
             },
@@ -166,7 +165,7 @@
             selected_label: {
                 immediate: true,
                 handler: function (new_value) {
-                    SliceDrawer.drawing_color = new_value.color
+                    SliceDrawer.current_label = new_value
                     if (this.editing.element != null) {
                         this.editing.element.data.color = new_value.color
                         SliceDrawer.update()
@@ -206,7 +205,7 @@
                 console.log("editElement", element)
                 this.editing.element = element
                 this.no_model_action = true
-                SliceDrawer.editElement(element.data)
+                SliceDrawer.editElement(element)
             },
             saveEdition(element) {
                 // this.editing.element = element

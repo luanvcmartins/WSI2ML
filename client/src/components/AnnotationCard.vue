@@ -1,10 +1,19 @@
 <template>
-  <v-card :id="`region-${value.id}`" min-width="200" outlined>
+  <v-card @click="peep" :id="`region-${value.id}`" min-width="200" outlined>
     <v-card-title>
       <v-avatar size="16" class="mr-2"
-                :color="genColor(value.label.color)"/>
+                :color="genColor(value.label.color)" @click="peep"/>
       {{value.label.name}}
     </v-card-title>
+
+    <v-card-text v-if="updating_label">
+      <span v-if="value.meta.importing != null" class="importing-pending-warning">Pending import</span>
+      <v-chip-group v-model="value.label" mandatory column @change="updateRender">
+        <v-chip v-for="label in project_labels" filter :value="label">
+          {{label.name}}
+        </v-chip>
+      </v-chip-group>
+    </v-card-text>
     <v-card-text v-if="task_type === 1 && value.feedback.id != null">
       <div v-if="value.feedback.feedback === 0">
         <v-icon>mdi-check</v-icon>
@@ -26,7 +35,14 @@
     <v-divider/>
     <v-card-actions v-if="task_type === 0">
       <v-spacer/>
-      <v-btn v-if="editing !== value" text @click="editRegion(value)">Edit</v-btn>
+      <div v-if="value.meta.importing != null">
+        <v-btn text @click="dismissAnnotation">Dismiss</v-btn>
+        <v-btn text @click="importAnnotation">Import</v-btn>
+      </div>
+      <div v-else-if="editing !== value">
+        <v-btn text @click="dismissAnnotation">Remove</v-btn>
+        <v-btn text @click="editRegion(value)">Edit</v-btn>
+      </div>
       <div v-else-if="editing === value">
         <v-btn text @click="cancelEdit">Cancel</v-btn>
         <v-btn text @click="saveRegion(value)">Save</v-btn>
@@ -76,11 +92,31 @@
                 return labels
             }
         },
+        watch: {
+            value: {
+                immediate: true,
+                handler(new_value) {
+                    this.original_label = _.cloneDeep(new_value.label)
+                    if (new_value.meta.importing != null) {
+                        // If this annotation is imported, we immediately allow to update its label
+                        this.updating_label = true
+                    }
+                }
+            },
+            editing: {
+                handler(new_value) {
+                    // if the editing value is null, then we know we can disable the label update
+                    if (new_value == null)
+                        this.updating_label = false
+                }
+            }
+        },
         data() {
             return {
                 drawing_swapped: false,
                 originalRegion: null,
                 undoing_feedback: false,
+                updating_label: false,
                 incorrect_options: [
                     {text: "Wrong label", func: this.feedbackWrongLabel},
                     {text: "Wrong region", func: this.feedbackWrongRegion},
@@ -93,6 +129,12 @@
             }
         },
         methods: {
+            updateRender() {
+                SliceDrawer.update()
+            },
+            peep() {
+                SliceDrawer.peep(this.value)
+            },
             undo() {
                 if (this.drawing_swapped) {
                     this.swapDrawings()
@@ -134,13 +176,24 @@
             },
 
             editRegion(region) {
+                this.updating_label = true
                 this.$emit("edit-region", region)
             },
             saveRegion(region) {
+                this.updating_label = false
                 this.$emit("save-region", region)
             },
             cancelEdit() {
+                this.updating_label = false
                 this.$emit("cancel-edit")
+            },
+            importAnnotation() {
+                this.updating_label = false
+                this.$emit("import-annotation", this.value)
+            },
+            dismissAnnotation() {
+                this.updating_label = false
+                this.$emit("dismiss-annotation", this.value)
             }
         },
         props: ["editing", "value"]
@@ -148,5 +201,10 @@
 </script>
 
 <style scoped>
-
+  .importing-pending-warning {
+    background-color: #ff6f00;
+    padding: 0 10px;
+    border-radius: 10px;
+    font-size: 12px;
+  }
 </style>

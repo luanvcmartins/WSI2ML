@@ -5,19 +5,25 @@
     <v-text-field label="Username" v-model="user.username"></v-text-field>
     <v-text-field label="Password" type="password" v-model="user.password"></v-text-field>
     <v-checkbox v-model="user.is_admin" label="Is user admin?"></v-checkbox>
-    <v-btn @click="save" outlined style="position: absolute; right:16px">Save</v-btn>
+
+    <v-card-actions>
+      <v-spacer></v-spacer>
+    <v-btn @click="save" outlined>Save</v-btn>
+    </v-card-actions>
     <!--  </v-form>-->
   </div>
 </template>
 
 <script>
+    import _ from "lodash";
+
     export default {
         name: "UserEditor",
         watch: {
             value: {
                 immediate: true,
                 handler: function (new_value) {
-                    this.user = new_value
+                    this.user = _.cloneDeep(new_value)
                 }
             },
             user: {

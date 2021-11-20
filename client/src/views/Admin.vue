@@ -127,9 +127,9 @@
         </v-col>
       </v-row>
     </v-expansion-panels>
-    <v-navigation-drawer v-model="drawer" app temporary right width="500px">
+    <v-navigation-drawer v-if="drawer" v-model="drawer" app temporary stateless right width="500px">
       <v-toolbar>
-        <v-toolbar-title>Information editor</v-toolbar-title>
+        <v-toolbar-title><v-icon @click="drawer = false" large class="mr-1">mdi-close</v-icon>Information editor</v-toolbar-title>
       </v-toolbar>
       <v-container>
         <user-editor v-if="mode === 'user'" v-model="editing" v-on:done="done"/>

@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "serve": "vue-cli-service serve",
+    "serve": "vue-cli-service serve --mode development",
     "build": "vue-cli-service build",
     "lint": "vue-cli-service lint"
   },
@@ -11,7 +11,9 @@
     "@mdi/font": "^6.2.95",
     "axios": "^0.22.0",
     "core-js": "^2.6.5",
+    "dotenv-webpack": "^7.0.3",
     "fabric": "^4.6.0",
+    "lodash": "^4.17.21",
     "openseadragon": "^2.4.2",
     "openseadragon-fabricjs-overlay": "^0.2.4",
     "vue": "^2.6.10",

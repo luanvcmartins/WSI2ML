@@ -37,7 +37,10 @@
 
     <v-select label="Users assigned" chips multiple :items="users" item-text="username" v-model="task.assigned"
               return-object/>
-    <v-btn @click="save" outlined style="position: absolute; right:16px">Continue</v-btn>
+    <v-card-actions>
+      <v-spacer></v-spacer>
+      <v-btn @click="save" outlined>Continue</v-btn>
+    </v-card-actions>
     <!--    -->
     <!--  </v-form>-->
 
@@ -45,13 +48,15 @@
 </template>
 
 <script>
+    import _ from "lodash"
+
     export default {
         name: "TaskEditor",
         watch: {
             value: {
                 immediate: true,
                 handler: function (new_value) {
-                    this.task = Object.assign(new_value)
+                    this.task = _.cloneDeep(new_value)
                 }
             },
 

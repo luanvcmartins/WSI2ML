@@ -18,7 +18,7 @@
         <template v-slot:extension>
           <v-tabs v-model="selected_tab">
             <v-tab>View</v-tab>
-            <v-tab>Regions</v-tab>
+            <v-tab>Annotations ({{labelled[current_slide].length}})</v-tab>
           </v-tabs>
         </template>
       </v-toolbar>
@@ -47,7 +47,7 @@
                             v-model="region_opacity"
                             step="0"
                             thumb-label
-                            min="0.1" max="1">
+                            min="0.0" max="1">
                     <template v-slot:thumb-label="{ value }">
                       {{ value.toFixed(2) }}
                     </template>
@@ -89,6 +89,18 @@
                   </div>
                 </v-card>
               </v-flex>
+              <v-flex cols="12" sm="12" md="6" v-if="task_type === 0">
+                <v-card>
+                  <div class="pa-3 pb-0 text-h6 text--primary">Import annotations</div>
+                  <div class="pl-3 pr-3 text-center font-weight-thin card-description">Select a geojson file to import
+                    its annotations to the current slide ({{current_slide}}).
+                  </div>
+                  <div class="pl-3 pr-3 pb-3">
+                    <input id="file-importer-input" type="file" style="display: none">
+                    <v-btn @click="importAnnotations" block text>Select file</v-btn>
+                  </div>
+                </v-card>
+              </v-flex>
             </v-layout>
           </v-container>
         </v-tab-item>
@@ -102,7 +114,9 @@
                         v-on:save-region="saveEdition"
                         v-on:edit-region="editRegion"
                         v-on:cancel-edit="cancelEdit"
-                        v-on:annotation-feedback="annotationFeedback"/>
+                        v-on:annotation-feedback="annotationFeedback"
+                        v-on:import-annotation="onNewRegionDraw"
+                        v-on:dismiss-annotation="dismissAnnotation"/>
               </v-flex>
             </v-layout>
             <!--            <v-btn fab @click="stressTest"></v-btn>-->
@@ -137,6 +151,7 @@
     import SideWindow from "../components/SideWindow";
     import AnnotationCard from "../components/AnnotationCard";
     import SliceDrawer from "../SliceDrawer";
+    import {optimizePath} from "../SliceDrawer"
 
     export default {
         name: "Session",
@@ -145,7 +160,7 @@
                 return this.$route.params.session_id
             },
             tile_sources: function () {
-                return "/api/session/" + this.session_id + "/" + this.current_slide + ".dzi"
+                return `${process.env.VUE_APP_BASE_URL}session/${this.session_id}/${this.current_slide}.dzi`
             },
             project_labels: function () {
                 return this.$store.state.session.task.project.labels
@@ -292,11 +307,13 @@
                 return `rgb(${color[0]},${color[1]},${color[2]})`
             },
 
-            onNewRegionDraw(labeledRegion) {
-                labeledRegion.slide_id = this.current_slide
-                this.$post("session/" + this.session_id + "/add_region", labeledRegion)
+            onNewRegionDraw(annotation) {
+                annotation.id = null // making sure to reset the id
+                annotation.slide_id = this.current_slide
+                this.$post("session/" + this.session_id + "/add_region", annotation)
                     .then(resp => {
                         // Add the new region to the list
+                        this.labelled[this.current_slide] = this.labelled[this.current_slide].filter(item => annotation !== item)
                         this.labelled[this.current_slide].push(resp)
                     })
                     .catch(err => {
@@ -361,6 +378,36 @@
                 }, short ? 250 : 3000)
             },
 
+            importAnnotations() {
+                const input = document.getElementById("file-importer-input")
+                input.onchange = e => {
+                    const reader = new FileReader()
+                    reader.readAsText(e.target.files[0], 'UTF-8')
+                    reader.onload = readerEvent => {
+                        const json = JSON.parse(readerEvent.target.result)
+                        const annotations = json.features.map((feature, idx) => {
+                            const geo = feature.geometry
+                            return {
+                                id: `import-${idx}`,
+                                label: {color: [0, 0, 0], name: "Imported annotation"},
+                                geometry: {
+                                    type: "polygon",
+                                    points: optimizePath(geo.coordinates[0].map(coord => {
+                                        return {x: coord[0], y: coord[1]}
+                                    }))
+                                },
+                                meta: {
+                                    importing: true
+                                }
+                            }
+                        })
+                        console.log("Annotations: ", annotations)
+                        this.labelled[this.current_slide].push(...annotations)
+                    }
+                }
+                input.click()
+            },
+
             /**
              *
              * @param region
@@ -398,6 +445,19 @@
                         this.feedback_dialog = true
                         this.original_data = annotation.data
                         break
+                }
+            },
+            dismissAnnotation(annotation) {
+                if (annotation.meta.importing) {
+                    this.labelled[this.current_slide] = this.labelled[this.current_slide].filter(item => item !== annotation)
+                } else {
+                    if (confirm("Are you sure you want to remove this annotation?")) {
+                        this.$post(`session/${this.session_id}/remove_annotation`, annotation)
+                            .then(resp => {
+                                this.labelled[this.current_slide] = this.labelled[this.current_slide].filter(item => item !== annotation)
+                            })
+                            .catch(err => alert(err))
+                    }
                 }
             }
         },

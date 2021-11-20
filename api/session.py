@@ -96,9 +96,19 @@ def add_region(session_id):
 def edit_region(session_id):
     region_data = request.json
     region = models.Annotation.query.filter_by(id=region_data['id']).first()
+    region.label_id = region_data['label']['id']
     region.data = region_data['data']
     db.session.commit()
     return jsonify(region.to_dict())
+
+
+@session_api.route("<string:session_id>/remove_annotation", methods=['POST'])
+def remove_annotation(session_id):
+    region_data = request.json
+    region = db.session.query(models.Annotation).get(region_data['id'])
+    db.session.delete(region)
+    db.session.commit()
+    return jsonify({"success": True})
 
 
 @session_api.route("<string:session_id>/annotation_feedback", methods=['POST'])
