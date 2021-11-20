@@ -167,7 +167,7 @@
                 handler: function (new_value) {
                     SliceDrawer.current_label = new_value
                     if (this.editing.element != null) {
-                        this.editing.element.data.color = new_value.color
+                        //this.editing.element.data.color = new_value.color
                         SliceDrawer.update()
                     }
                 }
@@ -243,21 +243,17 @@
                 this.viewer = viewer
                 SliceDrawer.init(viewer, {
                     onHover: (element) => {
-                        console.log("onHover: ", element)
-                        console.log("drawEvents: ", this.drawEvents)
                         delegateCallback(this.drawEvents.onHover, element)
                         // if (this.drawEvents != null && this.drawEvents.onHover != null)
                         //     this.drawEvents.onHover(element)
                     },
                     onLeave: (element) => {
-                        console.log("onLeave: ", element)
                         delegateCallback(this.drawEvents.onLeave, element)
                     },
                     onClick: (element) => {
                         delegateCallback(this.drawEvents.onClick, element)
                     },
                     onStateRestorerEvent: (stateRestorer) => {
-                        // console.log("test: ", stateRestorer)
                         this.no_model_action = true
                         if (stateRestorer != null) {
                             this.state_restorer.showing = true
@@ -279,7 +275,7 @@
                         // Creating a new label object:
                         this.$emit("new-draw", {
                             label: this.selected_label,
-                            data: element
+                            geometry: element
                         })
                     },
                     onInfoUpdate: (messages) => {
@@ -289,11 +285,11 @@
                         if (changed) {
                             console.log("data", {
                                 ...this.editing.element,
-                                data: element_data
+                                geometry: element_data
                             })
                             this.$emit("edit-draw", {
                                 ...this.editing.element,
-                                data: element_data
+                                geometry: element_data
                             })
                         }
                         this.editing.element = null

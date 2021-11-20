@@ -261,5 +261,5 @@ class AnnotationRevised(db.Model):
             "id": self.id,
             "label_id": self.label_id,
             "feedback": self.feedback,
-            "data": self.data
+            "geometry": self.data
         }

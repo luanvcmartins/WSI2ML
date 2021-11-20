@@ -57,7 +57,7 @@ def create_session():
                         "id": x[1],
                         "feedback": x[4],
                         "label_id": x[5],
-                        "data": json.loads(x[6]) if x[6] is not None else None,
+                        "geometry": json.loads(x[6]) if x[6] is not None else None,
                     }} for x in filter(lambda x: x[0].slide_id == k['id'], data)] for k in task['task']['slides']}
     else:
         # common annotation task, we will put the annotations we have associated with it:
@@ -85,7 +85,7 @@ def add_region(session_id):
         user_task_id=session_id,
         slide_id=region_data['slide_id'],
         label_id=region_data['label']['id'],
-        data=region_data['data']
+        data=region_data['geometry']
     )
     db.session.add(region)
     db.session.commit()
@@ -97,7 +97,7 @@ def edit_region(session_id):
     region_data = request.json
     region = models.Annotation.query.filter_by(id=region_data['id']).first()
     region.label_id = region_data['label']['id']
-    region.data = region_data['data']
+    region.data = region_data['geometry']
     db.session.commit()
     return jsonify(region.to_dict())
 
@@ -120,7 +120,7 @@ def annotation_feedback(session_id):
         feedback = models.AnnotationRevised.query.get(annotation_data['feedback']['id'])
         feedback.feedback = annotation_data['feedback']['feedback']
         feedback.label_id = annotation_data['feedback']['label_id']
-        feedback.data = annotation_data['feedback']['data']
+        feedback.data = annotation_data['feedback']['geometry']
     else:
         # this is a new feedback:
         feedback = models.AnnotationRevised(

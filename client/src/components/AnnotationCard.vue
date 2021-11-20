@@ -28,7 +28,7 @@
           <v-avatar size="16" class="mr-2" :color="genColor(project_labels[value.feedback.label_id].color)"/>
           {{project_labels[value.feedback.label_id].name}}
         </p>
-        <p class="ma-0" v-if="value.feedback.data != null && !undoing_feedback"><a @click="swapDrawings">Checkout
+        <p class="ma-0" v-if="value.feedback.geometry != null && !undoing_feedback"><a @click="swapDrawings">Checkout
           {{drawing_swapped ? 'original' : 'expected'}} region</a></p>
       </div>
     </v-card-text>
@@ -144,10 +144,10 @@
             swapDrawings() {
                 console.log("swaping")
                 if (!this.drawing_swapped) {
-                    this.originalRegion = this.value.data
-                    this.value.data = this.value.feedback.data
+                    this.originalRegion = this.value.geometry
+                    this.value.geometry = this.value.feedback.geometry
                 } else {
-                    this.value.data = this.originalRegion
+                    this.value.geometry = this.originalRegion
                 }
                 this.drawing_swapped = !this.drawing_swapped
                 SliceDrawer.update()
@@ -164,7 +164,7 @@
             feedbackWrongRegion() {
                 if (this.drawing_swapped) {
                     // If the drawing was swapped, we swap them back
-                    this.value.data = this.originalRegion
+                    this.value.geometry = this.originalRegion
                     this.drawing_swapped = false
                 }
                 this.$emit("annotation-feedback", "wrong-region", this.value)
