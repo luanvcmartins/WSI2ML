@@ -15,14 +15,38 @@
     </v-tabs>
     <v-tabs-items v-if="task.id == null" v-model="task.type">
       <v-tab-item>
-        <v-select :label="`File to analyze ${current_folder != null ? `(from ${current_folder})` : '' }`"
-                  v-model="task.slides"
-                  :items="files" :readonly="task.project_id == null"
-                  item-text="id"
-                  multiple
-                  chips
-                  deletable-chips
-                  return-object/>
+        <!--        <v-select :label="`File to analyze ${current_folder != null ? `(from ${current_folder})` : '' }`"-->
+        <!--                  v-model="task.slides"-->
+        <!--                  :items="files" :readonly="task.project_id == null"-->
+        <!--                  item-text="id"-->
+        <!--                  multiple-->
+        <!--                  chips-->
+        <!--                  deletable-chips-->
+        <!--                  return-object/>-->
+        <div style="overflow-y: auto">
+          <v-scroll-x-transition group hide-on-leave>
+            <v-chip v-for="(selection, i) in task.slides" :key="i" color="grey"
+                    dark small class="ma-1">
+              <v-icon left small>
+                mdi-file
+              </v-icon>
+              {{ selection.name }}
+            </v-chip>
+          </v-scroll-x-transition>
+        </div>
+        <v-treeview
+                style="max-height: 300px; overflow-y: auto"
+                :items="files"
+                selectable
+                dense
+                open-on-click
+                item-text="name"
+                :readonly="task.project_id == null"
+                v-model="task.slides"
+                return-object
+                shaped
+                hoverable
+                selection-type="leaf"/>
       </v-tab-item>
       <v-tab-item>
         <v-select label="Tasks" v-model="review_task" :items="review_task_list" item-value="id" item-text="name"

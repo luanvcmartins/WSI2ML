@@ -21,7 +21,7 @@
             </div>
             <div>
               <v-chip-group>
-                <v-chip style="pointer-events: none;" v-for="slide in task.slides">{{slide.id}}</v-chip>
+                <v-chip style="pointer-events: none;" v-for="slide in task.slides">{{slide.name}}</v-chip>
               </v-chip-group>
             </div>
           </v-card-text>

@@ -4,6 +4,7 @@ import os
 from flask import Blueprint, jsonify, request, make_response
 from flask_jwt_extended import jwt_required, current_user
 from app import db
+import hashlib
 
 task_api = Blueprint("task_api", __name__)
 
@@ -46,7 +47,7 @@ def new_annotation_task(new_task):
     for slide in new_task['slides']:
         m_slide = models.Slide.query.get(slide['id'])
         if m_slide is None:
-            m_slide = models.Slide(id=slide['id'], file=slide['file'])
+            m_slide = models.Slide(id=slide['id'], name=slide['name'], file=slide['file'])
         task.slides.append(m_slide)
     db.session.add(task)
     db.session.commit()
@@ -130,7 +131,7 @@ def edit():
         for slide_id in (new_task_slides - old_task_slides):
             m_slide = models.Slide.query.get(slide_id)
             if m_slide is None:
-                m_slide = models.Slide(id=slide_id, file=slides[slide_id]['file'])
+                m_slide = models.Slide(id=slide_id, name=slides[slide_id]['name'], file=slides[slide_id]['file'])
             task.slides.append(m_slide)
 
         # slides removed from task:
@@ -143,6 +144,19 @@ def edit():
     return jsonify(task.to_dict())
 
 
+@task_api.route("remove", methods=["POST"])
+def remove():
+    task = request.json
+    if task['type'] == 0:
+        db.session.query(models.AnnotationTask).filter(models.AnnotationTask.id == task['id']).delete()
+        db.session.query(models.UserTask).filter(models.UserTask.annotation_task_id == task['id']).delete()
+    elif task['type'] == 1:
+        db.session.query(models.RevisionTask).filter(models.RevisionTask.id == task['id']).delete()
+        db.session.query(models.UserTask).filter(models.UserTask.revision_task_id == task['id']).delete()
+    db.session.commit()
+    return jsonify({"success": True})
+
+
 @task_api.route("completed")
 def completed():
     _id = request.args["id"]
@@ -153,9 +167,27 @@ def completed():
     return jsonify({"success": True})
 
 
+def files_within(folder):
+    folder_content = []
+    for x in os.listdir(folder):
+        full_path = os.path.join(folder, x)
+        if os.path.isfile(full_path):
+            folder_content.append({
+                "id": hashlib.md5(full_path.encode()).hexdigest(),
+                "name": x,
+                "file": full_path
+            })
+        else:
+            folder_content.append({
+                "name": x,
+                "children": files_within(full_path)
+            })
+    return folder_content
+
+
 @task_api.route("files", methods=['GET'])
 @jwt_required()
 def files():
     project_id = request.args['project_id']
     project = db.session.query(models.Project).filter(models.Project.id == project_id).first()
-    return jsonify([{"id": x, "file": os.path.join(project.folder, x)} for x in os.listdir(project.folder)])
+    return jsonify(files_within(project.folder))

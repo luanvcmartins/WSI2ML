@@ -36,8 +36,8 @@
     <v-card-actions v-if="task_type === 0">
       <v-spacer/>
       <div v-if="value.meta.importing != null">
-        <v-btn text @click="dismissAnnotation">Dismiss</v-btn>
-        <v-btn text @click="importAnnotation">Import</v-btn>
+        <v-btn text @click.prevent="dismissAnnotation">Dismiss</v-btn>
+        <v-btn text @click.prevent="importAnnotation">Import</v-btn>
       </div>
       <div v-else-if="editing !== value">
         <v-btn text @click="dismissAnnotation">Remove</v-btn>
@@ -106,7 +106,7 @@
             editing: {
                 handler(new_value) {
                     // if the editing value is null, then we know we can disable the label update
-                    if (new_value == null)
+                    if (new_value == null && this.value.meta.importing == null)
                         this.updating_label = false
                 }
             }

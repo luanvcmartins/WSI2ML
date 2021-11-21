@@ -17,23 +17,23 @@
                       :items="tasks[task_type]"
                       :items-per-page="5">
                 <template v-slot:item.slides="{ item }">
-                  <v-chip-group>
+                  <v-chip-group column show-arrows>
                     <v-chip style="pointer-events: none;"
                             outlined :readonly="true"
                             v-for="slide in item.slides">
-                      {{ slide.id }}
+                      {{ slide.name }}
                     </v-chip>
                   </v-chip-group>
                 </template>
                 <template v-slot:item.assigned="{ item }">
-                  <v-chip-group active-class="primary--text">
+                  <v-chip-group active-class="primary--text" column show-arrows>
                     <v-chip style="pointer-events: none;" :readonly="true" v-for="user in item.assigned" dark>
                       {{ user.name }}
                     </v-chip>
                   </v-chip-group>
                 </template>
                 <template v-slot:item.revisions="{ item }">
-                  <v-chip-group active-class="primary--text">
+                  <v-chip-group active-class="primary--text" column show-arrows>
                     <v-chip style="pointer-events: none;" :readonly="true" v-for="user_task in item.revisions" dark>
                       {{ user_task.user.name }}
                     </v-chip>
@@ -41,12 +41,7 @@
                 </template>
                 <template v-slot:item.actions="{ item }">
                   <v-icon small class="mr-2" @click="edit_task(item)"> mdi-pencil</v-icon>
-                  <v-tooltip bottom>
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-icon small v-bind="attrs" v-on="on" @click> mdi-delete</v-icon>
-                    </template>
-                    <span>Not implemented</span>
-                  </v-tooltip>
+                  <v-icon small @click="remove_task(item)"> mdi-delete</v-icon>
                 </template>
               </v-data-table>
               <v-card-actions>
@@ -96,7 +91,7 @@
                       :items="projects"
                       :items-per-page="5">
                 <template v-slot:item.labels="{ item }">
-                  <v-chip-group>
+                  <v-chip-group show-arrows column>
                     <v-chip style="pointer-events: none;"
                             outlined
                             :color="`rgb(${label.color[0]}, ${label.color[1]},${label.color[2]})`" :readonly="true"
@@ -129,7 +124,10 @@
     </v-expansion-panels>
     <v-navigation-drawer v-if="drawer" v-model="drawer" app temporary stateless right width="500px">
       <v-toolbar>
-        <v-toolbar-title><v-icon @click="drawer = false" large class="mr-1">mdi-close</v-icon>Information editor</v-toolbar-title>
+        <v-toolbar-title>
+          <v-icon @click="drawer = false" large class="mr-1">mdi-close</v-icon>
+          Information editor
+        </v-toolbar-title>
       </v-toolbar>
       <v-container>
         <user-editor v-if="mode === 'user'" v-model="editing" v-on:done="done"/>
@@ -161,7 +159,7 @@
                 //             this.tasks.push(new_value)
                 //         this.drawer = false
                 //     }
-                    // this.drawer = false
+                // this.drawer = false
                 // }
             }
         },
@@ -294,6 +292,18 @@
                 this.editing = task
                 this.mode = "task"
                 this.drawer = true
+            },
+
+            remove_task(task) {
+                if (confirm("Are you sure you want to remove this task? Annotations may be lost."))
+                    this.$post("task/remove", task)
+                        .then(resp => {
+                            console.log(resp)
+                            this.load_tasks()
+                        })
+                        .catch(err => {
+                            alert(err)
+                        })
             },
 
             load_users() {

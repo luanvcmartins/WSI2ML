@@ -31,7 +31,7 @@
               <v-flex cols="12" sm="12" md="6">
                 <v-card>
                   <v-card-title>Region visibility by label</v-card-title>
-                  <div class="pl-3 pr-3 pb-3">
+                  <div class="pl-3 pr-3 pb-3" style="max-height: 200px; overflow-y: auto">
                     <v-switch
                             class="mt-0"
                             hide-details dense
@@ -62,7 +62,7 @@
                   </div>
                   <div class="pl-3 pr-3 pb-3">
                     <v-radio-group hide-details v-model="current_slide">
-                      <v-radio v-for="slide in slides" :value="slide.id" :label="slide.id"/>
+                      <v-radio v-for="slide in slides" :value="slide.id" :label="slide.name"/>
                     </v-radio-group>
                   </div>
                 </v-card>
@@ -93,7 +93,7 @@
                 <v-card>
                   <div class="pa-3 pb-0 text-h6 text--primary">Import annotations</div>
                   <div class="pl-3 pr-3 text-center font-weight-thin card-description">Select a geojson file to import
-                    its annotations to the current slide ({{current_slide}}).
+                    its annotations to the currently selected slide.
                   </div>
                   <div class="pl-3 pr-3 pb-3">
                     <input id="file-importer-input" type="file" style="display: none">
@@ -107,7 +107,7 @@
         <v-tab-item>
           <v-container fluid grid-list-md>
             <v-layout row wrap>
-              <v-flex cols="12" sm="12" md="6" v-for="(region, idx) in labelled[current_slide]">
+              <v-flex cols="12" sm="12" md="6" v-for="(region, idx) in labelled[current_slide]" :key="region.id">
                 <annotation-card
                         v-model="labelled[current_slide][idx]" :key="idx"
                         :editing="editing"
@@ -313,7 +313,7 @@
                 this.$post("session/" + this.session_id + "/add_region", annotation)
                     .then(resp => {
                         // Add the new region to the list
-                        this.labelled[this.current_slide] = this.labelled[this.current_slide].filter(item => annotation !== item)
+                        this.labelled[this.current_slide] = this.labelled[this.current_slide].filter(item => annotation.id !== item.id)
                         this.labelled[this.current_slide].push(resp)
                     })
                     .catch(err => {

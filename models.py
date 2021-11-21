@@ -107,8 +107,8 @@ revision_tasks_items = db.Table(
 class UserTask(db.Model):
     __tablename__ = 'user_tasks'
     id = db.Column(db.Text, primary_key=True)
-    annotation_task_id = db.Column(db.Integer, db.ForeignKey('annotation_tasks.id'))
-    revision_task_id = db.Column(db.Integer, db.ForeignKey('revision_tasks.id'))
+    annotation_task_id = db.Column(db.Integer, db.ForeignKey('annotation_tasks.id', ondelete='CASCADE'))
+    revision_task_id = db.Column(db.Integer, db.ForeignKey('revision_tasks.id', ondelete='CASCADE'))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     type = db.Column(db.Integer)
     completed = db.Column(db.Boolean)
@@ -134,7 +134,7 @@ class AnnotationTask(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'))
     name = db.Column(db.String(60))
     project = db.relationship("Project")
-    assigned = db.relationship("UserTask")
+    assigned = db.relationship("UserTask",  passive_deletes=True)
     slides = db.relationship("Slide", secondary=task_slides)
 
     def to_dict(self, context="default"):
@@ -191,11 +191,13 @@ class RevisionTask(db.Model):
 class Slide(db.Model):
     __tablename__ = "slides"
     id = db.Column(db.Text, primary_key=True)
+    name = db.Column(db.Text)
     file = db.Column(db.Text)
 
     def to_dict(self):
         return {
             "id": self.id,
+            "name": self.name,
             "file": self.file
         }
 
@@ -236,8 +238,8 @@ class Annotation(db.Model):
 class AnnotationRevised(db.Model):
     __tablename__ = "annotations_revised"
     id = db.Column(db.Integer, primary_key=True)
-    user_task_id = db.Column(db.Integer, db.ForeignKey("user_tasks.id"))
-    annotation_id = db.Column(db.Integer, db.ForeignKey("annotations.id"))
+    user_task_id = db.Column(db.Integer, db.ForeignKey("user_tasks.id", ondelete='CASCADE'))
+    annotation_id = db.Column(db.Integer, db.ForeignKey("annotations.id", ondelete='CASCADE'))
     """
     The review of the user, which may be:
     0 - Correct
