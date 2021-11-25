@@ -11,6 +11,10 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(30), unique=True)
     password_hash = db.Column(db.String(128))
     is_admin = db.Column(db.Boolean)
+    manages_apps = db.Column(db.Boolean)
+    manages_users = db.Column(db.Boolean)
+    manages_tasks = db.Column(db.Boolean)
+    manages_projects = db.Column(db.Boolean)
     is_bot = db.Column(db.Boolean)
 
     @property
@@ -27,6 +31,10 @@ class User(UserMixin, db.Model):
         self.name = update["name"]
         self.is_admin = update["is_admin"]
         self.username = update["username"]
+        self.manages_apps = update['manages_apps']
+        self.manages_users = update['manages_users']
+        self.manages_tasks = update['manages_tasks']
+        self.manages_projects = update['manages_projects']
         if 'password' in update:
             self.password = update['password']
 
@@ -42,6 +50,10 @@ class User(UserMixin, db.Model):
             "name": self.name,
             "username": self.username,
             "is_admin": self.is_admin,
+            "manages_apps": self.manages_apps,
+            "manages_users": self.manages_users,
+            "manages_tasks": self.manages_tasks,
+            "manages_projects": self.manages_projects,
             "is_bot": self.is_bot
         }
 
@@ -134,7 +146,7 @@ class AnnotationTask(db.Model):
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'))
     name = db.Column(db.String(60))
     project = db.relationship("Project")
-    assigned = db.relationship("UserTask",  passive_deletes=True)
+    assigned = db.relationship("UserTask", passive_deletes=True)
     slides = db.relationship("Slide", secondary=task_slides)
 
     def to_dict(self, context="default"):
@@ -193,12 +205,22 @@ class Slide(db.Model):
     id = db.Column(db.Text, primary_key=True)
     name = db.Column(db.Text)
     file = db.Column(db.Text)
+    properties_json = db.Column(db.Text)
+
+    @property
+    def properties(self):
+        return json.loads(self.properties_json)
+
+    @properties.setter
+    def properties(self, new_value):
+        self.properties_json = json.dumps(new_value)
 
     def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
-            "file": self.file
+            "file": self.file,
+            "properties": self.properties
         }
 
 

@@ -5,10 +5,18 @@
     <v-text-field label="Username" v-model="user.username"></v-text-field>
     <v-text-field label="Password" type="password" v-model="user.password"></v-text-field>
     <v-checkbox v-model="user.is_admin" label="Is user admin?"></v-checkbox>
-
+    <span class="title">User permissions</span>
+    <div class="chip-group">
+      <!--      <v-chip-group multiple column>-->
+      <v-check-chip v-model="user.manages_apps">Manage apps</v-check-chip>
+      <v-check-chip v-model="user.manages_users">Manage users</v-check-chip>
+      <v-check-chip v-model="user.manages_tasks">Manage tasks</v-check-chip>
+      <v-check-chip v-model="user.manages_projects">Manage projects</v-check-chip>
+    </div>
+    <!--    </v-chip-group>-->
     <v-card-actions>
       <v-spacer></v-spacer>
-    <v-btn @click="save" outlined>Save</v-btn>
+      <v-btn @click="save" outlined>Save</v-btn>
     </v-card-actions>
     <!--  </v-form>-->
   </div>
@@ -16,9 +24,11 @@
 
 <script>
     import _ from "lodash";
+    import VCheckChip from "./VCheckChip";
 
     export default {
         name: "UserEditor",
+        components: {VCheckChip},
         watch: {
             value: {
                 immediate: true,
@@ -26,15 +36,9 @@
                     this.user = _.cloneDeep(new_value)
                 }
             },
-            user: {
-                deep: true,
-                handler: function (new_value) {
-                    this.$emit("input", new_value)
-                }
-            },
         },
         data: () => {
-            return {user: null}
+            return {user: null, test: []}
         },
         methods: {
             save() {
@@ -68,5 +72,13 @@
 </script>
 
 <style scoped>
+  .chip-group {
+    white-space: normal;
+    flex-wrap: wrap;
+    max-width: 100%;
+  }
 
+  .chip-group * {
+    margin: 2px;
+  }
 </style>

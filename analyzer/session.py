@@ -25,6 +25,30 @@ DEEPZOOM_LIMIT_BOUNDS = True
 DEEPZOOM_TILE_QUALITY = 75
 
 
+def put_optional(property_list, slide, property_alias, property_name):
+    if property_name in slide.properties:
+        property_list[property_alias] = slide.properties[property_name]
+    return property_list
+
+
+def get_slide_properties(filename):
+    slide = openslide.open_slide(filename)
+
+    properties = {}
+    put_optional(properties, slide, "quickhash", openslide.PROPERTY_NAME_QUICKHASH1)
+    put_optional(properties, slide, "height", openslide.PROPERTY_NAME_BOUNDS_HEIGHT)
+    put_optional(properties, slide, "width", openslide.PROPERTY_NAME_BOUNDS_WIDTH)
+    put_optional(properties, slide, "pixel_width", openslide.PROPERTY_NAME_MPP_X)
+    put_optional(properties, slide, "pixel_height", openslide.PROPERTY_NAME_MPP_Y)
+    put_optional(properties, slide, "vendor", openslide.PROPERTY_NAME_VENDOR)
+    put_optional(properties, slide, "background_color", openslide.PROPERTY_NAME_BACKGROUND_COLOR)
+    put_optional(properties, slide, "comment", openslide.PROPERTY_NAME_COMMENT)
+    put_optional(properties, slide, "object_power", openslide.PROPERTY_NAME_OBJECTIVE_POWER)
+    slide.close()
+
+    return properties
+
+
 class Session:
     def __init__(self, slides, user_task) -> None:
         self._session_slides = {slide['id']: slide for slide in slides}
@@ -36,8 +60,8 @@ class Session:
     def get_info(self):
         return {k: {
             "filename": self._session_slides[k],
-            "pixel_width": self._slides_instance[k].properties[openslide.PROPERTY_NAME_MPP_X],
-            "pixel_height": self._slides_instance[k].properties[openslide.PROPERTY_NAME_MPP_Y]
+            "pixel_width": float(self._slides_instance[k].properties[openslide.PROPERTY_NAME_MPP_X]),
+            "pixel_height": float(self._slides_instance[k].properties[openslide.PROPERTY_NAME_MPP_Y])
         } for k in self._slides_instance}
 
     def load_slide(self, slide_id):

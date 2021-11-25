@@ -1,3 +1,4 @@
+import analyzer.session
 import models
 import uuid
 import os
@@ -47,7 +48,8 @@ def new_annotation_task(new_task):
     for slide in new_task['slides']:
         m_slide = models.Slide.query.get(slide['id'])
         if m_slide is None:
-            m_slide = models.Slide(id=slide['id'], name=slide['name'], file=slide['file'])
+            properties = analyzer.session.get_slide_properties(slide['file'])
+            m_slide = models.Slide(id=slide['id'], name=slide['name'], file=slide['file'], properties=properties)
         task.slides.append(m_slide)
     db.session.add(task)
     db.session.commit()
@@ -70,24 +72,29 @@ def new_revision_task(new_task):
 @task_api.route("list", methods=['GET'])
 @jwt_required()
 def list():
-    if current_user.is_admin:
+    annotation_tasks = db.session.query(models.AnnotationTask, models.UserTask) \
+        .join(models.UserTask, models.UserTask.annotation_task_id == models.AnnotationTask.id) \
+        .filter(models.UserTask.user_id == current_user.id).all()
+    review_tasks = db.session.query(models.RevisionTask, models.UserTask) \
+        .join(models.UserTask, models.UserTask.revision_task_id == models.RevisionTask.id) \
+        .filter(models.UserTask.user_id == current_user.id).all()
+    return jsonify({
+        "annotations": [{**x[1].to_dict(), **x[0].to_dict()} for x in annotation_tasks],
+        "review": [{**x[1].to_dict(), **x[0].to_dict()} for x in review_tasks]
+    })
+
+
+@task_api.route("management_list", methods=['GET'])
+@jwt_required()
+def management_list():
+    if current_user.manages_tasks:
         annotations = db.session.query(models.AnnotationTask).all()
         revisions = db.session.query(models.RevisionTask).all()
         return jsonify({
             0: [x.to_dict() for x in annotations],
             1: [x.to_dict() for x in revisions]
         })
-    else:
-        annotation_tasks = db.session.query(models.AnnotationTask, models.UserTask) \
-            .join(models.UserTask, models.UserTask.annotation_task_id == models.AnnotationTask.id) \
-            .filter(models.UserTask.user_id == current_user.id).all()
-        review_tasks = db.session.query(models.RevisionTask, models.UserTask) \
-            .join(models.UserTask, models.UserTask.revision_task_id == models.RevisionTask.id) \
-            .filter(models.UserTask.user_id == current_user.id).all()
-        return jsonify({
-            "annotations": [{**x[1].to_dict(), **x[0].to_dict()} for x in annotation_tasks],
-            "review": [{**x[1].to_dict(), **x[0].to_dict()} for x in review_tasks]
-        })
+    return jsonify({"msg": "Not an admin!"}), 401
 
 
 @task_api.route("edit", methods=["POST"])

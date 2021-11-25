@@ -13,21 +13,17 @@
               width="40"
       />
 
-      <v-toolbar-title>med-img-label</v-toolbar-title>
+      <v-toolbar-title>WSL Annotation Tool</v-toolbar-title>
     </div>
 
     <v-spacer></v-spacer>
-
-    <v-btn text>
-      <span class="mr-2">Export</span>
-      <v-icon>mdi-open-in-new</v-icon>
-    </v-btn>
   </v-app-bar>
 </template>
 
 <script>
     export default {
-        name: "AppBar"
+        name: "AppBar",
+
     }
 </script>
 

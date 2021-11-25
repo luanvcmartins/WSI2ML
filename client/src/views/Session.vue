@@ -6,9 +6,10 @@
             :tile-sources="tile_sources"
             :labels="project_labels"
             :labels-visibility="labels_visible"
-            :region-opacity="region_opacity"
+            :drawing-style="drawing_style"
             :draw-events="draw_events"
-            v-model="labelled[current_slide]"
+            :slide-properties="current_slide.properties"
+            v-model="labelled[current_slide.id]"
             v-on:region-clicked="regionClicked"
             v-on:new-draw="onNewRegionDraw"
             v-on:edit-draw="onEditRegionDraw"/>
@@ -18,7 +19,7 @@
         <template v-slot:extension>
           <v-tabs v-model="selected_tab">
             <v-tab>View</v-tab>
-            <v-tab>Annotations ({{labelled[current_slide].length}})</v-tab>
+            <v-tab>Annotations ({{labelled[current_slide.id].length}})</v-tab>
           </v-tabs>
         </template>
       </v-toolbar>
@@ -42,16 +43,30 @@
                             :color="genColor(label.color)"/>
                   </div>
                   <v-divider></v-divider>
-                  <v-slider hide-details class="pl-2 pr-2"
-                            prepend-icon="mdi-circle-opacity"
-                            v-model="region_opacity"
-                            step="0"
-                            thumb-label
-                            min="0.0" max="1">
-                    <template v-slot:thumb-label="{ value }">
-                      {{ value.toFixed(2) }}
-                    </template>
-                  </v-slider>
+                  <div style="display: flex">
+                    <v-slider hide-details class="pl-2 pr-2"
+                              style="width: 50%"
+                              prepend-icon="mdi-circle-opacity"
+                              v-model="drawing_style.region_opacity"
+                              step="0"
+                              thumb-label
+                              min="0.0" max="1">
+                      <template v-slot:thumb-label="{ value }">
+                        {{ value.toFixed(2) }}
+                      </template>
+                    </v-slider>
+                    <v-slider hide-details class="pl-2 pr-2"
+                              style="width: 50%"
+                              prepend-icon="mdi-format-line-weight"
+                              v-model="drawing_style.line_weight"
+                              step="1"
+                              thumb-label
+                              min="1" max="10">
+                      <template v-slot:thumb-label="{ value }">
+                        {{ value.toFixed(2) }}
+                      </template>
+                    </v-slider>
+                  </div>
                 </v-card>
               </v-flex>
               <v-flex cols="12" sm="12" md="6" v-if="slides.length > 1">
@@ -62,7 +77,7 @@
                   </div>
                   <div class="pl-3 pr-3 pb-3">
                     <v-radio-group hide-details v-model="current_slide">
-                      <v-radio v-for="slide in slides" :value="slide.id" :label="slide.name"/>
+                      <v-radio v-for="slide in slides" :label="slide.name" :value="slide"/>
                     </v-radio-group>
                   </div>
                 </v-card>
@@ -107,9 +122,9 @@
         <v-tab-item>
           <v-container fluid grid-list-md>
             <v-layout row wrap>
-              <v-flex cols="12" sm="12" md="6" v-for="(region, idx) in labelled[current_slide]" :key="region.id">
+              <v-flex cols="12" sm="12" md="6" v-for="(region, idx) in labelled[current_slide.id]" :key="region.id">
                 <annotation-card
-                        v-model="labelled[current_slide][idx]" :key="idx"
+                        v-model="labelled[current_slide.id][idx]" :key="idx"
                         :editing="editing"
                         v-on:save-region="saveEdition"
                         v-on:edit-region="editRegion"
@@ -160,7 +175,7 @@
                 return this.$route.params.session_id
             },
             tile_sources: function () {
-                return `${process.env.VUE_APP_BASE_URL}session/${this.session_id}/${this.current_slide}.dzi`
+                return `${process.env.VUE_APP_BASE_URL}session/${this.session_id}/${this.current_slide.id}.dzi`
             },
             project_labels: function () {
                 return this.$store.state.session.task.project.labels
@@ -197,10 +212,10 @@
                 handler: function (session) {
                     if (session.task.type === 0) {
                         this.labelled = session.labelled
-                        this.current_slide = session.task.slides[0].id
+                        this.current_slide = session.task.slides[0]
                     } else {
                         this.labelled = []
-                        this.current_slide = session.task.task.slides[0].id
+                        this.current_slide = session.task.task.slides[0]
                     }
                 }
             },
@@ -250,7 +265,11 @@
                 labelled: {},
                 selected_tab: 0,
                 labels_visible: {},
-                region_opacity: 0.3,
+                drawing_style: {
+                    region_opacity: 0.3,
+                    line_weight: 1
+                },
+                line_weight: 1,
                 editing: null,
                 revision_enabled: {},
                 feedback_dialog: false,
@@ -309,12 +328,12 @@
 
             onNewRegionDraw(annotation) {
                 annotation.id = null // making sure to reset the id
-                annotation.slide_id = this.current_slide
+                annotation.slide_id = this.current_slide.id
                 this.$post("session/" + this.session_id + "/add_region", annotation)
                     .then(resp => {
                         // Add the new region to the list
-                        this.labelled[this.current_slide] = this.labelled[this.current_slide].filter(item => annotation.id !== item.id)
-                        this.labelled[this.current_slide].push(resp)
+                        this.labelled[this.current_slide.id] = this.labelled[this.current_slide.id].filter(item => annotation.id !== item.id)
+                        this.labelled[this.current_slide.id].push(resp)
                     })
                     .catch(err => {
                         alert("Error while saving region: " + err)
@@ -402,7 +421,7 @@
                             }
                         })
                         console.log("Annotations: ", annotations)
-                        this.labelled[this.current_slide].push(...annotations)
+                        this.labelled[this.current_slide.id].push(...annotations)
                     }
                 }
                 input.click()
@@ -449,12 +468,12 @@
             },
             dismissAnnotation(annotation) {
                 if (annotation.meta.importing) {
-                    this.labelled[this.current_slide] = this.labelled[this.current_slide].filter(item => item !== annotation)
+                    this.labelled[this.current_slide.id] = this.labelled[this.current_slide.id].filter(item => item !== annotation)
                 } else {
                     if (confirm("Are you sure you want to remove this annotation?")) {
                         this.$post(`session/${this.session_id}/remove_annotation`, annotation)
                             .then(resp => {
-                                this.labelled[this.current_slide] = this.labelled[this.current_slide].filter(item => item !== annotation)
+                                this.labelled[this.current_slide.id] = this.labelled[this.current_slide.id].filter(item => item !== annotation)
                             })
                             .catch(err => alert(err))
                     }

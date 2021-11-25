@@ -18,16 +18,28 @@ const new_router = new Router({
             component: () => import("./views/Login.vue")
         },
         {
-            path: '/tasks',
-            name: 'tasks',
+            path: "/main",
+            name: "main",
             components: {
                 default: Tasks,
-                app_bar: AppBar
+                app_bar: AdminAppBar
             },
             meta: {
                 auth: true
             }
         },
+        {
+            path: '/main/tasks',
+            name: 'tasks',
+            components: {
+                default: Tasks,
+                app_bar: AdminAppBar
+            },
+            meta: {
+                auth: true
+            }
+        },
+
         {
             path: '/session/:session_id',
             name: 'session',
@@ -40,7 +52,7 @@ const new_router = new Router({
             }
         },
         {
-            path: '/admin',
+            path: '/main/admin',
             name: 'admin',
             components: {
                 default: Admin,
@@ -48,7 +60,7 @@ const new_router = new Router({
             },
             meta: {
                 auth: true,
-                is_admin: true
+                is_admin: false
             }
         },
         {

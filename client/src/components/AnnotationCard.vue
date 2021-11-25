@@ -9,7 +9,7 @@
     <v-card-text v-if="updating_label">
       <span v-if="value.meta.importing != null" class="importing-pending-warning">Pending import</span>
       <v-chip-group v-model="value.label" mandatory column @change="updateRender">
-        <v-chip v-for="label in project_labels" filter :value="label">
+        <v-chip :color="genColor(label.color)" outlined v-for="label in project_labels" filter :value="label" :key="label.id">
           {{label.name}}
         </v-chip>
       </v-chip-group>

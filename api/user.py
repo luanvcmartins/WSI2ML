@@ -9,7 +9,7 @@ user_api = Blueprint("user_api", __name__)
 @user_api.route("new", methods=['POST'])
 @jwt_required()
 def new():
-    if not current_user.is_admin:
+    if not current_user.manages_users:
         return jsonify({"msg": "Not an admin!"}), 401
 
     new_user = request.json
@@ -28,7 +28,7 @@ def new():
 @user_api.route("edit", methods=["POST"])
 @jwt_required()
 def edit():
-    if not current_user.is_admin:
+    if not current_user.manages_users:
         return jsonify({"msg": "Not an admin!"}), 401
 
     new_user = request.json
@@ -42,7 +42,7 @@ def edit():
 @jwt_required()
 def list():
     logged_user = current_user
-    if not logged_user.is_admin:
+    if not logged_user.manages_users:
         return jsonify({"msg": "Not an admin!"}), 401
     return jsonify([x.to_json() for x in models.User.query.all()])
 

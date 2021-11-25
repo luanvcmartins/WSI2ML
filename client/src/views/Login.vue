@@ -45,11 +45,7 @@
                         if (resp.token != null) {
                             // Successfully login, we have a JWT token
                             this.$store.commit("login", resp)
-                            if (resp.user.is_admin) {
-                                this.$router.push("/admin")
-                            } else {
-                                this.$router.push("/tasks")
-                            }
+                            this.$router.push("/main/tasks")
                         }
                     })
                     .catch(err => {

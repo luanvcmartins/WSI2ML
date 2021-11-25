@@ -2,7 +2,7 @@
   <v-container>
     <v-expansion-panels multiple>
       <v-row>
-        <v-col sm="12">
+        <v-col sm="12" v-if="user.manages_tasks">
           <v-expansion-panel>
             <v-expansion-panel-header>
               <v-toolbar-title class="title">Tasks</v-toolbar-title>
@@ -51,7 +51,7 @@
             </v-expansion-panel-content>
           </v-expansion-panel>
         </v-col>
-        <v-col sm="12">
+        <v-col sm="12" v-if="user.manages_users">
           <v-expansion-panel>
             <v-expansion-panel-header>
               <v-toolbar-title class="title">Users</v-toolbar-title>
@@ -80,7 +80,7 @@
             </v-expansion-panel-content>
           </v-expansion-panel>
         </v-col>
-        <v-col sm="12">
+        <v-col sm="12" v-if="user.manages_projects">
           <v-expansion-panel>
             <v-expansion-panel-header>
               <v-toolbar-title class="title">Projects</v-toolbar-title>
@@ -161,6 +161,11 @@
                 //     }
                 // this.drawer = false
                 // }
+            }
+        },
+        computed: {
+            user: function () {
+                return this.$store.state.user
             }
         },
         data: () => {
@@ -246,6 +251,10 @@
                 this.editing = {
                     username: "",
                     is_admin: false,
+                    manages_apps: false,
+                    manages_users: false,
+                    manages_tasks: false,
+                    manages_projects: false
                 }
                 this.mode = "user"
                 this.drawer = true
@@ -307,34 +316,37 @@
             },
 
             load_users() {
-                this.$get("user/list")
-                    .then(resp => {
-                        console.log(resp)
-                        this.users = resp
-                    })
-                    .catch(err => {
-                        alert(err)
-                    })
+                if (this.user.manages_users)
+                    this.$get("user/list")
+                        .then(resp => {
+                            console.log(resp)
+                            this.users = resp
+                        })
+                        .catch(err => {
+                            alert(err)
+                        })
             },
 
             load_projects() {
-                this.$get("project/list")
-                    .then(resp => {
-                        console.log(resp)
-                        this.projects = resp
-                    })
-                    .catch(err => {
-                        alert(err)
-                    })
+                if (this.user.manages_projects)
+                    this.$get("project/list")
+                        .then(resp => {
+                            console.log(resp)
+                            this.projects = resp
+                        })
+                        .catch(err => {
+                            alert(err)
+                        })
             },
 
             load_tasks() {
-                this.$get("task/list")
-                    .then(resp => {
-                        console.log(resp)
-                        this.tasks = resp
-                    })
-                    .catch(err => alert(err))
+                if (this.user.manages_tasks)
+                    this.$get("task/management_list")
+                        .then(resp => {
+                            console.log(resp)
+                            this.tasks = resp
+                        })
+                        .catch(err => alert(err))
             }
         },
         mounted() {

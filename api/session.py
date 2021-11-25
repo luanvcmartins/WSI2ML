@@ -128,7 +128,7 @@ def annotation_feedback(session_id):
             annotation_id=annotation_data['id'],
             feedback=annotation_data['feedback']['feedback'],
             label_id=annotation_data['feedback']['label_id'],
-            data=annotation_data['feedback']['data']
+            data=annotation_data['feedback']['geometry']
         )
         db.session.add(feedback)
     db.session.commit()

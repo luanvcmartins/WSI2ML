@@ -109,6 +109,160 @@ const nullTool = {
     }
 }
 
+const circleTool = {
+    name: "circle",
+    instance: null,
+    geometry: null,
+    mouseEvent(func, e) {
+        const drawer = this.instance
+        switch (func) {
+            case "dblClick":
+                if (this.geometry == null) {
+                    const imagePosition = drawer._mousePointToImagePoint(e.position)
+                    this.geometry = {
+                        type: this.name,
+                        points: [imagePosition, drawer._mousePointToImagePoint(e.position)],
+                    }
+                    drawer.currently_drawing = {
+                        label: drawer.current_label,
+                        geometry: this.geometry,
+                        meta: {}
+                    }
+                    drawer.update()
+                } else {
+                    drawer.callback.onFinishNewDrawing(this.geometry)
+                    drawer.currently_drawing = null
+                    this.geometry = null
+                    drawer.update()
+                }
+                break
+            case "move":
+                if (this.geometry != null) {
+                    const imagePosition = drawer._mousePointToImagePoint(e.position)
+                    this.geometry.points[1].x = imagePosition.x//-this.geometry.points[0].x
+                    this.geometry.points[1].y = imagePosition.y //- this.geometry.points[0].y
+                    drawer.update()
+                }
+
+                break
+        }
+
+    },
+    keyboardEvent(func, e) {
+        switch (func) {
+            case 'keyUp':
+                if (e.keyCode === 27) {
+                    this.instance.currently_drawing = null
+                    this.geometry = null
+                    this.instance.update()
+                }
+                break
+        }
+    },
+    init(instance) {
+        this.instance = instance
+        console.log("circle instantiated")
+        return this
+    }
+}
+
+const rulerTool = {
+    name: "Ruler",
+    instance: null,
+    startingPoint: null,
+    endingPoint: null,
+    active: false,
+    perpendicular: 0,
+
+    perpendicularLine(point1, point2) {
+        const line1_slope = (point2.y - point1.y) / (point2.x - point1.x)
+        const line1_b = point1.x * line1_slope - point1.y
+        return {slope: -1 / line1_slope, b: -1 / line1_b}
+    },
+
+    mouseEvent(func, e) {
+        const drawer = this.instance
+        switch (func) {
+            case "dblClick":
+                if (!this.active && this.startingPoint != null && this.endingPoint != null) {
+                    this.active = false
+                    this.startingPoint = null
+                    this.endingPoint = null
+                } else if (this.startingPoint == null) {
+                    this.startingPoint = drawer._mousePointToImagePoint(e.position)
+                    this.active = true
+                } else {
+                    this.endingPoint = drawer._mousePointToImagePoint(e.position)
+                    this.perpendicular = this.perpendicularLine(this.startingPoint, this.endingPoint)
+                    this.active = false
+                }
+                drawer.update()
+                break
+            case "move":
+                if (this.active) {
+                    this.endingPoint = drawer._mousePointToImagePoint(e.position)
+                    this.perpendicular = this.perpendicularLine(this.startingPoint, this.endingPoint)
+                    drawer.update()
+                }
+                break
+
+        }
+    },
+    keyboardEvent(func, e) {
+        if (func === 'keyUp' && e.keyCode === 27) {
+            this.active = false
+            this.startingPoint = null
+            this.endingPoint = null
+            this.instance.update()
+        }
+    },
+
+    draw(ctx) {
+        if (this.startingPoint != null && this.endingPoint != null) {
+            const drawer = this.instance
+            const startPoint = drawer._imagePointToCanvasPoint(this.startingPoint.x, this.startingPoint.y)
+            const endPoint = drawer._imagePointToCanvasPoint(this.endingPoint.x, this.endingPoint.y)
+            const distance = Math.hypot(this.startingPoint.x - this.endingPoint.x, this.startingPoint.y - this.endingPoint.y)
+            // const perpendicular = this.perpendicularLine(startPoint, endPoint)
+            const ruler = new Path2D()
+            ruler.moveTo(startPoint.x, startPoint.y)
+            ruler.lineTo(endPoint.x, endPoint.y)
+
+            // const angle = perpendicular.slope
+            // const direction = [Math.sin(angle), Math.cos(angle)]
+            // const direction = [perpendicular.slope, perpendicular.slope]
+            // const m1X = ((startPoint.y - 30) - perpendicular.b) / perpendicular.slope
+            // const m2X = ((startPoint.y + 30) - perpendicular.b) / perpendicular.slope
+            /**
+             * perpendicular = y=x*slope+b
+             * startingPoint = (x0,y0)
+             * distancia = 3 pixels
+             * distancia^2 = (x1-x2)^2 + (y1-y2)^2 // y2 = x2*slope+b
+             * (x2,y2) = perpendicular
+             */
+            // ruler.moveTo(startPoint.x - direction[0] * 30, startPoint.y - direction[1] * 30)
+            // ruler.lineTo(startPoint.x + direction[0] * 30, startPoint.y + direction[1] * 30)
+            ctx.lineWidth = 3
+            ctx.setLineDash([5, 5])
+            ctx.strokeStyle = "black"
+            ctx.lineCap = "round"
+            ctx.stroke(ruler)
+            ctx.setLineDash([])
+            ctx.lineWidth = 1
+            ctx.strokeStyle = "white"
+            ctx.font = "30px Arial"
+            ctx.fillStyle = "black"
+            const text = (distance * drawer.pixel_width).toFixed(2) + "µm"
+            ctx.fillText(text, 30 + startPoint.x + ((endPoint.x - startPoint.x) / 2), startPoint.y + ((endPoint.y - startPoint.y) / 2))
+            ctx.strokeText(text, 30 + startPoint.x + ((endPoint.x - startPoint.x) / 2), startPoint.y + ((endPoint.y - startPoint.y) / 2))
+        }
+    },
+    init(instance) {
+        this.instance = instance
+        return this
+    }
+}
+
 const polygonTool = {
     name: "polygon",
     instance: null,
@@ -275,7 +429,6 @@ const rectTool = {
                 if (e.keyCode === 27) {
                     // User pressed ESC, we will cancel the drawing
                     drawer.currently_drawing = null
-                    // drawer.stateRestorer.cancel()
                     drawer.update()
                     this.info("start")
                 }
@@ -955,7 +1108,6 @@ export default {
      */
     set tool(name) {
         this.new_tool = this.tools[name]()
-        console.log("tool: ", name, this.new_tool, this.tools)
         this.set_canvas_pan(true)
         this.viewer.canvas.focus()
     },
@@ -973,9 +1125,17 @@ export default {
         return ""
     },
 
+    /**
+     *
+     */
+    pixel_width: 0,
+
     tools: {},
 
-    default_opacity: 0.3,
+    drawingStyle: {
+        region_opacity: 0.3,
+        line_weight: 1
+    },
 
     /**
      * Elements can be filtered so it won't render.
@@ -999,11 +1159,6 @@ export default {
      * The polygon currently being draw
      */
     currently_drawing: null,
-
-    /**
-     * Currently selected color, this is the color used during the preview and automatically added to the element
-     */
-    drawing_color: [5, 173, 240],
 
     /**
      * Throttle behavior for improving performance when there are too many elements to draw
@@ -1055,7 +1210,6 @@ export default {
 
     update: function () {
         // console.log("update called", this.annotations)
-        // todo change for a system in which, depending on the number of elements on the screen, the elements fade on mouse down and show again on mouse up
         if (this.ctx == null) return
 
         const ctx = this.ctx
@@ -1088,6 +1242,9 @@ export default {
         if (this.currently_editing != null)
             this.currently_editing.draw(ctx)
 
+        if (typeof this.new_tool.draw === "function")
+            this.new_tool.draw(ctx)
+
         this._lastUpdate = Date.now()
     },
 
@@ -1098,6 +1255,9 @@ export default {
                 break
             case "rect":
                 this._update_rect(annotation)
+                break
+            case "circle":
+                this._update_circle(annotation)
                 break
             case "brush":
                 this._update_brush(annotation)
@@ -1118,9 +1278,9 @@ export default {
         const startPoint = this._imagePointToCanvasPoint(points[0].x, points[0].y)
         path.lineTo(startPoint.x, startPoint.y)
         annotation.meta.path = path
-        ctx.fillStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.default_opacity})`
+        ctx.fillStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.drawingStyle.region_opacity})`
         ctx.strokeStyle = `rgb(${color_code})`
-        ctx.lineWidth = 1
+        ctx.lineWidth = this.drawingStyle.line_weight
         ctx.fill(path)
         ctx.stroke(path)
     },
@@ -1135,9 +1295,28 @@ export default {
         ctx.rect(position.x, position.y, limits.x - position.x, limits.y - position.y)
         annotation.meta._canvas_points = [position, limits]
         // console.log("_update_rect", position.x, position.y, position.x - limits.x, position.y - limits.y)
-        ctx.fillStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.default_opacity})`
+        ctx.fillStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.drawingStyle.region_opacity})`
         ctx.strokeStyle = `rgb(${color_code})`
-        ctx.lineWidth = 1
+        ctx.lineWidth = this.drawingStyle.line_weight
+        ctx.fill()
+        ctx.stroke()
+    },
+
+    _update_circle: function (annotation) {
+        const ctx = this.ctx
+        const color_code = this._gen_color(annotation.label.color)
+        ctx.beginPath()
+        const position = this._imagePointToCanvasPoint(annotation.geometry.points[0].x, annotation.geometry.points[0].y)
+        const radius = this._imagePointToCanvasPoint(annotation.geometry.points[1].x, annotation.geometry.points[1].y)
+        const radiusX = Math.abs(position.x - radius.x), radiusY = Math.abs(position.y - radius.y)
+        annotation.meta._canvas_points = [
+            {x: position.x - radiusX, y: position.y - radiusY},
+            {x: position.x + radiusX, y: position.y + radiusY}
+        ]
+        ctx.ellipse(position.x, position.y, radiusX, radiusY, 0, 2 * Math.PI, 0, false)
+        ctx.fillStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.drawingStyle.region_opacity})`
+        ctx.strokeStyle = `rgb(${color_code})`
+        ctx.lineWidth = this.drawingStyle.line_weight
         ctx.fill()
         ctx.stroke()
     },
@@ -1162,7 +1341,7 @@ export default {
         ctx.lineWidth = this._imagePointToCanvasPoint(annotation.geometry.size, 0).x - this._imagePointToCanvasPoint(0, 0).x
         ctx.lineCap = "round"
         ctx.lineJoin = "round"
-        ctx.strokeStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.default_opacity})`
+        ctx.strokeStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.drawingStyle.region_opacity})`
 
         const path = this._update_path(points)
 
@@ -1171,7 +1350,7 @@ export default {
     },
 
     _check_intersects: function (annotation, mousePosition) {
-        if (annotation.geometry.type === "rect") {
+        if (annotation.geometry.type === "rect" || annotation.geometry.type === "circle") {
             const point1 = annotation.meta._canvas_points[0]
             const point2 = annotation.meta._canvas_points[1]
             return mousePosition.x > point1.x && mousePosition.x < point2.x &&
@@ -1247,6 +1426,7 @@ export default {
                 viewportMax.x !== this._viewportLocation.max.x ||
                 viewportMax.y !== this._viewportLocation.max.y) {
                 // The viewport was changed, a update is needed
+                this.callback.onViewportChanged(this._viewportLocation)
                 this.update()
             }
 
@@ -1340,7 +1520,9 @@ export default {
             "polygon": () => polygonTool.init(this),
             "free": () => freeTool.init(this),
             "rect": () => rectTool.init(this),
+            "circle": () => circleTool.init(this),
             "brush": () => brushTool.init(this),
+            "ruler": () => rulerTool.init(this),
             "none": () => nullTool.init(this)
         }
         this.tool = this.enabled ? "polygon" : "none"

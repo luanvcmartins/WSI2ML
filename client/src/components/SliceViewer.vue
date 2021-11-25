@@ -40,14 +40,26 @@
             <v-icon>mdi-vector-rectangle</v-icon>
           </v-btn>
           <v-btn text icon
+                 @click="selected_tool = 'circle'"
+                 :color="'circle' === this.selected_tool ? 'primary' : 'grey'">
+            <v-icon>mdi-circle-outline</v-icon>
+          </v-btn>
+
+          <v-btn text icon
                  @click="selected_tool = 'free'"
                  :color="'free' === this.selected_tool ? 'primary' : 'grey'">
             <v-icon>mdi-lead-pencil</v-icon>
           </v-btn>
+
           <v-btn text icon
                  @click="selected_tool = 'brush'"
                  :color="'brush' === this.selected_tool ? 'primary' : 'grey'">
             <v-icon>mdi-brush</v-icon>
+          </v-btn>
+          <v-btn text icon
+                 @click="selected_tool = 'ruler'"
+                 :color="'ruler' === this.selected_tool ? 'primary' : 'grey'">
+            <v-icon>mdi-ruler</v-icon>
           </v-btn>
         </div>
 
@@ -100,20 +112,35 @@
         <v-btn text icon @click="zoom = 40">40x</v-btn>
       </div>
     </div>
+
+    <div class="toolbox ruler transparent">
+      <SliceViewerRuler :value="viewportLocation" :pixel-density="pixel_density"></SliceViewerRuler>
+    </div>
   </div>
 </template>
 
 <script>
     import OpenSeadragon from "openseadragon"
     import SliceDrawer from "../SliceDrawer";
+    import SliceViewerRuler from "./SliceViewerRuler";
+    import _ from "lodash"
 
     export default {
         name: "SliceViewer",
+        components: {SliceViewerRuler},
         computed: {
             task_type: function () {
                 return this.$store.state.session.type
+            },
+            pixel_density: function () {
+                // console.log("calculating pixel_density")
+                if (this.viewportLocation == null || this.slideProperties == null) return 0
+                const imgPixels = this.viewportLocation.max.x - this.viewportLocation.min.x
+                const imgPixelPerCanvasPixel = imgPixels / SliceDrawer.ctx.canvas.width
+                return (this.slideProperties.pixel_width * imgPixelPerCanvasPixel) * 1.2// why are we off by this amount? this is some seriously shade stuff
             }
         },
+
         data: () => {
             return {
                 selected_label: null,
@@ -121,6 +148,7 @@
                 selected_tool: "polygon",
                 editor_tool: "",
                 zoom: 0,
+                viewportLocation: null,
                 editing: {
                     element: null,
                     mode: "mover",
@@ -182,9 +210,12 @@
                 }
                 this.no_model_action = false
             },
-            regionOpacity: function (new_opacity) {
-                SliceDrawer.default_opacity = new_opacity
-                SliceDrawer.update()
+            drawingStyle: {
+                deep: true,
+                handler(new_style) {
+                    SliceDrawer.drawingStyle = new_style
+                    SliceDrawer.update()
+                }
             },
             "editing.mode": function (value) {
                 SliceDrawer.editorMode = value
@@ -196,13 +227,18 @@
                 this.no_model_action = false
             },
             tileSources: function (value) {
-                console.log("tileSources: ", value)
                 this.viewer.open(value)
+            },
+            slideProperties: {
+                immediate: true,
+                deep: true,
+                handler(new_value) {
+                    SliceDrawer.pixel_width = new_value.pixel_width
+                }
             }
         },
         methods: {
             editElement(element) {
-                console.log("editElement", element)
                 this.editing.element = element
                 this.no_model_action = true
                 SliceDrawer.editElement(element)
@@ -223,7 +259,7 @@
                     id: "seadragon-viewer",
                     tileSources: this.tileSources,
                     showNavigator: true,
-                    navigatorPosition: "BOTTOM_RIGHT",
+                    navigatorPosition: "TOP_RIGHT",
                     navigatorRight: "16px",
                     navigatorBottom: "16px",
                     navigatorHeight: "120px",
@@ -242,6 +278,10 @@
 
                 this.viewer = viewer
                 SliceDrawer.init(viewer, {
+                    onViewportChanged: (viewport) => {
+                        this.viewportLocation = viewport
+                        delegateCallback(this.drawEvents.onViewportChanged, viewport)
+                    },
                     onHover: (element) => {
                         delegateCallback(this.drawEvents.onHover, element)
                         // if (this.drawEvents != null && this.drawEvents.onHover != null)
@@ -312,8 +352,9 @@
             value: {type: Array},
             tileSources: {type: String},
             labelsVisibility: {type: Object},
-            regionOpacity: {type: Number},
-            drawEvents: {}
+            drawingStyle: {type: Object},
+            drawEvents: {},
+            slideProperties: {type: Object}
         }
     }
 </script>
@@ -332,6 +373,15 @@
     border-radius: 8px;
     background-color: #f1f1f1;
     padding: 8px;
+  }
+
+  .transparent {
+    background-color: transparent;
+  }
+
+  .ruler {
+    right: 32px;
+    bottom: 16px;
   }
 
   .drawing-tool-container {
