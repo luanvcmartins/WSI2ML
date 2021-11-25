@@ -125,9 +125,13 @@ def edit():
 
     # users removed from this task:
     for removed_task in (old_task_users - new_task_users):
-        db.session.query(models.UserTask).filter(
-            models.UserTask.user_id == removed_task and models.UserTask.task_id == task.id).delete()
-
+        if new_task['type'] == 0:
+            db.session.query(models.UserTask).filter(
+                models.UserTask.user_id == removed_task, models.UserTask.annotation_task_id == task.id).delete()
+        elif new_task['type'] == 1:
+            if new_task['type'] == 0:
+                db.session.query(models.UserTask).filter(
+                    models.UserTask.user_id == removed_task, models.UserTask.revision_task_id == task.id).delete()
     if new_task['type'] == 0:
         # wwe will only modify the slides if the task is annotation
         new_task_slides = set([x['id'] for x in new_task['slides']])
