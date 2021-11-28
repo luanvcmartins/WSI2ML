@@ -1,18 +1,21 @@
 <template>
   <v-app-bar app color="primary" dark>
 
-    <v-toolbar-title>WSL Annotation Tool</v-toolbar-title>
+    <v-toolbar-title>WSI Annotation Tool</v-toolbar-title>
 
     <v-spacer></v-spacer>
 
     <v-menu offset-y>
       <template v-slot:activator="{ on, attrs }">
         <v-card class="user-card"
-                light
+                dark
+                flat
+                outlined
+                color="primary lighten-1"
                 v-bind="attrs"
                 v-on="on">
           <v-card-text>
-            <v-icon class="mr-1">mdi-dots-horizontal-circle</v-icon>
+            <v-icon class="mr-1">mdi-dots-vertical-circle</v-icon>
             {{user_name}}
           </v-card-text>
         </v-card>

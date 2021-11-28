@@ -10,7 +10,7 @@
       </v-tab>
       <v-tab :disabled="task.id != null">
         <v-simple-checkbox disabled :value="task.type === 1"/>
-        Review
+        Revision
       </v-tab>
     </v-tabs>
     <v-tabs-items v-if="task.id == null" v-model="task.type">

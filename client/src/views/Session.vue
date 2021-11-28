@@ -19,7 +19,9 @@
         <template v-slot:extension>
           <v-tabs v-model="selected_tab">
             <v-tab>View</v-tab>
-            <v-tab>Annotations ({{labelled[current_slide.id].length}})</v-tab>
+            <v-tab v-if="labelled[current_slide.id] != null && labelled[current_slide.id].length > 0">Annotations
+              ({{labelled[current_slide.id].length}})
+            </v-tab>
           </v-tabs>
         </template>
       </v-toolbar>
@@ -31,7 +33,7 @@
             <v-layout row wrap>
               <v-flex cols="12" sm="12" md="6">
                 <v-card>
-                  <v-card-title>Region visibility by label</v-card-title>
+                  <v-card-title>Annotation visibility</v-card-title>
                   <div class="pl-3 pr-3 pb-3" style="max-height: 200px; overflow-y: auto">
                     <v-switch
                             class="mt-0"
@@ -76,9 +78,27 @@
                     associated with this task. Select the slide you want to work with below.
                   </div>
                   <div class="pl-3 pr-3 pb-3">
-                    <v-radio-group hide-details v-model="current_slide">
-                      <v-radio v-for="slide in slides" :label="slide.name" :value="slide"/>
-                    </v-radio-group>
+                    <!--                    <v-radio-group hide-details v-model="current_slide">-->
+                    <!--                      <v-radio v-for="slide in slides" :label="slide.name" :value="slide"/>-->
+                    <!--                    </v-radio-group>-->
+
+                    <v-list dense shaped>
+                      <v-list-item-group v-model="current_slide" color="orange" mandatory>
+                        <v-list-item two-line v-for="slide in slides" :key="slide.id" :value="slide">
+
+                          <v-list-item-content>
+                            <v-list-item-title v-text="slide.name"></v-list-item-title>
+                            <v-list-item-subtitle v-text="slide.properties.comment"></v-list-item-subtitle>
+                          </v-list-item-content>
+
+                          <v-list-item-action>
+                            <v-btn @click.stop="slideInfo(slide)" icon>
+                              <v-icon dark>mdi-information-outline</v-icon>
+                            </v-btn>
+                          </v-list-item-action>
+                        </v-list-item>
+                      </v-list-item-group>
+                    </v-list>
                   </div>
                 </v-card>
               </v-flex>
@@ -148,7 +168,7 @@
         <v-card-text>
           <div class="text-center font-weight-light">What is the correct label?</div>
           <v-chip-group v-model="editing.feedback.label_id" mandatory>
-            <v-chip filter v-for="label in project_labels" :value="label.id">{{label.name}}</v-chip>
+            <v-chip filter :key="label.id" v-for="label in project_labels" :value="label.id">{{label.name}}</v-chip>
           </v-chip-group>
         </v-card-text>
         <v-divider/>
@@ -284,6 +304,10 @@
             }
         },
         methods: {
+            slideInfo(slide) {
+                alert(slide.properties.comment)
+            },
+
             relabelScreenContinue() {
                 if (this.editing.feedback.feedback !== 2) {
                     this.saveFeedback()
@@ -327,8 +351,10 @@
             },
 
             onNewRegionDraw(annotation) {
+                console.log(annotation)
                 annotation.id = null // making sure to reset the id
                 annotation.slide_id = this.current_slide.id
+
                 this.$post("session/" + this.session_id + "/add_region", annotation)
                     .then(resp => {
                         // Add the new region to the list
@@ -360,12 +386,12 @@
                     console.log("editing before request: ", this.editing, this.original_data)
                     const editing = this.editing
                     const original_data = this.original_data
-                    editing.feedback.data = element.data
+                    editing.feedback.geometry = element.geometry
                     this.$post(`session/${this.session_id}/annotation_feedback`, this.editing)
                         .then(resp => {
                             console.log("editing", editing, "original_data", original_data)
                             console.log("resp:", resp)
-                            editing.data = resp.data
+                            editing.geometry = resp.geometry
                             editing.feedback.id = resp.feedback.id
                             this.feedback_dialog = false
                             SliceDrawer.update()
@@ -462,7 +488,7 @@
                     case "wrong-region":
                         this.editing.feedback.feedback = 2
                         this.feedback_dialog = true
-                        this.original_data = annotation.data
+                        this.original_data = annotation.geometry
                         break
                 }
             },

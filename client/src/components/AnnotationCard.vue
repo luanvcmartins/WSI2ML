@@ -1,15 +1,17 @@
 <template>
   <v-card @click="peep" :id="`region-${value.id}`" min-width="200" outlined>
-    <v-card-title>
-      <v-avatar size="16" class="mr-2"
-                :color="genColor(value.label.color)" @click="peep"/>
-      {{value.label.name}}
+    <v-card-title class="title-nowrap" @click.stop>
+      <v-avatar size="18" class="mr-2" :color="genColor(value.label.color)"/>
+      <v-text-field v-if="task_type === 0 && updating_label" v-model="value.title"
+                    label="Annotation title"></v-text-field>
+      <span v-else>{{card_title}}</span>
     </v-card-title>
-
-    <v-card-text v-if="updating_label">
+    <v-card-text v-if="updating_label" @click.stop>
       <span v-if="value.meta.importing != null" class="importing-pending-warning">Pending import</span>
+      <v-text-field v-if="task_type === 0" v-model="value.description" label="Description"></v-text-field>
       <v-chip-group v-model="value.label" mandatory column @change="updateRender">
-        <v-chip :color="genColor(label.color)" outlined v-for="label in project_labels" filter :value="label" :key="label.id">
+        <v-chip :color="genColor(label.color)" outlined v-for="label in project_labels" filter :value="label"
+                :key="label.id">
           {{label.name}}
         </v-chip>
       </v-chip-group>
@@ -21,7 +23,6 @@
       </div>
       <div v-else>
         <p class="ma-0">
-          <v-icon>mdi-check</v-icon>
           {{feedback[value.feedback.feedback]}}
         </p>
         <p class="ma-0">Correct label:
@@ -32,6 +33,7 @@
           {{drawing_swapped ? 'original' : 'expected'}} region</a></p>
       </div>
     </v-card-text>
+    <v-card-text v-else-if="value.description != null && !updating_label">{{value.description}}</v-card-text>
     <v-divider/>
     <v-card-actions v-if="task_type === 0">
       <v-spacer/>
@@ -90,6 +92,12 @@
                     labels[data[i].id] = data[i]
                 }
                 return labels
+            },
+            card_title: function () {
+                if (this.value.title != null && this.value.title !== "")
+                    return this.value.title
+                else
+                    return this.value.label.name
             }
         },
         watch: {
@@ -122,9 +130,9 @@
                     {text: "Wrong region", func: this.feedbackWrongRegion},
                 ],
                 feedback: [
-                    "Correct",
-                    "Wrong label",
-                    "Wrong region"
+                    "✓ Correct",
+                    "✗ Wrong label",
+                    "✗ Wrong region"
                 ]
             }
         },
@@ -206,5 +214,13 @@
     padding: 0 10px;
     border-radius: 10px;
     font-size: 12px;
+  }
+
+  .title-nowrap {
+    display: block;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    width: 100%;
+    white-space: nowrap;
   }
 </style>

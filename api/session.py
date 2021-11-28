@@ -1,3 +1,5 @@
+from typing import Any
+
 from sqlalchemy import select
 import json
 import models
@@ -78,6 +80,10 @@ def list_sessions():
     } for key, value in sessions.items()])
 
 
+def get_default(item, key, default: Any = ""):
+    return item[key] if key in item else default
+
+
 @session_api.route("<string:session_id>/add_region", methods=['POST'])
 def add_region(session_id):
     region_data = request.json
@@ -85,7 +91,10 @@ def add_region(session_id):
         user_task_id=session_id,
         slide_id=region_data['slide_id'],
         label_id=region_data['label']['id'],
-        data=region_data['geometry']
+        data=region_data['geometry'],
+        title=get_default(region_data, 'title'),
+        description=get_default(region_data, 'description'),
+        properties=get_default(region_data, 'properties', {})
     )
     db.session.add(region)
     db.session.commit()
@@ -98,6 +107,9 @@ def edit_region(session_id):
     region = models.Annotation.query.filter_by(id=region_data['id']).first()
     region.label_id = region_data['label']['id']
     region.data = region_data['geometry']
+    region.title = region_data['title']
+    region.description = region_data['description']
+    region.properties = region_data['properties']
     db.session.commit()
     return jsonify(region.to_dict())
 

@@ -393,7 +393,7 @@ const rectTool = {
                     drawer.currently_drawing = {
                         label: drawer.current_label,
                         geometry: this.geometry,
-                        meta: {}
+                        meta: {},
                     }
                     this.info("save", "cancel")
                 } else {
@@ -540,7 +540,7 @@ const brushTool = {
                     drawer.currently_drawing = {
                         label: drawer.current_label,
                         geometry: this.geometry,
-                        meta: {_enabled: true}
+                        meta: {_enabled: true},
                     }
                     // drawer.stateRestorer = StateRestorer.init(drawer, this.geometry)
                 }

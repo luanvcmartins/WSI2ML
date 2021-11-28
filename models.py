@@ -230,6 +230,9 @@ class Annotation(db.Model):
     user_task_id = db.Column(db.Integer, db.ForeignKey("user_tasks.id"))
     slide_id = db.Column(db.Text, db.ForeignKey("slides.id"))
     label_id = db.Column(db.Integer, db.ForeignKey("label.id"))
+    title = db.Column(db.Text)
+    description = db.Column(db.Text)
+    properties_json = db.Column(db.Text())
     data_json = db.Column(db.Text)
     label = db.relationship("Label")
     slide = db.relationship("Slide")
@@ -242,14 +245,25 @@ class Annotation(db.Model):
     def data(self, value):
         self.data_json = json.dumps(value)
 
+    @property
+    def properties(self):
+        return json.loads(self.properties_json) if self.properties_json is not None else {}
+
+    @properties.setter
+    def properties(self, value):
+        self.properties_json = json.dumps(value)
+
     def to_dict(self, feedback=None, with_feedback=False):
         annotation = {
             "id": self.id,
+            "title": self.title,
+            "description": self.description,
             "user_task_id": self.user_task_id,
             "slide_id": self.slide_id,
             "label": self.label.to_json(),
             "geometry": self.data,
-            "meta": {}
+            "meta": {},
+            "properties": self.properties
         }
         if with_feedback:
             annotation['feedback'] = feedback.to_dict() if feedback is not None else \

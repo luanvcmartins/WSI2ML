@@ -13,7 +13,7 @@
               width="40"
       />
 
-      <v-toolbar-title>WSL Annotation Tool</v-toolbar-title>
+      <v-toolbar-title>WSI Annotation Tool</v-toolbar-title>
     </div>
 
     <v-spacer></v-spacer>
