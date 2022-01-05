@@ -1,10 +1,10 @@
 <template>
   <v-container>
     <v-subheader>Segmentation and annotation tasks</v-subheader>
-    <v-container>
-      <v-layout row wrap>
-        <v-flex cols="12" sm="12" md="6" :key="task.id" v-for="(task, idx) in tasks.annotations">
-          <v-card class="ma-2">
+    <v-container grid-list-sm>
+      <v-row>
+        <v-col cols="12" sm="12" md="6" :key="task.id" v-for="(task, idx) in tasks.annotations">
+          <v-card>
             <v-card-text>
               <div>{{task.project.name}}</div>
               <div v-if="task.name != null && task.name !== ''">
@@ -34,8 +34,8 @@
               </v-btn>
             </v-card-actions>
           </v-card>
-        </v-flex>
-      </v-layout>
+        </v-col>
+      </v-row>
     </v-container>
     <v-subheader v-if="tasks.review != null && tasks.review.length > 0">Revisions</v-subheader>
     <v-container>

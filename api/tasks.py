@@ -1,11 +1,13 @@
 import analyzer.session
+import hashlib
 import models
 import uuid
 import os
-from flask import Blueprint, jsonify, request, make_response
+from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, current_user
 from app import db
-import hashlib
+from itertools import combinations, cycle
+from random import shuffle
 
 task_api = Blueprint("task_api", __name__)
 
@@ -69,9 +71,70 @@ def new_revision_task(new_task):
     return task
 
 
+@task_api.route("new_batch", methods=["POST"])
+@jwt_required()
+def new_batch():
+    if not current_user.is_admin:
+        return jsonify({"msg": 'Not an admin!'}), 401
+    batch = request.json
+    users = batch['assigned']
+    files = []
+    for folder in batch['folders']:
+        for file in os.listdir(folder["id"]):
+            full_path = os.path.join(folder["id"], file)
+            if os.path.isfile(full_path):
+                files.append({
+                    "id": hashlib.md5(full_path.encode()).hexdigest(),
+                    "name": file,
+                    "file": full_path
+                })
+
+    # we will combine users into unique groups to assign them to the task:
+    users_group = list(combinations(users, batch['concurrent']))
+    # we will shuffle the group as to avoid assigning tasks too unfairly (many users for fewer tasks)
+    shuffle(users_group)
+    only_new = batch['only_new']
+
+    new_task_counter, new_user_task_counter = 0, {user['name']: 0 for user in users}
+    for user_group, file in zip(cycle(users_group), files):
+        # we will first add the slide to the database, this is important as we may want to skip this
+        # item if the file is known and the user selected 'only_new'
+        m_slide = models.Slide.query.get(file['id'])
+        if m_slide is None:
+            properties = analyzer.session.get_slide_properties(file['file'])
+            m_slide = models.Slide(id=file['id'], name=file['name'], file=file['file'], properties=properties)
+        else:
+            # we already know this file, we will skip it entirely if the user selected 'only_new':
+            if only_new:
+                continue
+        # we will register the new task and associate the slide to it:
+        task = models.AnnotationTask(
+            project_id=batch['project_id'],
+            name=f"{batch['name']} - {file['name']}" if batch['name'] != '' else ''
+        )
+        task.slides.append(m_slide)
+        db.session.add(task)
+        db.session.commit()
+
+        # we will assign the users to this task:
+        for user in user_group:
+            user_task = models.UserTask(
+                id=str(uuid.uuid4()),
+                user_id=user['id'],
+                completed=False,
+                annotation_task_id=task.id,
+                type=0
+            )
+            new_user_task_counter[user['name']] += 1
+            db.session.add(user_task)
+        new_task_counter += 1
+    db.session.commit()
+    return jsonify({"new_tasks": new_task_counter, "user_tasks": new_user_task_counter})
+
+
 @task_api.route("list", methods=['GET'])
 @jwt_required()
-def list():
+def task_list():
     annotation_tasks = db.session.query(models.AnnotationTask, models.UserTask) \
         .join(models.UserTask, models.UserTask.annotation_task_id == models.AnnotationTask.id) \
         .filter(models.UserTask.user_id == current_user.id).all()
@@ -160,6 +223,7 @@ def remove():
     task = request.json
     if task['type'] == 0:
         db.session.query(models.AnnotationTask).filter(models.AnnotationTask.id == task['id']).delete()
+        db.session.execute("DELETE FROM task_slides WHERE task_id = :task_id", {"task_id": task['id']})
         db.session.query(models.UserTask).filter(models.UserTask.annotation_task_id == task['id']).delete()
     elif task['type'] == 1:
         db.session.query(models.RevisionTask).filter(models.RevisionTask.id == task['id']).delete()
@@ -196,9 +260,47 @@ def files_within(folder):
     return folder_content
 
 
+def is_new_file(full_file_path):
+    f_hash = hashlib.md5(full_file_path.encode()).hexdigest()
+    return models.Slide.query.get(f_hash) is None
+
+
+def folders_within(folder):
+    folder_content = []
+    for x in os.listdir(folder):
+        full_path = os.path.join(folder, x)
+        if not os.path.isfile(full_path):
+            files = [os.path.join(full_path, x) for x in os.listdir(full_path) if
+                     os.path.isfile(os.path.join(full_path, x))]
+            new_files = sum(map(is_new_file, files))
+            folder_content.append({
+                "id": full_path,
+                "name": x,
+                "total": len(files),
+                "new": new_files,
+                "children": folders_within(full_path)
+            })
+    return folder_content
+
+
 @task_api.route("files", methods=['GET'])
 @jwt_required()
 def files():
     project_id = request.args['project_id']
     project = db.session.query(models.Project).filter(models.Project.id == project_id).first()
     return jsonify(files_within(project.folder))
+
+
+@task_api.route("folders", methods=["GET"])
+def folders():
+    project_id = request.args['project_id']
+    project = db.session.query(models.Project).filter(models.Project.id == project_id).first()
+    files = [os.path.join(project.folder, x) for x in os.listdir(project.folder) if
+             os.path.isfile(os.path.join(project.folder, x))]
+    return jsonify([{
+        "id": project.folder,
+        "name": "Project's folder",
+        "total": len(files),
+        "new": sum(map(is_new_file, files)),
+        "children": folders_within(project.folder)
+    }])

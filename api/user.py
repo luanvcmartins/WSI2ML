@@ -18,7 +18,13 @@ def new():
         name=new_user['name'],
         username=new_user['username'],
         password=new_user['password'],
-        is_admin=new_user['is_admin']
+        is_admin=new_user['is_admin'],
+
+        manages_apps=new_user['manages_apps'],
+        manages_users=new_user['manages_users'],
+        manages_tasks=new_user['manages_tasks'],
+        manages_projects=new_user['manages_projects'],
+        can_export=new_user['can_export']
     )
     db.session.add(user)
     db.session.commit()

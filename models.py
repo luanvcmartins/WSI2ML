@@ -15,6 +15,7 @@ class User(UserMixin, db.Model):
     manages_users = db.Column(db.Boolean)
     manages_tasks = db.Column(db.Boolean)
     manages_projects = db.Column(db.Boolean)
+    can_export = db.Column(db.Boolean)
     is_bot = db.Column(db.Boolean)
 
     @property
@@ -35,6 +36,7 @@ class User(UserMixin, db.Model):
         self.manages_users = update['manages_users']
         self.manages_tasks = update['manages_tasks']
         self.manages_projects = update['manages_projects']
+        self.can_export = update['can_export']
         if 'password' in update:
             self.password = update['password']
 
@@ -54,6 +56,7 @@ class User(UserMixin, db.Model):
             "manages_users": self.manages_users,
             "manages_tasks": self.manages_tasks,
             "manages_projects": self.manages_projects,
+            "can_export": self.can_export,
             "is_bot": self.is_bot
         }
 

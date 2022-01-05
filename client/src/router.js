@@ -29,7 +29,7 @@ const new_router = new Router({
             }
         },
         {
-            path: '/main/tasks',
+            path: '/tasks',
             name: 'tasks',
             components: {
                 default: Tasks,
@@ -52,7 +52,7 @@ const new_router = new Router({
             }
         },
         {
-            path: '/main/admin',
+            path: '/admin',
             name: 'admin',
             components: {
                 default: Admin,
@@ -64,11 +64,20 @@ const new_router = new Router({
             }
         },
         {
+            path: "/export",
+            name: "export",
+            components: {
+                default: () => import("./views/Export.vue"),
+                app_bar: AdminAppBar
+            },
+            meta: {
+                auth: true,
+                is_admin: false
+            }
+        },
+        {
             path: '/login',
             name: 'login',
-            // route level code-splitting
-            // this generates a separate chunk (about.[hash].js) for this route
-            // which is lazy-loaded when the route is visited.
             component: () => import("./views/Login.vue")
         },
         {

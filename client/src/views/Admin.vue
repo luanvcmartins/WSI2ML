@@ -47,6 +47,7 @@
               <v-card-actions>
                 <v-spacer></v-spacer>
                 <v-btn text @click="new_task">New task</v-btn>
+                <v-btn text @click="new_batch">New batch</v-btn>
               </v-card-actions>
             </v-expansion-panel-content>
           </v-expansion-panel>
@@ -131,6 +132,7 @@
       </v-toolbar>
       <v-container>
         <user-editor v-if="mode === 'user'" v-model="editing" v-on:done="done"/>
+        <task-batch v-else-if="mode === 'batch'" v-model="editing" v-on:done="done"/>
         <project-editor v-else-if="mode === 'project'" v-model="editing" v-on:done="done"/>
         <task-editor v-else-if="mode === 'task'" v-model="editing" v-on:done="done"/>
       </v-container>
@@ -143,10 +145,11 @@
     import UserEditor from "../components/UserEditor";
     import ProjectEditor from "../components/ProjectEditor";
     import TaskEditor from "../components/TaskEditor";
+    import TaskBatch from "../components/TaskBatch";
 
     export default {
         name: "Admin",
-        components: {TaskEditor, ProjectEditor, UserEditor},
+        components: {TaskBatch, TaskEditor, ProjectEditor, UserEditor},
         watch: {
             editing: function (new_value, old_value) {
                 // if (old_value != null && old_value.id == null) {
@@ -257,6 +260,11 @@
                     manages_projects: false
                 }
                 this.mode = "user"
+                this.drawer = true
+            },
+
+            new_batch(){
+                this.mode = "batch"
                 this.drawer = true
             },
 

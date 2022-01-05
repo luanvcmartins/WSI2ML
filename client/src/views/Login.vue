@@ -45,7 +45,7 @@
                         if (resp.token != null) {
                             // Successfully login, we have a JWT token
                             this.$store.commit("login", resp)
-                            this.$router.push("/main/tasks")
+                            this.$router.push("/tasks")
                         }
                     })
                     .catch(err => {
