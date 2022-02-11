@@ -53,6 +53,19 @@ def list():
     return jsonify([x.to_json() for x in models.User.query.all()])
 
 
+@user_api.route("remove")
+@jwt_required()
+def remove():
+    logged_user = current_user
+    if not logged_user.manages_users:
+        return jsonify({"msg": "Not an admin!"}), 401
+    user_id = request.args['user_id']
+    models.User.query.filter(models.User.id == user_id).delete()
+    db.session.execute("DELETE FROM user_tasks WHERE user_id = :user_id", {"user_id": user_id})
+    db.session.commit()
+    return jsonify({"success": True})
+
+
 @user_api.route("login", methods=["POST"])
 def login():
     data = request.json

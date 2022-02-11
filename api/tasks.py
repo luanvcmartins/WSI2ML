@@ -137,11 +137,25 @@ def new_batch():
 def task_list():
     annotation_tasks = db.session.query(models.AnnotationTask, models.UserTask) \
         .join(models.UserTask, models.UserTask.annotation_task_id == models.AnnotationTask.id) \
-        .filter(models.UserTask.user_id == current_user.id).all()
+        .filter(models.UserTask.user_id == current_user.id) \
+        .order_by(models.UserTask.completed).all()
     review_tasks = db.session.query(models.RevisionTask, models.UserTask) \
         .join(models.UserTask, models.UserTask.revision_task_id == models.RevisionTask.id) \
-        .filter(models.UserTask.user_id == current_user.id).all()
+        .filter(models.UserTask.user_id == current_user.id) \
+        .order_by(models.UserTask.completed).all()
+    annotation_tasks = list(annotation_tasks)
+    review_tasks = list(review_tasks)
     return jsonify({
+        "annotation_status": {
+            "next": annotation_tasks[0][0].to_dict(),
+            "done": len([task for task in annotation_tasks if task[1].completed]),
+            "total": len(annotation_tasks)
+        },
+        "review_status": {
+            "next": review_tasks[0][0].to_dict(),
+            "done": len([task for task in review_tasks if task[1].completed]),
+            "total": len(review_tasks)
+        },
         "annotations": [{**x[1].to_dict(), **x[0].to_dict()} for x in annotation_tasks],
         "review": [{**x[1].to_dict(), **x[0].to_dict()} for x in review_tasks]
     })

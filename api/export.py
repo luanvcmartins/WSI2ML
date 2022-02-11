@@ -4,6 +4,8 @@ import models
 import os, os.path
 import json
 import zipfile
+import math
+import numpy as np
 from flask import Blueprint, jsonify, request, current_app, Response
 from app import db
 
@@ -127,8 +129,28 @@ def review_by_task():
 
 
 def create_polygon(annotation):
-    annotation_points = [[x['x'], x['y']] for x in annotation.data['points']]
-    annotation_points.append([annotation.data['points'][0]['x'], annotation.data['points'][0]['y']])
+    if annotation.data["type"] == "rect":
+        # casting rect annotation to expected Polygon format
+        point1, point2 = annotation.data['points']
+        annotation_points = [[point1['x'], point1['y']],
+                             [point2['x'], point1['y']],
+                             [point2['x'], point2['y']],
+                             [point1['x'], point2['y']],
+                             [point1['x'], point1['y']]]
+    elif annotation.data["type"] == "circle":
+        # casting circle annotations to polygons
+        point1, point2 = annotation.data['points']
+        width, height = point1['x'] - point2['x'], point1['y'] - point2['y']
+        radius = height / 2
+        sample = lambda t: [radius * np.cos(t) + point1['x'], radius * np.sin(t) + point1['y']]
+        sample_points = int(20 + (2 * radius))
+        rate = 2 * np.pi / sample_points
+        annotation_points = [sample(rate * (t % sample_points)) for t in range(sample_points + 1)]
+    else:
+        # converting Poygons annotations to the expected format
+        annotation_points = [[x['x'], x['y']] for x in annotation.data['points']]
+        annotation_points.append([annotation.data['points'][0]['x'], annotation.data['points'][0]['y']])
+
     return {
         "type": "Feature",
         "geometry": {
@@ -184,9 +206,10 @@ def filter_annotations(user_task_filters, annotations):
 @export_api.route("by_task", methods=["POST"])
 def export_task():
     exp_annotation = request.json
+    only_revised = request.args['only_revised'] == 'true'
     geojson = {}
     for user_task_id, user_task_filters in exp_annotation.items():
-        filtering_annotations = len(user_task_filters) > 0
+        filtering_annotations = len(user_task_filters) > 0 or only_revised
         ut_annotations = models.Annotation.query.filter(models.Annotation.user_task_id == user_task_id).all()
         allowed_annotations = filter_annotations(user_task_filters,
                                                  set(x.id for x in ut_annotations)) if filtering_annotations else None
@@ -239,11 +262,12 @@ def export_task():
 @export_api.route("count", methods=['POST'])
 def count():
     exp_annotation = request.json
+    only_revised = request.args['only_revised'] == 'true'
     counting = {}
     for user_task_id, user_task_filters in exp_annotation.items():
         allowed_annotations = set(
             x.id for x in models.Annotation.query.filter(models.Annotation.user_task_id == user_task_id).all())
-        if len(user_task_filters) > 0:
+        if len(user_task_filters) > 0 or only_revised:
             allowed_annotations = set(filter_annotations(user_task_filters, allowed_annotations).keys())
         counting[user_task_id] = len(allowed_annotations)
     return jsonify(counting)

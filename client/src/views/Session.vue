@@ -15,7 +15,7 @@
             v-on:edit-draw="onEditRegionDraw"/>
     <side-window>
       <v-toolbar dense fixed color="grey lighten-4">
-        <v-toolbar-title>{{task_type === 0 ? "Labelling task" : "Review task"}}</v-toolbar-title>
+        <v-toolbar-title>{{task_type === 0 ? "Annotation task" : "Review task"}}</v-toolbar-title>
         <template v-slot:extension>
           <v-tabs v-model="selected_tab">
             <v-tab>View</v-tab>

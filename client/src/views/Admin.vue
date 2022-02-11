@@ -66,12 +66,7 @@
                   <v-icon small class="mr-2" @click="edit_user(item)">
                     mdi-pencil
                   </v-icon>
-                  <v-tooltip bottom>
-                    <template v-slot:activator="{ on, attrs }">
-                      <v-icon small v-bind="attrs" v-on="on" @click> mdi-delete</v-icon>
-                    </template>
-                    <span>Not implemented</span>
-                  </v-tooltip>
+                  <v-icon small @click="remove_user(item)">mdi-delete</v-icon>
                 </template>
               </v-data-table>
               <v-card-actions>
@@ -263,7 +258,7 @@
                 this.drawer = true
             },
 
-            new_batch(){
+            new_batch() {
                 this.mode = "batch"
                 this.drawer = true
             },
@@ -273,6 +268,15 @@
                 this.editing = user
                 this.mode = "user"
                 this.drawer = true
+            },
+
+            remove_user(user) {
+                if (confirm("Are sure you want to remove this user?"))
+                    this.$get("user/remove?user_id=" + user.id)
+                        .then(res => {
+                            this.load_users()
+                        })
+                        .catch(err => alert(err))
             },
 
             new_project() {

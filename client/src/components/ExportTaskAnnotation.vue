@@ -17,57 +17,64 @@
         <template v-slot:extension>
           <div class="text-center full-width" style="width: 100%">
             <div class="ma-1 grey--text text--lighten-2 text-h4">Exporting annotations</div>
+
+            <p>
+              <v-menu v-if="annotators != null">
+                <!--                  @click="selectAll"-->
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn rounded outlined
+                         v-bind="attrs"
+                         v-on="on"
+                         class="ma-1">
+                    Select annotations by...
+                  </v-btn>
+
+                </template>
+                <v-list>
+                  <v-list-item @click="selectAll()">
+                    <v-list-item-title>Everyone</v-list-item-title>
+                  </v-list-item>
+                  <v-divider></v-divider>
+                  <v-list-item
+                          v-for="(name, index) in Object.keys(annotators)"
+                          :key="index"
+                          @click="selectAll(annotators[name])">
+                    <v-list-item-title>{{ name }}</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+              <v-menu v-if="reviewers != null">
+                <template v-slot:activator="{ on, attrs }">
+                  <v-btn rounded outlined
+                         v-bind="attrs"
+                         v-on="on"
+                         class="ma-1">
+                    Filter revisions by...
+                  </v-btn>
+
+                </template>
+                <v-list>
+                  <v-list-item>
+                    <v-list-item-icon>
+                      <v-simple-checkbox v-model="only_revised"/>
+                    </v-list-item-icon>
+                    <v-list-item-title>Only revised</v-list-item-title>
+                  </v-list-item>
+                  <v-list-item
+                          v-for="(name, index) in Object.keys(reviewers)"
+                          :key="index"
+                          @click="selectReviewer(reviewers[name])">
+                    <v-list-item-title>{{ name }}</v-list-item-title>
+                  </v-list-item>
+                </v-list>
+              </v-menu>
+            </p>
             <div class="ma-1 grey--text text--lighten-1">Exporting {{total_annotations}} annotations.</div>
-            <div class="mt-1">
+            <div class="mt-1 mb-2">
               <p>
                 <v-btn :disabled="total_annotations === 0" rounded @click="exportAnnotations" outlined x-large>
                   Export annotations
                 </v-btn>
-              </p>
-              <p>
-                <v-menu v-if="annotators != null">
-                  <!--                  @click="selectAll"-->
-                  <template v-slot:activator="{ on, attrs }">
-                    <v-btn rounded outlined
-                           v-bind="attrs"
-                           v-on="on"
-                           class="ma-1">
-                      Select annotations by...
-                    </v-btn>
-
-                  </template>
-                  <v-list>
-                    <v-list-item @click="selectAll()">
-                      <v-list-item-title>Everyone</v-list-item-title>
-                    </v-list-item>
-                    <v-divider></v-divider>
-                    <v-list-item
-                            v-for="(name, index) in Object.keys(annotators)"
-                            :key="index"
-                            @click="selectAll(annotators[name])">
-                      <v-list-item-title>{{ name }}</v-list-item-title>
-                    </v-list-item>
-                  </v-list>
-                </v-menu>
-                <v-menu v-if="reviewers != null">
-                  <template v-slot:activator="{ on, attrs }">
-                    <v-btn rounded outlined
-                           v-bind="attrs"
-                           v-on="on"
-                           class="ma-1">
-                      Filter revisions by...
-                    </v-btn>
-
-                  </template>
-                  <v-list>
-                    <v-list-item
-                            v-for="(name, index) in Object.keys(reviewers)"
-                            :key="index"
-                            @click="selectReviewer(reviewers[name])">
-                      <v-list-item-title>{{ name }}</v-list-item-title>
-                    </v-list-item>
-                  </v-list>
-                </v-menu>
               </p>
             </div>
           </div>
@@ -165,6 +172,9 @@
             value: function (new_value) {
                 this.dialog = new_value
             },
+            only_revised: function (new_value) {
+                this.count()
+            }
         },
         data() {
             return {
@@ -172,6 +182,7 @@
                 exporting: {},
                 annotation_counts: {},
                 dialog: false,
+                only_revised: false,
                 annotated_selected: {}
             }
         },
@@ -233,7 +244,8 @@
                     this.annotation_counts[annotation.user_task_id] = 0
                 } else {
                     this.exporting[annotation.user_task_id] = []
-                    this.$set(this.annotation_counts, annotation.user_task_id, annotation.annotation_count)
+                    if (!this.only_revised)
+                        this.$set(this.annotation_counts, annotation.user_task_id, annotation.annotation_count)
                 }
 
                 // If we don't have the reviews yet (only the first access), get the list of reviews
@@ -265,7 +277,7 @@
                 this.count()
             },
             exportAnnotations() {
-                this.$post("export/by_task", this.exporting, {responseType: 'blob'})
+                this.$post("export/by_task?only_revised=" + this.only_revised, this.exporting, {responseType: 'blob'})
                     .then(res => {
                         const url = window.URL.createObjectURL(new Blob([res]))
                         const link = document.createElement('a')
@@ -280,7 +292,7 @@
             },
             count() {
                 setTimeout(() => {
-                    this.$post("export/count", this.exporting)
+                    this.$post("export/count?only_revised=" + this.only_revised, this.exporting)
                         .then(res => this.annotation_counts = res)
                         .catch(err => alert(err))
                 }, 1000)

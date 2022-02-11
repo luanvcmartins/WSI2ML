@@ -13,6 +13,7 @@
       <v-check-chip v-model="user.manages_tasks">Manage tasks</v-check-chip>
       <v-check-chip v-model="user.manages_projects">Manage projects</v-check-chip>
       <v-check-chip v-model="user.can_export">Can export annotations</v-check-chip>
+      <v-check-chip v-model="user.access_overview">Access overview</v-check-chip>
     </div>
     <!--    </v-chip-group>-->
     <v-card-actions>

@@ -1,6 +1,7 @@
 import models
 import os, os.path
 from flask import Blueprint, jsonify, request, current_app
+from flask_jwt_extended import jwt_required, current_user
 from app import db
 
 project_api = Blueprint("project_api", __name__)
@@ -88,5 +89,49 @@ def remove_label():
 
 
 @project_api.route("list")
-def list():
+def list_projects():
     return jsonify([x.to_json() for x in models.Project.query.all()])
+
+
+@project_api.route("progress")
+@jwt_required()
+def general_progress():
+    if not current_user.access_overview:
+        return jsonify({"msg": "Not allowed"}), 401
+
+    progress = []
+    projects = models.Project.query.all()
+    for project in projects:
+        project_progress = list(db.session.execute(
+            "SELECT annotation_tasks.id, COUNT(CASE WHEN completed=1 THEN 1 END) as completed, count(annotation_tasks.id) as total "
+            "FROM user_tasks, annotation_tasks "
+            "WHERE user_tasks.annotation_task_id = annotation_tasks.id "
+            "AND project_id = :project_id GROUP BY annotation_tasks.id",
+            {"project_id": project.id}))
+        users_progress = list(db.session.execute(
+            "SELECT users.name, COUNT(CASE WHEN completed=1 THEN 1 END) as completed, count(*) as total "
+            "FROM user_tasks, annotation_tasks, users WHERE "
+            "user_tasks.annotation_task_id = annotation_tasks.id "
+            "AND users.id = user_tasks.user_id "
+            "AND annotation_tasks.project_id = :project_id GROUP BY user_tasks.user_id",
+            {"project_id": project.id}))
+        completed_tasks = len([x for x in project_progress if x[1] == x[2]])
+        progress.append({
+            "id": project.id,
+            "name": project.name,
+            "general": {
+                "completed": completed_tasks,
+                "total": len(project_progress),
+            },
+            "user": {
+                "completed": sum([x[1] for x in project_progress]),
+                "total": sum([x[2] for x in project_progress])
+            },
+            "individual": [{
+                "name": user[0],
+                "completed": user[1],
+                "total": user[2]
+            } for user in users_progress]
+        })
+
+    return jsonify(progress)

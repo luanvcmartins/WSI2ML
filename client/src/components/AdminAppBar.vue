@@ -30,6 +30,7 @@
     <!--    <v-spacer></v-spacer>-->
     <template v-slot:extension>
       <v-tabs align-with-title>
+        <v-tab v-if="access_overview" to="/overview">Overview</v-tab>
         <v-tab to="/tasks">Tasks</v-tab>
         <v-tab v-if="can_export" to="/export">Export</v-tab>
         <v-tab v-if="is_admin" to="/admin">Management</v-tab>
@@ -46,9 +47,13 @@
                 const user = this.$store.state.user
                 return user.manages_apps || user.manages_users || user.manages_tasks || user.manages_projects
             },
-            can_export: function(){
+            can_export: function () {
                 const user = this.$store.state.user
                 return user.can_export
+            },
+            access_overview: function () {
+                const user = this.$store.state.user
+                return user.access_overview
             },
             user_name: function () {
                 return this.$store.state.user.name

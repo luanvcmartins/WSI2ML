@@ -76,6 +76,17 @@ const new_router = new Router({
             }
         },
         {
+            path: "/overview",
+            name: "overview",
+            components: {
+                default: () => import("./views/TaskOverview.vue"),
+                app_bar: AdminAppBar
+            },
+            meta: {
+                auth: true
+            }
+        },
+        {
             path: '/login',
             name: 'login',
             component: () => import("./views/Login.vue")
