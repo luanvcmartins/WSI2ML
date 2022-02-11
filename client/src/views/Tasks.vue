@@ -20,7 +20,7 @@
           </v-col>
         </v-row>
       </v-scale-transition>
-      <v-row>
+      <v-row v-if="tasks.annotations != null && tasks.annotations.length > 0">
         <v-subheader class="text-h4 mt-2">Segmentation and annotation tasks</v-subheader>
       </v-row>
       <v-row v-if="tasks.annotations != null && tasks.annotations.length > 0">
@@ -57,7 +57,7 @@
           </v-data-table>
         </v-col>
       </v-row>
-      <v-row>
+      <v-row v-if="tasks.review != null && tasks.review.length > 0">
         <v-subheader class="text-h4 mt-2">Annotation revision tasks</v-subheader>
       </v-row>
       <v-row v-if="tasks.review != null && tasks.review.length > 0">

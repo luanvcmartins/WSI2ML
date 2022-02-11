@@ -82,77 +82,73 @@
       </v-toolbar>
       <v-card-text>
         <v-container>
-          <v-row>
-          </v-row>
-          <v-row>
-            <v-col v-for="task in tasks" :key="task.id" md="6">
-              <v-card>
-                <v-card-title
-                        v-text="task.name == null ? task.name : `${task.slides.length} slide(s) annotation task`"/>
-                <v-chip-group class="pl-3 pr-3">
-                  <v-chip style="pointer-events: none;" :readonly="true" outlined v-for="slide in task.slides"
-                          v-text="slide.name" :key="slide.id"/>
-                </v-chip-group>
-                <v-card-text v-if="task.annotated.length === 0">
-                  This task has received no annotations yet.
-                </v-card-text>
-                <v-card-text v-else>
-                  <div class="text-body-1">Export annotations from:</div>
-                  <v-expansion-panels
-                          v-model="annotated_selected[task.id]"
-                          multiple hover accordion>
-                    <v-expansion-panel
-                            v-for="annotation in task.annotated"
-                            :key="annotation.user_task_id"
-                            v-on:change="panelChanged(annotation)">
-                      <v-expansion-panel-header disable-icon-rotate>
-                        <template v-slot:default="{ open }">
-                          <v-row no-gutters>
-                            <v-col cols="5">
-                              <v-icon v-if="open">
-                                mdi-check
-                              </v-icon>
-                              {{annotation.user_name}} (total annotations: {{annotation.annotation_count}})
-                            </v-col>
-                            <v-col cols="7" class="text--secondary">
-                              <v-fade-transition leave-absolute>
-                                <span v-if="open">Exporting {{annotation_counts[annotation.user_task_id]}} annotation(s)</span>
-                                <span v-else>Currently not selected for exporting</span>
-                              </v-fade-transition>
-                            </v-col>
-                          </v-row>
-                        </template>
-                      </v-expansion-panel-header>
-                      <v-expansion-panel-content style="border: darkgrey 1px dotted; background-color: whitesmoke;">
-                        <div v-if="annotation.reviews != null && annotation.reviews.length > 0">
-                          <p class="ma-0 text-muted">Include only annotations revised by:</p>
-                          <v-chip-group
-                                  v-model="exporting[annotation.user_task_id]"
-                                  multiple
-                                  column>
-                            <v-chip pill outlined filter
-                                    @click.prevent="count"
-                                    v-for="review in annotation.reviews" class="ma-1"
-                                    :value="review.revision_user_task_id"
-                                    :key="review.revision_user_task_id">
-                              {{review.revision_by_name}} ({{review.revision_count}} annotations)
-                            </v-chip>
-                          </v-chip-group>
-                        </div>
-                        <div v-else>
-                          <p class="ma-0 text-muted">Annotations not revised yet.</p>
-                        </div>
-                      </v-expansion-panel-content>
-                    </v-expansion-panel>
-                  </v-expansion-panels>
-                </v-card-text>
-                <v-divider/>
-                <v-card-actions v-if="task.exporting != null">
-                  <p class="ma-1 grey--text">Exporting {{task.exporting.count}} annotations from this task</p>
-                </v-card-actions>
-              </v-card>
-            </v-col>
-          </v-row>
+          <div class="d-flex flex-row align-content-start align-start flex-wrap">
+            <v-card class="ma-2 flex-shrink-0 flex-grow-1" v-for="task in tasks" :key="task.id">
+              <v-card-title
+                      v-text="task.name == null ? task.name : `${task.slides.length} slide(s) annotation task`"/>
+              <v-chip-group class="pl-3 pr-3">
+                <v-chip style="pointer-events: none;" :readonly="true" outlined v-for="slide in task.slides"
+                        v-text="slide.name" :key="slide.id"/>
+              </v-chip-group>
+              <v-card-text v-if="task.annotated.length === 0">
+                This task has received no annotations yet.
+              </v-card-text>
+              <v-card-text v-else>
+                <div class="text-body-1">Export annotations from:</div>
+                <v-expansion-panels
+                        v-model="annotated_selected[task.id]"
+                        multiple hover accordion>
+                  <v-expansion-panel
+                          v-for="annotation in task.annotated"
+                          :key="annotation.user_task_id"
+                          v-on:change="panelChanged(annotation)">
+                    <v-expansion-panel-header disable-icon-rotate>
+                      <template v-slot:default="{ open }">
+                        <v-row no-gutters>
+                          <v-col cols="5">
+                            <v-icon v-if="open">
+                              mdi-check
+                            </v-icon>
+                            {{annotation.user_name}} (total annotations: {{annotation.annotation_count}})
+                          </v-col>
+                          <v-col cols="7" class="text--secondary">
+                            <v-fade-transition leave-absolute>
+                              <span v-if="open">Exporting {{annotation_counts[annotation.user_task_id]}} annotation(s)</span>
+                              <span v-else>Currently not selected for exporting</span>
+                            </v-fade-transition>
+                          </v-col>
+                        </v-row>
+                      </template>
+                    </v-expansion-panel-header>
+                    <v-expansion-panel-content style="border: darkgrey 1px dotted; background-color: whitesmoke;">
+                      <div v-if="annotation.reviews != null && annotation.reviews.length > 0">
+                        <p class="ma-0 text-muted">Include only annotations revised by:</p>
+                        <v-chip-group
+                                v-model="exporting[annotation.user_task_id]"
+                                multiple
+                                column>
+                          <v-chip pill outlined filter
+                                  @click.prevent="count"
+                                  v-for="review in annotation.reviews" class="ma-1"
+                                  :value="review.revision_user_task_id"
+                                  :key="review.revision_user_task_id">
+                            {{review.revision_by_name}} ({{review.revision_count}} annotations)
+                          </v-chip>
+                        </v-chip-group>
+                      </div>
+                      <div v-else>
+                        <p class="ma-0 text-muted">Annotations not revised yet.</p>
+                      </div>
+                    </v-expansion-panel-content>
+                  </v-expansion-panel>
+                </v-expansion-panels>
+              </v-card-text>
+              <v-divider/>
+              <v-card-actions v-if="task.exporting != null">
+                <p class="ma-1 grey--text">Exporting {{task.exporting.count}} annotations from this task</p>
+              </v-card-actions>
+            </v-card>
+          </div>
         </v-container>
       </v-card-text>
     </v-card>
@@ -172,7 +168,7 @@
             value: function (new_value) {
                 this.dialog = new_value
             },
-            only_revised: function (new_value) {
+            only_revised: function () {
                 this.count()
             }
         },

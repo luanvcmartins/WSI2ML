@@ -145,14 +145,16 @@ def task_list():
         .order_by(models.UserTask.completed).all()
     annotation_tasks = list(annotation_tasks)
     review_tasks = list(review_tasks)
+    next_annotation = annotation_tasks[0][0].to_dict() if len(annotation_tasks) > 0 else None
+    next_revision = review_tasks[0][0].to_dict() if len(review_tasks) > 0 else None
     return jsonify({
         "annotation_status": {
-            "next": annotation_tasks[0][0].to_dict(),
+            "next": next_annotation,
             "done": len([task for task in annotation_tasks if task[1].completed]),
             "total": len(annotation_tasks)
         },
         "review_status": {
-            "next": review_tasks[0][0].to_dict(),
+            "next": next_revision,
             "done": len([task for task in review_tasks if task[1].completed]),
             "total": len(review_tasks)
         },
