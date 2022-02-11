@@ -30,7 +30,7 @@
     <!--    <v-spacer></v-spacer>-->
     <template v-slot:extension>
       <v-tabs align-with-title>
-        <v-tab v-if="access_overview" to="/overview">Overview</v-tab>
+        <v-tab v-if="access_overview" to="/overview"><span style="font-weight: 400">Overview</span></v-tab>
         <v-tab to="/tasks">Tasks</v-tab>
         <v-tab v-if="can_export" to="/export">Export</v-tab>
         <v-tab v-if="is_admin" to="/admin">Management</v-tab>

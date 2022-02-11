@@ -1,11 +1,9 @@
 from io import BytesIO
 
 import models
-import os, os.path
 import json
 import zipfile
 import math
-import numpy as np
 from flask import Blueprint, jsonify, request, current_app, Response
 from app import db
 
@@ -142,9 +140,9 @@ def create_polygon(annotation):
         point1, point2 = annotation.data['points']
         width, height = point1['x'] - point2['x'], point1['y'] - point2['y']
         radius = height / 2
-        sample = lambda t: [radius * np.cos(t) + point1['x'], radius * np.sin(t) + point1['y']]
+        sample = lambda t: [radius * math.cos(t) + point1['x'], radius * math.sin(t) + point1['y']]
         sample_points = int(20 + (2 * radius))
-        rate = 2 * np.pi / sample_points
+        rate = 2 * math.pi / sample_points
         annotation_points = [sample(rate * (t % sample_points)) for t in range(sample_points + 1)]
     else:
         # converting Poygons annotations to the expected format
