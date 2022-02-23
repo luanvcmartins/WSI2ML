@@ -32,14 +32,16 @@
               <v-chip-group column show-arrows>
                 <v-chip style="pointer-events: none;"
                         outlined :readonly="true"
-                        v-for="slide in item.slides">
+                        v-for="slide in item.slides"
+                        :key="slide.id">
                   {{ slide.name }}
                 </v-chip>
               </v-chip-group>
             </template>
             <template v-slot:item.assigned="{ item }">
               <v-chip-group active-class="primary--text" column show-arrows>
-                <v-chip style="pointer-events: none;" :readonly="true" v-for="user in item.assigned" dark>
+                <v-chip style="pointer-events: none;" :readonly="true" v-for="user in item.assigned" dark
+                        :key="user.id">
                   {{ user.name }}
                 </v-chip>
               </v-chip-group>
@@ -69,6 +71,7 @@
               <v-chip-group column show-arrows>
                 <v-chip style="pointer-events: none;"
                         outlined :readonly="true"
+                        :key="slide.id"
                         v-for="slide in item.task.slides">
                   {{ slide.name }}
                 </v-chip>
@@ -78,6 +81,7 @@
               <v-chip-group column show-arrows>
                 <v-chip style="pointer-events: none;"
                         outlined :readonly="true"
+                        :key="revision.id"
                         v-for="revision in item.revisions">
                   {{ revision.user.name }}
                 </v-chip>
@@ -85,7 +89,8 @@
             </template>
             <template v-slot:item.assigned="{ item }">
               <v-chip-group active-class="primary--text" column show-arrows>
-                <v-chip style="pointer-events: none;" :readonly="true" v-for="user in item.assigned" dark>
+                <v-chip style="pointer-events: none;" :readonly="true" v-for="user in item.assigned" dark
+                        :key="user.id">
                   {{ user.name }}
                 </v-chip>
               </v-chip-group>
@@ -112,79 +117,98 @@
 </template>
 
 <script>
-    import TaskStatusOverview from "../components/TaskStatusOverview";
-    import Loading from "../components/Loading";
+import TaskStatusOverview from '../components/TaskStatusOverview';
+import Loading from '../components/LoadingContent';
 
-    export default {
-        name: "Tasks",
-        components: {Loading, TaskStatusOverview},
-        data: () => {
-            return {
-                loading: true,
-                tasks: null,
-                task_types: [
-                    "Annotate images",
-                    "Review annotations"
-                ],
-                annotation_headers: [
-                    {
-                        text: 'Slides',
-                        align: 'start',
-                        sortable: false,
-                        value: 'slides',
-                    },
-                    {text: "Completed?", value: 'completed'},
-                    // {text: 'Slides', value: 'slides'},
-                    {text: 'Project', value: 'project.name'},
-                    // {text: 'Users', value: 'assigned'},
-                    {text: "Actions", value: 'actions'}
-                ],
-                review_headers: [
-                    {
-                        text: 'Slides associated',
-                        align: 'start',
-                        sortable: false,
-                        value: 'slides',
-                    },
-                    {
-                        text: 'Annotations by to review',
-                        align: 'start',
-                        sortable: false,
-                        value: 'revisions',
-                    },
-                    {text: "Completed?", value: 'completed'},
-                    {text: 'Project', value: 'project.name'},
-                    {text: "Actions", value: 'actions'}
-                ]
-            }
-        },
-        methods: {
-            startTask(task) {
-                this.$post("session/create", task)
-                    .then(resp => {
-                        this.$store.commit("set_session", resp)
-                        this.$router.push("/session/" + resp.id)
-                    })
-                    .catch(err => alert(err))
-            },
+export default {
+  name: 'Tasks',
+  components: {
+    Loading,
+    TaskStatusOverview,
+  },
+  data: () => ({
+    loading: true,
+    tasks: null,
+    task_types: [
+      'Annotate images',
+      'Review annotations',
+    ],
+    annotation_headers: [
+      {
+        text: 'Slides',
+        align: 'start',
+        sortable: false,
+        value: 'slides',
+      },
+      {
+        text: 'Completed?',
+        value: 'completed',
+      },
+      // {text: 'Slides', value: 'slides'},
+      {
+        text: 'Project',
+        value: 'project.name',
+      },
+      // {text: 'Users', value: 'assigned'},
+      {
+        text: 'Actions',
+        value: 'actions',
+      },
+    ],
+    review_headers: [
+      {
+        text: 'Slides associated',
+        align: 'start',
+        sortable: false,
+        value: 'slides',
+      },
+      {
+        text: 'Annotations by to review',
+        align: 'start',
+        sortable: false,
+        value: 'revisions',
+      },
+      {
+        text: 'Completed?',
+        value: 'completed',
+      },
+      {
+        text: 'Project',
+        value: 'project.name',
+      },
+      {
+        text: 'Actions',
+        value: 'actions',
+      },
+    ],
+  }),
+  methods: {
+    startTask(task) {
+      this.$post('session/create', task)
+        .then((resp) => {
+          this.$store.commit('set_session', resp);
+          this.$router.push(`/session/${resp.id}`);
+        })
+        .catch((err) => alert(err));
+    },
 
-            loadTasks() {
-                this.loading = true
-                this.$get("task/list")
-                    .then(resp => {
-                        this.tasks = resp
-                        this.loading = false
-                    })
-                    .catch(err => {
-                        alert(err)
-                        this.loading = false
-                    })
-            }
-        },
-        mounted() {
-            this.loadTasks()
-        }
-    }
+    loadTasks() {
+      this.loading = true;
+      this.$get('task/list')
+        .then((resp) => {
+          this.tasks = resp;
+          this.loading = false;
+        })
+        .catch((err) => {
+          alert(err);
+          this.loading = false;
+        });
+    },
+  },
+  mounted() {
+    this.loadTasks();
+  },
+};
 </script>
 
 <style scoped>

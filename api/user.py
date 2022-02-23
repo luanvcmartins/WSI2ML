@@ -66,6 +66,16 @@ def remove():
     return jsonify({"success": True})
 
 
+@user_api.route("change_password", methods=['POST'])
+@jwt_required()
+def change_password():
+    data = request.json
+    me = models.User.query.get(current_user.id)
+    me.password = data['password']
+    db.session.commit()
+    return jsonify({"success": True})
+
+
 @user_api.route("login", methods=["POST"])
 def login():
     data = request.json

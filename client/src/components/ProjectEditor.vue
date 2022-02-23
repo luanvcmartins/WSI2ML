@@ -46,131 +46,122 @@
 
 <script>
 
-    import _ from "lodash";
+import _ from 'lodash';
 
-    export default {
-        name: "ProjectEditor",
-        watch: {
-            value: {
-                immediate: true,
-                handler: function (new_value) {
-                    this.project = _.cloneDeep(new_value)
-                }
-            },
+export default {
+  name: 'ProjectEditor',
+  watch: {
+    value: {
+      immediate: true,
+      handler(new_value) {
+        this.project = _.cloneDeep(new_value);
+      },
+    },
 
-            color_picked: function (new_value) {
-                // this.editing_label.color = `${new_value.rgba.r};${new_value.rgba.g};${new_value.rgba.b}`
-                if (this.editing_label != null)
-                    this.editing_label.color = [new_value.rgba.r, new_value.rgba.g, new_value.rgba.b]
+    color_picked(new_value) {
+      // this.editing_label.color = `${new_value.rgba.r};${new_value.rgba.g};${new_value.rgba.b}`
+      if (this.editing_label != null) this.editing_label.color = [new_value.rgba.r, new_value.rgba.g, new_value.rgba.b];
+    },
+  },
+  data: () => ({
+    project: null,
+    color_picked: null,
+    color_menu: [],
+    header: [
+      { text: 'Label', value: 'name' },
+      { text: 'Color', value: 'color', sortable: false },
+      { text: 'Actions', value: 'actions' },
+    ],
+    path_errors: [],
+    editing_label: null,
+    new_label: null,
+  }),
+  methods: {
+    closeColorPicker(itemName) {
+      this.color_menu[itemName] = false;
+      this.editing_label = null;
+      this.color_picked = null;
+    },
+    check_path(input) {
+      if (input === '') {
+        this.path_errors = ['Path required'];
+      } else {
+        this.$post('project/valid_path', { path: input })
+          .then((resp) => {
+            if (resp.valid_path) {
+              this.path_errors = [];
+            } else {
+              this.path_errors = ['Path not found on environment'];
             }
-        },
-        data: () => {
-            return {
-                project: null,
-                color_picked: null,
-                color_menu: [],
-                header: [
-                    {text: 'Label', value: 'name'},
-                    {text: 'Color', value: 'color', sortable: false},
-                    {text: "Actions", value: "actions"}
-                ],
-                path_errors: [],
-                editing_label: null,
-                new_label: null
-            }
-        },
-        methods: {
-            closeColorPicker(itemName) {
-                this.color_menu[itemName] = false
-                this.editing_label = null
-                this.color_picked = null
-            },
-            check_path(input) {
-                if (input === "") {
-                    this.path_errors = ["Path required"]
-                } else {
-                    this.$post("project/valid_path", {"path": input})
-                        .then(resp => {
-                            if (resp.valid_path) {
-                                this.path_errors = []
-                            } else {
-                                this.path_errors = ["Path not found on environment"]
-                            }
-                        })
-                        .catch(err => alert(err))
-                }
-            },
+          })
+          .catch((err) => alert(err));
+      }
+    },
 
-            add_label() {
-                if (this.project == null)
-                    this.project = {labels: []}
-                if (this.project.labels == null)
-                    this.project.labels = []
-                this.project.labels.push({
-                    "name": this.new_label,
-                    "color": [255, 255, 255]
-                })
-                this.new_label = ""
-            },
+    add_label() {
+      if (this.project == null) this.project = { labels: [] };
+      if (this.project.labels == null) this.project.labels = [];
+      this.project.labels.push({
+        name: this.new_label,
+        color: [255, 255, 255],
+      });
+      this.new_label = '';
+    },
 
-            change_color(item) {
-                this.editing_label = item
+    change_color(item) {
+      this.editing_label = item;
+    },
 
-            },
-
-            gen_color(item) {
-                const colors = item.color
-                return `background-color: rgba(${colors[0]},${colors[1]},${colors[2]}, 1)`
-            },
-            save() {
-                if (this.path_errors.length > 0)
-                    alert("You need to fix the project's path before continuing.")
-                else if (confirm("Are you sure you want to continue?")) {
-                    if (this.project.id == null) {
-                        this.$post("/project/new", this.project)
-                            .then(resp => {
-                                this.project = resp
-                                this.$emit("input", this.project)
-                                this.$emit("done", "project")
-                            })
-                            .catch(err => {
-                                alert(err)
-                            })
-                    } else {
-                        this.$post("/project/edit", this.project)
-                            .then(resp => {
-                                this.project = resp
-                                this.$emit("input", this.project)
-                                this.$emit("done", "project")
-                            })
-                            .catch(err => {
-                                alert(err)
-                            })
-                    }
-                }
-            },
-            remove_label(label) {
-                if (label.id == null) {
-                    // No id, simple remove item from the list
-                    this.project.labels = this.project.labels.filter(item => item !== label)
-                } else {
-                    // Request removal from the the database
-                    this.$post("/project/remove_label", label)
-                        .then(resp => {
-                                this.project.labels = this.project.labels.filter(item => item.id !== label.id)
-                                this.$emit("input", this.project)
-                            }
-                        )
-                        .catch(err => alert(err))
-                }
-            }
-        },
-        mounted() {
-            // this.load_users()
+    gen_color(item) {
+      const colors = item.color;
+      return `background-color: rgba(${colors[0]},${colors[1]},${colors[2]}, 1)`;
+    },
+    save() {
+      if (this.path_errors.length > 0) alert("You need to fix the project's path before continuing.");
+      else if (confirm('Are you sure you want to continue?')) {
+        if (this.project.id == null) {
+          this.$post('/project/new', this.project)
+            .then((resp) => {
+              this.project = resp;
+              this.$emit('input', this.project);
+              this.$emit('done', 'project');
+            })
+            .catch((err) => {
+              alert(err);
+            });
+        } else {
+          this.$post('/project/edit', this.project)
+            .then((resp) => {
+              this.project = resp;
+              this.$emit('input', this.project);
+              this.$emit('done', 'project');
+            })
+            .catch((err) => {
+              alert(err);
+            });
         }
-        ,
-        props: ['value']
-    }
+      }
+    },
+    remove_label(label) {
+      if (label.id == null) {
+        // No id, simple remove item from the list
+        this.project.labels = this.project.labels.filter((item) => item !== label);
+      } else {
+        // Request removal from the the database
+        this.$post('/project/remove_label', label)
+          .then(() => {
+            this.project.labels = this.project.labels.filter((item) => item.id !== label.id);
+            this.$emit('input', this.project);
+          })
+          .catch((err) => alert(err));
+      }
+    },
+  },
+  mounted() {
+    // this.load_users()
+  },
+  props: ['value'],
+};
 </script>
 
 <style scoped>

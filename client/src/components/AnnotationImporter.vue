@@ -1,11 +1,11 @@
 <template>
-  
+
 </template>
 
 <script>
-    export default {
-        name: "AnnotationImporter"
-    }
+export default {
+  name: 'AnnotationImporter',
+};
 </script>
 
 <style scoped>

@@ -4,19 +4,19 @@
       <div>
         <slot></slot>
       </div>
-      <div v-if="status.next != null">
+      <div v-if="status.next != null && !taskCompleted">
         <p class="text-h4 text--primary">
-          {{status.total-status.done}} remaining! You completed
-          {{status.done}} of {{status.total}}.
+          {{ status.total - status.done }} remaining! You completed
+          {{ status.done }} of {{ status.total }}.
         </p>
         <p>
           <v-progress-linear readonly :value="progress"/>
         </p>
-        <div v-if="!status.next.completed">
-          <p>{{status.next.project.name}}</p>
+        <div v-if="!taskCompleted">
+          <p>{{ status.next.project.name }}</p>
           <div class="text--primary">
             Up next:<br>
-            {{status.next.name}}
+            {{ status.next.name }}
           </div>
         </div>
         <div class="text--primary" v-else>You have completed all the slides. You can continue to review them.
@@ -24,9 +24,10 @@
       </div>
       <div v-else>
         <p class="text-h4 text--primary">
-          <v-icon class="mr-2" color="orange accent-4" size="42">mdi-check-all</v-icon>All tasks completed!
+          <v-icon class="mr-2" color="orange accent-4" size="42">mdi-check-all</v-icon>
+          All tasks completed!
         </p>
-        <div class="text--primary" v-if="status.total > 0">You completed {{status.done}} of {{status.total}}.</div>
+        <div class="text--primary" v-if="status.total > 0">You completed {{ status.done }} of {{ status.total }} tasks.</div>
         <div class="text--primary" v-else>No tasks available yet</div>
       </div>
     </v-card-text>
@@ -43,20 +44,23 @@
 </template>
 
 <script>
-    export default {
-        name: "TaskStatusOverview",
-        methods: {
-            startSession() {
-                this.$emit("start-session", this.status.next)
-            }
-        },
-        computed: {
-            progress: function () {
-                return (this.status.done / this.status.total) * 100
-            }
-        },
-        props: ["status"]
+export default {
+  name: 'TaskStatusOverview',
+  methods: {
+    startSession() {
+      this.$emit('start-session', this.status.next);
     }
+  },
+  computed: {
+    progress() {
+      return (this.status.done / this.status.total) * 100;
+    },
+    taskCompleted() {
+      return this.status.done === this.status.total;
+    }
+  },
+  props: ['status']
+};
 </script>
 
 <style scoped>

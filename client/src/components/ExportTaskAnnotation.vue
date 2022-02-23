@@ -1,10 +1,10 @@
 <template>
   <v-dialog
-          transition="dialog-bottom-transition"
-          scrollable
-          fullscreen
-          hide-overlay
-          v-model="dialog">
+      transition="dialog-bottom-transition"
+      scrollable
+      fullscreen
+      hide-overlay
+      v-model="dialog">
     <v-card tile v-if="project != null">
       <v-toolbar flat dark dense color="primary" extended
                  extension-height="180"
@@ -36,9 +36,9 @@
                   </v-list-item>
                   <v-divider></v-divider>
                   <v-list-item
-                          v-for="(name, index) in Object.keys(annotators)"
-                          :key="index"
-                          @click="selectAll(annotators[name])">
+                      v-for="(name, index) in Object.keys(annotators)"
+                      :key="index"
+                      @click="selectAll(annotators[name])">
                     <v-list-item-title>{{ name }}</v-list-item-title>
                   </v-list-item>
                 </v-list>
@@ -61,18 +61,21 @@
                     <v-list-item-title>Only revised</v-list-item-title>
                   </v-list-item>
                   <v-list-item
-                          v-for="(name, index) in Object.keys(reviewers)"
-                          :key="index"
-                          @click="selectReviewer(reviewers[name])">
+                      v-for="(name, index) in Object.keys(reviewers)"
+                      :key="index"
+                      @click="selectReviewer(reviewers[name])">
                     <v-list-item-title>{{ name }}</v-list-item-title>
                   </v-list-item>
                 </v-list>
               </v-menu>
             </p>
-            <div class="ma-1 grey--text text--lighten-1">Exporting {{total_annotations}} annotations.</div>
+            <div class="ma-1 grey--text text--lighten-1">
+              Exporting {{ total_annotations }} annotations.
+            </div>
             <div class="mt-1 mb-2">
               <p>
-                <v-btn :disabled="total_annotations === 0" rounded @click="exportAnnotations" outlined x-large>
+                <v-btn :disabled="total_annotations === 0" rounded
+                       @click="exportAnnotations" outlined x-large>
                   Export annotations
                 </v-btn>
               </p>
@@ -84,10 +87,10 @@
         <v-container>
           <div class="d-flex flex-row align-content-start align-start flex-wrap">
             <v-card class="ma-2 flex-shrink-0 flex-grow-1" v-for="task in tasks" :key="task.id">
-              <v-card-title
-                      v-text="task.name == null ? task.name : `${task.slides.length} slide(s) annotation task`"/>
+              <v-card-title v-text="task.name == null ? task.name : `${task.slides.length} slide(s) annotation task`"/>
               <v-chip-group class="pl-3 pr-3">
-                <v-chip style="pointer-events: none;" :readonly="true" outlined v-for="slide in task.slides"
+                <v-chip style="pointer-events: none;" :readonly="true"
+                        outlined v-for="slide in task.slides"
                         v-text="slide.name" :key="slide.id"/>
               </v-chip-group>
               <v-card-text v-if="task.annotated.length === 0">
@@ -96,12 +99,12 @@
               <v-card-text v-else>
                 <div class="text-body-1">Export annotations from:</div>
                 <v-expansion-panels
-                        v-model="annotated_selected[task.id]"
-                        multiple hover accordion>
+                    v-model="annotated_selected[task.id]"
+                    multiple hover accordion>
                   <v-expansion-panel
-                          v-for="annotation in task.annotated"
-                          :key="annotation.user_task_id"
-                          v-on:change="panelChanged(annotation)">
+                      v-for="annotation in task.annotated"
+                      :key="annotation.user_task_id"
+                      v-on:change="panelChanged(annotation)">
                     <v-expansion-panel-header disable-icon-rotate>
                       <template v-slot:default="{ open }">
                         <v-row no-gutters>
@@ -109,30 +112,34 @@
                             <v-icon v-if="open">
                               mdi-check
                             </v-icon>
-                            {{annotation.user_name}} (total annotations: {{annotation.annotation_count}})
+                            {{ annotation.user_name }}
+                            (total annotations: {{ annotation.annotation_count }})
                           </v-col>
                           <v-col cols="7" class="text--secondary">
                             <v-fade-transition leave-absolute>
-                              <span v-if="open">Exporting {{annotation_counts[annotation.user_task_id]}} annotation(s)</span>
+                              <span
+                                  v-if="open">Exporting {{
+                                  annotation_counts[annotation.user_task_id]
+                                }} annotation(s)</span>
                               <span v-else>Currently not selected for exporting</span>
                             </v-fade-transition>
                           </v-col>
                         </v-row>
                       </template>
                     </v-expansion-panel-header>
-                    <v-expansion-panel-content style="border: darkgrey 1px dotted; background-color: whitesmoke;">
+                    <v-expansion-panel-content style="expansion-panel-revision">
                       <div v-if="annotation.reviews != null && annotation.reviews.length > 0">
                         <p class="ma-0 text-muted">Include only annotations revised by:</p>
                         <v-chip-group
-                                v-model="exporting[annotation.user_task_id]"
-                                multiple
-                                column>
+                            v-model="exporting[annotation.user_task_id]"
+                            multiple
+                            column>
                           <v-chip pill outlined filter
                                   @click.prevent="count"
                                   v-for="review in annotation.reviews" class="ma-1"
                                   :value="review.revision_user_task_id"
                                   :key="review.revision_user_task_id">
-                            {{review.revision_by_name}} ({{review.revision_count}} annotations)
+                            {{ review.revision_by_name }} ({{ review.revision_count }} annotations)
                           </v-chip>
                         </v-chip-group>
                       </div>
@@ -145,7 +152,9 @@
               </v-card-text>
               <v-divider/>
               <v-card-actions v-if="task.exporting != null">
-                <p class="ma-1 grey--text">Exporting {{task.exporting.count}} annotations from this task</p>
+                <p class="ma-1 grey--text">
+                  Exporting {{ task.exporting.count }} annotations from this task
+                </p>
               </v-card-actions>
             </v-card>
           </div>
@@ -156,148 +165,163 @@
 </template>
 
 <script>
-    export default {
-        name: "ExportTaskAnnotation",
-        watch: {
-            project: {
-                immediate: true,
-                handler() {
-                    this.load_tasks()
-                }
-            },
-            value: function (new_value) {
-                this.dialog = new_value
-            },
-            only_revised: function () {
-                this.count()
-            }
-        },
-        data() {
-            return {
-                tasks: null,
-                exporting: {},
-                annotation_counts: {},
-                dialog: false,
-                only_revised: false,
-                annotated_selected: {}
-            }
-        },
-        computed: {
-            total_annotations: function () {
-                let counter = 0
-                for (const item in this.annotation_counts) {
-                    counter += this.annotation_counts[item]
-                }
-                return counter //this.annotation_counts.values().reduce((prev, curr) => prev + curr)
-            },
-            annotators: function () {
-                const annotators = {}
-                if (this.tasks != null)
-                    this.tasks.forEach(task => {
-                        task.annotated.forEach(annotator => {
-                            if (!(annotator.user_name in annotators))
-                                annotators[annotator.user_name] = []
-                            annotators[annotator.user_name].push(annotator.user_task_id)
-                        })
-                    })
-                return annotators
-            },
-            reviewers: function () {
-                const reviewers = {}
-                if (this.tasks != null)
-                    this.tasks.forEach(task => {
-                        task.annotated.forEach(annotator => {
-                            if (annotator.reviews != null) {
-                                annotator.reviews.forEach(reviewer => {
-                                    console.log("Reviewer:", reviewer.revision_by_name)
-                                    if (!(reviewer.revision_by_name in reviewers))
-                                        reviewers[reviewer.revision_by_name] = []
-                                    reviewers[reviewer.revision_by_name].push({
-                                        annotation: annotator.user_task_id,
-                                        revision: reviewer.revision_user_task_id
-                                    })
-                                })
-                            }
-                        })
-                    })
-                return reviewers
-            }
-        },
-        methods: {
-            close() {
-                this.$emit("input", false)
-            },
-            load_tasks() {
-                if (this.project != null)
-                    this.$get("export/list/by_task", {params: {project_id: this.project.id}})
-                        .then(res => this.tasks = res)
-                        .catch(err => alert(err))
-            },
-            panelChanged(annotation) {
-                console.log("panelChanged", annotation)
-                if (annotation.user_task_id in this.exporting) {
-                    delete this.exporting[annotation.user_task_id]
-                    this.annotation_counts[annotation.user_task_id] = 0
-                } else {
-                    this.exporting[annotation.user_task_id] = []
-                    if (!this.only_revised)
-                        this.$set(this.annotation_counts, annotation.user_task_id, annotation.annotation_count)
-                }
+import _ from 'lodash';
 
-                // If we don't have the reviews yet (only the first access), get the list of reviews
-                if (annotation.reviews == null) {
-                    this.$get("export/review/by_task", {params: {user_task_id: annotation.user_task_id}})
-                        .then(res => this.$set(annotation, 'reviews', res))
-                        .catch(err => alert(err))
-                }
-            },
-            selectAll(annotations = null) {
-                this.tasks.forEach(task => {
-                    let counter = 0
-                    task.annotated.forEach(annotation => {
-                        if (annotations == null || annotations.includes(annotation.user_task_id))
-                            if (!(annotation.user_task_id in this.exporting)) {
-                                this.panelChanged(annotation)
-                                if (!(task.id in this.annotated_selected))
-                                    this.annotated_selected[task.id] = []
-                                this.annotated_selected[task.id].push(counter)
-                            }
-                        counter += 1
-                    })
-                })
-            },
-            selectReviewer(reviews) {
-                reviews.forEach(review => {
-                    this.exporting[review.annotation].push(review.revision)
-                })
-                this.count()
-            },
-            exportAnnotations() {
-                this.$post("export/by_task?only_revised=" + this.only_revised, this.exporting, {responseType: 'blob'})
-                    .then(res => {
-                        const url = window.URL.createObjectURL(new Blob([res]))
-                        const link = document.createElement('a')
-                        link.href = url
-                        link.setAttribute('download', `${this.project.name}.zip`)
-                        document.body.appendChild(link)
-                        link.click()
-                        document.body.removeChild(link)
-                    })
-                    .catch(err => alert(err))
-
-            },
-            count() {
-                setTimeout(() => {
-                    this.$post("export/count?only_revised=" + this.only_revised, this.exporting)
-                        .then(res => this.annotation_counts = res)
-                        .catch(err => alert(err))
-                }, 1000)
+export default {
+  name: 'ExportTaskAnnotation',
+  watch: {
+    project: {
+      immediate: true,
+      handler() {
+        this.load_tasks();
+      },
+    },
+    value(newValue) {
+      this.dialog = newValue;
+    },
+    only_revised() {
+      this.count();
+    },
+  },
+  data() {
+    return {
+      tasks: null,
+      exporting: {},
+      annotation_counts: {},
+      dialog: false,
+      only_revised: false,
+      annotated_selected: {},
+    };
+  },
+  computed: {
+    total_annotations() {
+      if (!_.isEmpty(this.annotation_counts)) {
+        return Object.values(this.annotation_counts)
+          .reduce((previousValue, currentValue) => previousValue + currentValue);
+      }
+      return 0;
+    },
+    annotators() {
+      const annotators = {};
+      if (this.tasks != null) {
+        this.tasks.forEach((task) => {
+          task.annotated.forEach((annotator) => {
+            if (!(annotator.user_name in annotators)) {
+              annotators[annotator.user_name] = [];
             }
-        },
-        props: ['project', 'value']
-    }
+            annotators[annotator.user_name].push(annotator.user_task_id);
+          });
+        });
+      }
+      return annotators;
+    },
+    reviewers() {
+      const reviewers = {};
+      if (this.tasks != null) {
+        this.tasks.forEach((task) => {
+          task.annotated.forEach((annotator) => {
+            if (annotator.reviews != null) {
+              annotator.reviews.forEach((reviewer) => {
+                console.log('Reviewer:', reviewer.revision_by_name);
+                if (!(reviewer.revision_by_name in reviewers)) {
+                  reviewers[reviewer.revision_by_name] = [];
+                }
+                reviewers[reviewer.revision_by_name].push({
+                  annotation: annotator.user_task_id,
+                  revision: reviewer.revision_user_task_id,
+                });
+              });
+            }
+          });
+        });
+      }
+      return reviewers;
+    },
+  },
+  methods: {
+    close() {
+      this.$emit('input', false);
+    },
+    load_tasks() {
+      if (this.project != null) {
+        this.$get('export/list/by_task', { params: { project_id: this.project.id } })
+          .then((res) => {
+            this.tasks = res;
+          })
+          .catch((err) => alert(err));
+      }
+    },
+    panelChanged(annotation) {
+      if (annotation.user_task_id in this.exporting) {
+        delete this.exporting[annotation.user_task_id];
+        this.annotation_counts[annotation.user_task_id] = 0;
+      } else {
+        this.exporting[annotation.user_task_id] = [];
+        if (!this.only_revised) {
+          this.$set(this.annotation_counts, annotation.user_task_id, annotation.annotation_count);
+        }
+      }
+
+      // If we don't have the reviews yet (only the first access), get the list of reviews
+      if (annotation.reviews == null) {
+        this.$get('export/review/by_task', { params: { user_task_id: annotation.user_task_id } })
+          .then((res) => this.$set(annotation, 'reviews', res))
+          .catch((err) => alert(err));
+      }
+    },
+    selectAll(annotations = null) {
+      this.tasks.forEach((task) => {
+        let counter = 0;
+        task.annotated.forEach((annotation) => {
+          if (annotations == null || annotations.includes(annotation.user_task_id)) {
+            if (!(annotation.user_task_id in this.exporting)) {
+              this.panelChanged(annotation);
+              if (!(task.id in this.annotated_selected)) {
+                this.annotated_selected[task.id] = [];
+              }
+              this.annotated_selected[task.id].push(counter);
+            }
+          }
+          counter += 1;
+        });
+      });
+    },
+    selectReviewer(reviews) {
+      reviews.forEach((review) => {
+        this.exporting[review.annotation].push(review.revision);
+      });
+      this.count();
+    },
+    exportAnnotations() {
+      this.$post(`export/by_task?only_revised=${this.only_revised}`, this.exporting, { responseType: 'blob' })
+        .then((res) => {
+          const url = window.URL.createObjectURL(new Blob([res]));
+          const link = document.createElement('a');
+          link.href = url;
+          link.setAttribute('download', `${this.project.name}.zip`);
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+        })
+        .catch((err) => alert(err));
+    },
+    count() {
+      setTimeout(() => {
+        this.$post(`export/count?only_revised=${this.only_revised}`, this.exporting)
+          .then((res) => {
+            this.annotation_counts = res;
+          })
+          .catch((err) => alert(err));
+      }, 1000);
+    },
+  },
+  props: ['project', 'value'],
+};
 </script>
 
 <style scoped>
-
+.expansion-panel-revision {
+  border: darkgrey 1px dotted;
+  background-color: whitesmoke;
+}
 </style>

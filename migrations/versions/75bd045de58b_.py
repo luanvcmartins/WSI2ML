@@ -1,8 +1,8 @@
 """empty message
 
-Revision ID: 5ff69fcd2507
+Revision ID: 75bd045de58b
 Revises: 
-Create Date: 2021-11-12 03:31:08.008184
+Create Date: 2022-02-16 16:04:37.978702
 
 """
 from alembic import op
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = '5ff69fcd2507'
+revision = '75bd045de58b'
 down_revision = None
 branch_labels = None
 depends_on = None
@@ -27,15 +27,25 @@ def upgrade():
     )
     op.create_table('slides',
     sa.Column('id', sa.Text(), nullable=False),
+    sa.Column('name', sa.Text(), nullable=True),
     sa.Column('file', sa.Text(), nullable=True),
+    sa.Column('properties_json', sa.Text(), nullable=True),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('users',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(length=80), nullable=True),
+    sa.Column('email', sa.Text(), nullable=True),
     sa.Column('username', sa.String(length=30), nullable=True),
     sa.Column('password_hash', sa.String(length=128), nullable=True),
     sa.Column('is_admin', sa.Boolean(), nullable=True),
+    sa.Column('manages_apps', sa.Boolean(), nullable=True),
+    sa.Column('manages_users', sa.Boolean(), nullable=True),
+    sa.Column('manages_tasks', sa.Boolean(), nullable=True),
+    sa.Column('manages_projects', sa.Boolean(), nullable=True),
+    sa.Column('can_export', sa.Boolean(), nullable=True),
+    sa.Column('access_overview', sa.Boolean(), nullable=True),
+    sa.Column('is_bot', sa.Boolean(), nullable=True),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('username')
     )
@@ -43,6 +53,8 @@ def upgrade():
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('project_id', sa.Integer(), nullable=True),
     sa.Column('name', sa.String(length=60), nullable=True),
+    sa.Column('created', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('updated', sa.DateTime(timezone=True), nullable=True),
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
@@ -56,6 +68,9 @@ def upgrade():
     )
     op.create_table('revision_tasks',
     sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('name', sa.Text(), nullable=True),
+    sa.Column('created', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('updated', sa.DateTime(timezone=True), nullable=True),
     sa.Column('task_id', sa.Integer(), nullable=True),
     sa.Column('project_id', sa.Integer(), nullable=True),
     sa.ForeignKeyConstraint(['project_id'], ['projects.id'], ),
@@ -77,32 +92,50 @@ def upgrade():
     sa.Column('user_id', sa.Integer(), nullable=True),
     sa.Column('type', sa.Integer(), nullable=True),
     sa.Column('completed', sa.Boolean(), nullable=True),
-    sa.ForeignKeyConstraint(['annotation_task_id'], ['annotation_tasks.id'], ),
-    sa.ForeignKeyConstraint(['revision_task_id'], ['revision_tasks.id'], ),
+    sa.Column('locked', sa.Boolean(), nullable=True),
+    sa.Column('created', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('updated', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['annotation_task_id'], ['annotation_tasks.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['revision_task_id'], ['revision_tasks.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['user_id'], ['users.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('regions_labelled',
+    op.create_table('annotations',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_task_id', sa.Integer(), nullable=True),
     sa.Column('slide_id', sa.Text(), nullable=True),
     sa.Column('label_id', sa.Integer(), nullable=True),
+    sa.Column('title', sa.Text(), nullable=True),
+    sa.Column('description', sa.Text(), nullable=True),
+    sa.Column('properties_json', sa.Text(), nullable=True),
+    sa.Column('created', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('updated', sa.DateTime(timezone=True), nullable=True),
     sa.Column('data_json', sa.Text(), nullable=True),
     sa.ForeignKeyConstraint(['label_id'], ['label.id'], ),
     sa.ForeignKeyConstraint(['slide_id'], ['slides.id'], ),
     sa.ForeignKeyConstraint(['user_task_id'], ['user_tasks.id'], ),
     sa.PrimaryKeyConstraint('id')
     )
-    op.create_table('regions_revised',
+    op.create_table('revision_task_items',
+    sa.Column('id', sa.Integer(), nullable=False),
+    sa.Column('task_id', sa.Integer(), nullable=True),
+    sa.Column('user_task_id', sa.Text(), nullable=True),
+    sa.ForeignKeyConstraint(['task_id'], ['revision_tasks.id'], ),
+    sa.ForeignKeyConstraint(['user_task_id'], ['user_tasks.id'], ),
+    sa.PrimaryKeyConstraint('id')
+    )
+    op.create_table('annotations_revised',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_task_id', sa.Integer(), nullable=True),
-    sa.Column('region_id', sa.Integer(), nullable=True),
+    sa.Column('annotation_id', sa.Integer(), nullable=True),
     sa.Column('feedback', sa.Integer(), nullable=True),
     sa.Column('label_id', sa.Integer(), nullable=True),
     sa.Column('data_json', sa.Text(), nullable=True),
+    sa.Column('created', sa.DateTime(timezone=True), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('updated', sa.DateTime(timezone=True), nullable=True),
+    sa.ForeignKeyConstraint(['annotation_id'], ['annotations.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['label_id'], ['label.id'], ),
-    sa.ForeignKeyConstraint(['region_id'], ['regions_labelled.id'], ),
-    sa.ForeignKeyConstraint(['user_task_id'], ['user_tasks.id'], ),
+    sa.ForeignKeyConstraint(['user_task_id'], ['user_tasks.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###
@@ -110,8 +143,9 @@ def upgrade():
 
 def downgrade():
     # ### commands auto generated by Alembic - please adjust! ###
-    op.drop_table('regions_revised')
-    op.drop_table('regions_labelled')
+    op.drop_table('annotations_revised')
+    op.drop_table('revision_task_items')
+    op.drop_table('annotations')
     op.drop_table('user_tasks')
     op.drop_table('task_slides')
     op.drop_table('revision_tasks')

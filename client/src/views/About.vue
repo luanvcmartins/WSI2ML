@@ -25,20 +25,17 @@
   </Split>
 </template>
 <script>
-    import SliceViewer from "../components/SliceViewer";
-    import AppBar from "../components/AppBar";
+import SliceViewer from '../components/WSIViewer';
+import AppBar from '../components/AppBar';
 
-    export default {
-        name: "about",
-        components: {AppBar, SliceViewer},
-        data: () => {
-            return {
-                data: []
-            }
-        },
-        mounted() {
-            for (let i = 0; i < 200; i++)
-                this.data.push("item #" + i)
-        }
-    }
+export default {
+  name: 'about',
+  components: { AppBar, SliceViewer },
+  data: () => ({
+    data: [],
+  }),
+  mounted() {
+    for (let i = 0; i < 200; i++) this.data.push(`item #${i}`);
+  },
+};
 </script>

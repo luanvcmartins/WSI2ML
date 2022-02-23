@@ -5,12 +5,12 @@
     </v-btn>
     <div class="d-flex align-center">
       <v-img
-              alt="Vuetify Logo"
-              class="shrink mr-2"
-              contain
-              src=""
-              transition="scale-transition"
-              width="40"
+          alt="Vuetify Logo"
+          class="shrink mr-2"
+          contain
+          src=""
+          transition="scale-transition"
+          width="40"
       />
 
       <v-toolbar-title>WSI Annotation Tool</v-toolbar-title>
@@ -21,10 +21,10 @@
 </template>
 
 <script>
-    export default {
-        name: "AppBar",
+export default {
+  name: 'AppBar',
 
-    }
+};
 </script>
 
 <style scoped>

@@ -16,11 +16,15 @@
                 v-on="on">
           <v-card-text>
             <v-icon class="mr-1">mdi-dots-vertical-circle</v-icon>
-            {{user_name}}
+            {{ user_name }}
           </v-card-text>
         </v-card>
       </template>
       <v-list>
+        <v-list-item @click="changePassword = true">
+          <v-list-item-title>Change password</v-list-item-title>
+        </v-list-item>
+      <v-divider></v-divider>
         <v-list-item @click="logout">
           <v-list-item-title>Logout</v-list-item-title>
         </v-list-item>
@@ -30,47 +34,56 @@
     <!--    <v-spacer></v-spacer>-->
     <template v-slot:extension>
       <v-tabs align-with-title>
-        <v-tab v-if="access_overview" to="/overview"><span style="font-weight: 300">Overview</span></v-tab>
+        <v-tab v-if="access_overview" to="/overview">
+          <span style="font-weight: 300">Overview</span>
+        </v-tab>
         <v-tab to="/tasks">Tasks</v-tab>
         <v-tab v-if="can_export" to="/export">Export</v-tab>
         <v-tab v-if="is_admin" to="/admin">Management</v-tab>
       </v-tabs>
     </template>
+    <ChangePassword v-if="changePassword" v-model="changePassword"/>
   </v-app-bar>
 </template>
 
 <script>
-    export default {
-        name: "AppBar",
-        computed: {
-            is_admin: function () {
-                const user = this.$store.state.user
-                return user.manages_apps || user.manages_users || user.manages_tasks || user.manages_projects
-            },
-            can_export: function () {
-                const user = this.$store.state.user
-                return user.can_export
-            },
-            access_overview: function () {
-                const user = this.$store.state.user
-                return user.access_overview
-            },
-            user_name: function () {
-                return this.$store.state.user.name
-            }
-        },
-        methods: {
-            logout: function () {
-                this.$store.commit("logout")
-                this.$router.push("/login")
-            }
-        }
-    }
+import ChangePassword from '@/components/ChangePassword';
+
+export default {
+  name: 'AppBar',
+  components: { ChangePassword },
+  data() {
+    return { changePassword: false };
+  },
+  computed: {
+    is_admin() {
+      const { user } = this.$store.state;
+      return user.manages_apps || user.manages_users || user.manages_tasks || user.manages_projects;
+    },
+    can_export() {
+      const { user } = this.$store.state;
+      return user.can_export;
+    },
+    access_overview() {
+      const { user } = this.$store.state;
+      return user.access_overview;
+    },
+    user_name() {
+      return this.$store.state.user.name;
+    },
+  },
+  methods: {
+    logout() {
+      this.$store.commit('logout');
+      this.$router.push('/login');
+    },
+  },
+};
 </script>
 
 <style scoped>
-  .user-card {
-    height: 100%;
-    min-width: 200px;
-  }
+.user-card {
+  height: 100%;
+  min-width: 200px;
+}
 </style>

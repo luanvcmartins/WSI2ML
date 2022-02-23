@@ -57,4 +57,12 @@ def create_app(context="development"):
 
 if __name__ == '__main__':
     app = create_app("development" if len(sys.argv) == 1 else sys.argv[1])
-    app.run(port=2000, host="0.0.0.0")
+
+    if len(sys.argv) == 1:
+        # assuming development
+        app.run(port=2000, host="0.0.0.0")
+    else:
+        # assuming production
+        from waitress import serve
+
+        serve(app, host="0.0.0.0", port=2000)

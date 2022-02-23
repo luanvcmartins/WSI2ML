@@ -1,3 +1,6 @@
+import os
+
+
 class Config(object):
     """
     Shared configurations
@@ -32,7 +35,8 @@ class DockerProductionConfig(Config):
     """
     DEBUG = False
     SQLALCHEMY_ECHO = False
-    SQLALCHEMY_DATABASE_URI = 'sqlite:///db/temp.db'
+    # SQLALCHEMY_DATABASE_URI = 'sqlite:///db/temp.db'
+    SQLALCHEMY_DATABASE_URI = f"postgresql://{os.environ.get('POSTGRES_USER')}:{os.environ.get('POSTGRES_PASSWORD')}@wsi_db:5432/{os.environ.get('POSTGRES_NAME')}"
 
 
 app_config = {

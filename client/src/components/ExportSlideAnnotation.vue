@@ -73,10 +73,10 @@
 </template>
 
 <script>
-    export default {
-        name: "ExportSlideAnnotation",
-        props: ["projectId"]
-    }
+export default {
+  name: 'ExportSlideAnnotation',
+  props: ['projectId'],
+};
 </script>
 
 <style scoped>

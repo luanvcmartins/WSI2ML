@@ -2,12 +2,14 @@ import json
 from app import db, jwt
 from flask_login import UserMixin
 from werkzeug.security import generate_password_hash, check_password_hash
+from sqlalchemy.sql import func
 
 
 class User(UserMixin, db.Model):
     __tablename__ = 'users'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80))
+    email = db.Column(db.Text)
     username = db.Column(db.String(30), unique=True)
     password_hash = db.Column(db.String(128))
     is_admin = db.Column(db.Boolean)
@@ -130,6 +132,9 @@ class UserTask(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
     type = db.Column(db.Integer)
     completed = db.Column(db.Boolean)
+    locked = db.Column(db.Boolean)
+    created = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    updated = db.Column(db.DateTime(timezone=True), onupdate=func.now())
     user = db.relationship("User", viewonly=True)
     annotation_task = db.relationship("AnnotationTask", viewonly=True)
     revision_task = db.relationship("RevisionTask", viewonly=True)
@@ -151,6 +156,8 @@ class AnnotationTask(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'))
     name = db.Column(db.String(60))
+    created = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    updated = db.Column(db.DateTime(timezone=True), onupdate=func.now())
     project = db.relationship("Project")
     assigned = db.relationship("UserTask", passive_deletes=True)
     slides = db.relationship("Slide", secondary=task_slides)
@@ -160,6 +167,7 @@ class AnnotationTask(db.Model):
             "id": self.id,
             "project_id": self.project_id,
             "name": self.name,
+            "created": self.created,
             "type": 0
         }
         if context == "default":
@@ -179,6 +187,8 @@ class RevisionTask(db.Model):
     __tablename__ = "revision_tasks"
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.Text)
+    created = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    updated = db.Column(db.DateTime(timezone=True), onupdate=func.now())
     task_id = db.Column(db.Integer, db.ForeignKey('annotation_tasks.id'))
     project_id = db.Column(db.Integer, db.ForeignKey('projects.id'))
     project = db.relationship("Project", viewonly=True)
@@ -239,6 +249,8 @@ class Annotation(db.Model):
     title = db.Column(db.Text)
     description = db.Column(db.Text)
     properties_json = db.Column(db.Text())
+    created = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    updated = db.Column(db.DateTime(timezone=True), onupdate=func.now())
     data_json = db.Column(db.Text)
     label = db.relationship("Label")
     slide = db.relationship("Slide")
@@ -291,6 +303,8 @@ class AnnotationRevised(db.Model):
     feedback = db.Column(db.Integer)
     label_id = db.Column(db.Integer, db.ForeignKey("label.id"))
     data_json = db.Column(db.Text)
+    created = db.Column(db.DateTime(timezone=True), server_default=func.now())
+    updated = db.Column(db.DateTime(timezone=True), onupdate=func.now())
 
     @property
     def data(self):

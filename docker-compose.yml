@@ -1,0 +1,31 @@
+version: "3.9"
+
+services:
+  wsi_db:
+    image: postgres
+    volumes:
+      - wsi_data:/var/lib/postgresql/data
+      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    ports:
+      - "2001:5432"
+  web:
+    build: .
+    command: python3 app.py docker
+    volumes:
+      - C:/Users/Luan/Desktop/sample_files/:/images
+    ports:
+      - 2000:2000
+    environment:
+      - POSTGRES_NAME=postgres
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    depends_on:
+      - wsi_db
+
+volumes:
+  wsi_data:
+

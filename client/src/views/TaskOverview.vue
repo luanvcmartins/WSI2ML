@@ -16,28 +16,26 @@
 </template>
 
 <script>
-    import Loading from "../components/Loading";
-    import ProjectStatus from "../components/ProjectStatus";
+import Loading from '../components/LoadingContent';
+import ProjectStatus from '../components/ProjectStatus';
 
-    export default {
-        name: "TaskOverview",
-        data: () => {
-            return {
-                progress: null,
-            }
-        },
-        methods: {
-            loadOverview: function () {
-                this.$get("project/progress")
-                    .then(res => this.progress = res)
-                    .catch(err => alert(err))
-            }
-        },
-        mounted() {
-            this.loadOverview()
-        },
-        components: {ProjectStatus, Loading}
-    }
+export default {
+  name: 'TaskOverview',
+  data: () => ({
+    progress: null,
+  }),
+  methods: {
+    loadOverview() {
+      this.$get('project/progress')
+        .then((res) => this.progress = res)
+        .catch((err) => alert(err));
+    },
+  },
+  mounted() {
+    this.loadOverview();
+  },
+  components: { ProjectStatus, Loading },
+};
 </script>
 
 <style scoped>
