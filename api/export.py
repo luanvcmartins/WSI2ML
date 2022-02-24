@@ -28,7 +28,7 @@ def list_task():
             WHERE user_tasks.user_id = users.id AND annotation_tasks.id = user_tasks.annotation_task_id
             AND annotations.user_task_id = user_tasks.id
             AND user_tasks.annotation_task_id = :task_id
-            GROUP BY user_tasks.id""",
+            GROUP BY user_tasks.id, users.name,annotation_tasks.name""",
             {"task_id": task.id}).all()
         export_tasks.append({
             "id": task.id,
@@ -116,7 +116,7 @@ def review_by_task():
               AND users.id = user_tasks.user_id 
               AND annotations_revised.annotation_id = annotations.id
               AND annotations_revised.user_task_id = user_tasks.id
-            GROUP BY users.id
+            GROUP BY users.id, user_tasks.id
         """, {"user_task_id": user_task_id}).all()
 
     return jsonify([{
@@ -171,7 +171,7 @@ def filter_annotations(user_task_filters, annotations):
         for review in user_task_filters:
             rev_anns = models.AnnotationRevised.query.filter(models.AnnotationRevised.user_task_id == review).all()
             for rev_ann in rev_anns:
-                # this review doesn't concern a annotation we are exporting, skip it
+                # this review doesn't concern an annotation we are exporting, skip it
                 if rev_ann.annotation_id not in annotations: continue
 
                 # creating the counting for this new annotation
