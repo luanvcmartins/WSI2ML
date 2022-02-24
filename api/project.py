@@ -93,6 +93,24 @@ def list_projects():
     return jsonify([x.to_json() for x in models.Project.query.all()])
 
 
+def gen_progress_query():
+    if db.engine.name == 'sqlite':
+        count_filter = "COUNT(CASE WHEN completed=1 THEN 1 END)"
+    else:
+        count_filter = "count(*) FILTER (WHERE completed=TRUE)"
+
+    project_progress = f"""SELECT annotation_tasks.id, {count_filter} as completed, count(annotation_tasks.id) as total 
+               FROM user_tasks, annotation_tasks 
+               WHERE user_tasks.annotation_task_id = annotation_tasks.id 
+               AND project_id = :project_id GROUP BY annotation_tasks.id"""
+    user_progress = f"""SELECT users.name, {count_filter} as completed, count(*) as total 
+               FROM user_tasks, annotation_tasks, users WHERE 
+               user_tasks.annotation_task_id = annotation_tasks.id 
+               AND users.id = user_tasks.user_id 
+               AND annotation_tasks.project_id = :project_id GROUP BY user_tasks.user_id, users.name"""
+    return project_progress, user_progress
+
+
 @project_api.route("progress")
 @jwt_required()
 def general_progress():
@@ -102,19 +120,9 @@ def general_progress():
     progress = []
     projects = models.Project.query.all()
     for project in projects:
-        project_progress = list(db.session.execute(
-            "SELECT annotation_tasks.id, COUNT(CASE WHEN completed=1 THEN 1 END) as completed, count(annotation_tasks.id) as total "
-            "FROM user_tasks, annotation_tasks "
-            "WHERE user_tasks.annotation_task_id = annotation_tasks.id "
-            "AND project_id = :project_id GROUP BY annotation_tasks.id",
-            {"project_id": project.id}))
-        users_progress = list(db.session.execute(
-            "SELECT users.name, COUNT(CASE WHEN completed=1 THEN 1 END) as completed, count(*) as total "
-            "FROM user_tasks, annotation_tasks, users WHERE "
-            "user_tasks.annotation_task_id = annotation_tasks.id "
-            "AND users.id = user_tasks.user_id "
-            "AND annotation_tasks.project_id = :project_id GROUP BY user_tasks.user_id",
-            {"project_id": project.id}))
+        project_query, user_query = gen_progress_query()
+        project_progress = list(db.session.execute(project_query, {"project_id": project.id}))
+        users_progress = list(db.session.execute(user_query, {"project_id": project.id}))
         completed_tasks = len([x for x in project_progress if x[1] == x[2]])
         progress.append({
             "id": project.id,
