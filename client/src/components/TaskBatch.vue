@@ -25,6 +25,7 @@
       </template>
     </v-treeview>
     <v-checkbox v-if="folders.length > 0" v-model="task.only_new" label="Only include new files"/>
+    <v-checkbox v-model="task.group_slides" label="Group slides by name"/>
 
     <v-select label="Divide between" chips multiple :items="users"
               item-text="username" v-model="task.assigned"
@@ -34,8 +35,8 @@
           style="font-size: 10px">Intersection: how many people should annotate each slide?</span>
     <v-slider v-model="task.concurrent"
               label="Intersection"
-              min="1"
-              :max="task.assigned.length"
+              :min="1"
+              :max="totalIntersection"
               step="1"
               thumb-label
               ticks="always"
@@ -58,6 +59,18 @@ export default {
       }
     },
   },
+  computed: {
+    totalIntersection() {
+      this.$nextTick(() => {
+        this.task.concurrent = 1;
+      });
+      if (this.task.assigned != null) {
+        return this.task.assigned.length;
+      } else {
+        return 0;
+      }
+    }
+  },
   data() {
     return {
       projects: null,
@@ -70,46 +83,47 @@ export default {
         folders: [],
         concurrent: 1,
         only_new: true,
+        group_slides: true
       },
     };
   },
   methods: {
     save() {
       this.$post('task/new_batch', this.task)
-        .then((res) => {
-          let counter = '';
-          Object.entries(res.user_tasks)
-            .forEach(([name, count]) => {
-              counter += `${name} has ${count} new tasks.\n`;
-            });
-          alert(`Successfully created ${res.new_tasks} new tasks.\n${counter}`);
-          this.$emit('done', 'task');
-        })
-        .catch((err) => alert(err));
+          .then((res) => {
+            let counter = '';
+            Object.entries(res.user_tasks)
+                .forEach(([name, count]) => {
+                  counter += `${name} has ${count} new tasks.\n`;
+                });
+            alert(`Successfully created ${res.new_tasks} new tasks.\n${counter}`);
+            this.$emit('done', 'task');
+          })
+          .catch((err) => alert(err));
     },
 
     load_projects() {
       this.$get('project/list')
-        .then((resp) => {
-          this.projects = resp;
-        })
-        .catch((err) => alert(err));
+          .then((resp) => {
+            this.projects = resp;
+          })
+          .catch((err) => alert(err));
     },
     load_users() {
       this.$get('user/list')
-        .then((resp) => {
-          this.users = resp;
-        })
-        .catch((err) => alert(err));
+          .then((resp) => {
+            this.users = resp;
+          })
+          .catch((err) => alert(err));
     },
     load_folders(projectId) {
       this.$get(`task/folders?project_id=${projectId}`)
-        .then((resp) => {
-          this.folders = resp;
-        })
-        .catch(() => {
-          alert('Unable to locate the project\'s folder. Make sure the project is properly setup for the current environment.');
-        });
+          .then((resp) => {
+            this.folders = resp;
+          })
+          .catch(() => {
+            alert('Unable to locate the project\'s folder. Make sure the project is properly setup for the current environment.');
+          });
     },
   },
   mounted() {

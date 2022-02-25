@@ -74,7 +74,7 @@ def new_revision_task(new_task):
 @task_api.route("new_batch", methods=["POST"])
 @jwt_required()
 def new_batch():
-    if not current_user.is_admin:
+    if not current_user.manages_tasks:
         return jsonify({"msg": 'Not an admin!'}), 401
     batch = request.json
     users = batch['assigned']
@@ -94,9 +94,12 @@ def new_batch():
     # we will shuffle the group as to avoid assigning tasks too unfairly (many users for fewer tasks)
     shuffle(users_group)
     only_new = batch['only_new']
+    group_slides = batch['group_slides']
 
+    grouped_slides = {}
+    idx = 0
     new_task_counter, new_user_task_counter = 0, {user['name']: 0 for user in users}
-    for user_group, file in zip(cycle(users_group), files):
+    for file in files:
         # we will first add the slide to the database, this is important as we may want to skip this
         # item if the file is known and the user selected 'only_new'
         m_slide = models.Slide.query.get(file['id'])
@@ -107,12 +110,31 @@ def new_batch():
             # we already know this file, we will skip it entirely if the user selected 'only_new':
             if only_new:
                 continue
-        # we will register the new task and associate the slide to it:
+
+        # slides can be grouped based on a criteria
+        if group_slides:
+            # slides should be grouped, at the current type, we take the first part of the filename
+            key = file['name'].split('-')[0]
+            if '_' in key:  # we are also ignoring the first number, which is unique to the file
+                key = key.split("_")[1]
+            if key not in grouped_slides:
+                grouped_slides[key] = []
+            grouped_slides[key].append(m_slide)
+        else:
+            # if user doesn't want to group slides, then each group will have one slide
+            grouped_slides[idx] = [m_slide]
+            idx += 1
+
+    # not that the slides has been created and grouped together, we will create the tasks
+    for user_group, (g_name, slides) in zip(cycle(users_group), grouped_slides.items()):
+        # we will register the new task:
         task = models.AnnotationTask(
             project_id=batch['project_id'],
-            name=f"{batch['name']} - {file['name']}" if batch['name'] != '' else ''
+            name=f"{batch['name']}" if batch['name'] != '' else 'Slide annotation'
         )
-        task.slides.append(m_slide)
+        # we will associate each slide of the group to the task:
+        for slide in slides:
+            task.slides.append(slide)
         db.session.add(task)
         db.session.commit()
 
@@ -127,6 +149,7 @@ def new_batch():
             )
             new_user_task_counter[user['name']] += 1
             db.session.add(user_task)
+            # db.session.commit()
         new_task_counter += 1
     db.session.commit()
     return jsonify({"new_tasks": new_task_counter, "user_tasks": new_user_task_counter})
