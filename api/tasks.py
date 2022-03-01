@@ -18,24 +18,33 @@ def new():
     if not current_user.manage_tasks:
         return jsonify({"msg": 'Not an admin!'}), 401
     new_task = request.json
-    if new_task['type'] == 0:
+    task_type = new_task['type']
+    if task_type == 0 or task_type == 2:
         # Annotation task:
         task = new_annotation_task(new_task)
-    else:  # if new_task['type'] == 1:
+    else:  # new_task['type'] == 1:
         # the task type is revision
         task = new_revision_task(new_task)
 
     for user in new_task['assigned']:
         user_task = models.UserTask(
             id=str(uuid.uuid4()),
-            user_id=user['id'],
             completed=False,
             type=new_task['type']
         )
         if new_task['type'] == 0:
+            # user annotation task
+            user_task.user_id = user['id']
             user_task.annotation_task_id = task.id
-        else:
+        elif task_type == 1:
+            # revision task
+            user_task.user_id = user['id']
             user_task.revision_task_id = task.id
+        else:
+            # app annotation task:
+            user_task.app_id = user['id']
+            user_task.annotation_task_id = task.id
+
         db.session.add(user_task)
 
     db.session.commit()
@@ -197,6 +206,44 @@ def management_list():
             1: [x.to_dict() for x in revisions]
         })
     return jsonify({"msg": "Not an admin!"}), 401
+
+
+@task_api.route("app_task_list", methods=['GET'])
+@jwt_required()
+def app_tasks_list():
+    if not current_user.manages_apps:
+        return jsonify({"msg": "Not an admin!"}), 401
+    user_apps = [app.id for app in models.App.query.filter_by(owner_id=current_user.id).all()]
+    query_filter = ",".join([f":id{i}" for i in range(len(user_apps))])
+    tasks = db.session.execute(
+        f"""SELECT annotation_tasks.* FROM user_tasks, annotation_tasks WHERE
+        user_tasks.annotation_task_id = annotation_tasks.id AND
+        user_tasks.app_id in ({query_filter})
+        GROUP BY annotation_tasks.id""", {
+            f"id{i}": app for i, app in enumerate(user_apps)
+        }
+    )
+    projects_id = set([task[1] for task in tasks])
+    projects = models.Project.query.filter(models.Project.id.in_(projects_id))
+    app_task_list = {
+        "projects": [project.to_dict() for project in projects],
+        "tasks": {}
+    }
+    for project_id in projects_id:
+        for task in tasks:
+            app_tasks = models.UserTask.query.filter(models.UserTask.task_id == task[0],
+                                                     models.UserTask.app_id.in_(user_apps),
+                                                     models.UserTask.annotation_task.project_id == project_id)
+            if project_id not in app_task_list["tasks"]:
+                app_task_list["tasks"][project_id] = []
+            project_task_list = app_task_list["tasks"][project_id]
+            project_task_list.append({
+                "id": task[0],
+                "name": task[2],
+                "created": task[3],
+                "app_tasks": [app_task.to_dict() for app_task in app_tasks]
+            })
+    return jsonify(app_task_list)
 
 
 @task_api.route("edit", methods=["POST"])

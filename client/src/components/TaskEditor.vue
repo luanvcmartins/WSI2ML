@@ -60,7 +60,9 @@
       </v-tab-item>
     </v-tabs-items>
 
-    <v-select label="Users assigned" chips multiple :items="users" item-text="username" v-model="task.assigned"
+    <v-select :disabled="task.type === 2" label="Users assigned" chips multiple
+              :items="users" item-text="username"
+              v-model="task.assigned"
               return-object/>
     <v-card-actions>
       <v-spacer></v-spacer>
@@ -117,6 +119,9 @@ export default {
     //     }
     //   }
     // },
+    currentUser() {
+      return this.$store.state.user;
+    }
   },
   data: () => ({
     task: null,
@@ -131,55 +136,57 @@ export default {
   methods: {
     load_users() {
       this.$get('user/list')
-        .then((resp) => {
-          this.users = resp;
-        })
-        .catch((err) => alert(err));
+          .then((resp) => {
+            this.users = resp;
+          })
+          .catch((err) => alert(err));
     },
 
     load_projects() {
       this.$get('project/list')
-        .then((resp) => this.projects = resp)
-        .catch((err) => alert(err));
+          .then((resp) => this.projects = resp)
+          .catch((err) => alert(err));
     },
 
     load_review_tasks() {
       this.$get('project/tasks')
-        .then((resp) => { this.review_task_list = resp; })
-        .catch((err) => alert(err));
+          .then((resp) => {
+            this.review_task_list = resp;
+          })
+          .catch((err) => alert(err));
     },
 
     save() {
       if (this.task.id == null) {
         this.$post('task/new', this.task)
-          .then((resp) => {
-            this.task = resp;
-            this.$emit('input', resp);
-            this.$emit('done', 'task');
-          })
-          .catch((err) => {
-            alert(err);
-          });
+            .then((resp) => {
+              this.task = resp;
+              this.$emit('input', resp);
+              this.$emit('done', 'task');
+            })
+            .catch((err) => {
+              alert(err);
+            });
       } else {
         this.$post('task/edit', this.task)
-          .then((resp) => {
-            this.task = resp;
-            this.$emit('input', resp);
-            this.$emit('done', 'task');
-          })
-          .catch((err) => {
-            alert(err);
-          });
+            .then((resp) => {
+              this.task = resp;
+              this.$emit('input', resp);
+              this.$emit('done', 'task');
+            })
+            .catch((err) => {
+              alert(err);
+            });
       }
     },
     load_files(projectId) {
       this.$get(`task/files?project_id=${projectId}`)
-        .then((resp) => {
-          this.files = resp;
-        })
-        .catch(() => {
-          alert('Unable to locate the project\'s folder. Make sure the project is properly setup for the current environment.');
-        });
+          .then((resp) => {
+            this.files = resp;
+          })
+          .catch(() => {
+            alert('Unable to locate the project\'s folder. Make sure the project is properly setup for the current environment.');
+          });
     },
   },
   mounted() {

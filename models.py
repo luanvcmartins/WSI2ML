@@ -50,7 +50,7 @@ class User(UserMixin, db.Model):
         """
         return check_password_hash(self.password_hash, password)
 
-    def to_json(self):
+    def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
@@ -66,6 +66,23 @@ class User(UserMixin, db.Model):
         }
 
 
+class App(db.Model):
+    __tablename__ = "apps"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(60))
+    description = db.Column(db.String(120))
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    owner = db.relationship("User", viewonly=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "owner": self.owner.to_dict()
+        }
+
+
 class Project(db.Model):
     __tablename__ = "projects"
     id = db.Column(db.Integer, primary_key=True)
@@ -74,13 +91,13 @@ class Project(db.Model):
     folder = db.Column(db.Text)
     labels = db.relationship("Label")
 
-    def to_json(self):
+    def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
             "description": self.description,
             "folder": self.folder,
-            "labels": [x.to_json() for x in self.labels]
+            "labels": [x.to_dict() for x in self.labels]
         }
 
 
@@ -99,7 +116,7 @@ class Label(db.Model):
     def color(self, new_color):
         self.label_color = ";".join(map(str, new_color))
 
-    def to_json(self):
+    def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
@@ -130,19 +147,21 @@ class UserTask(db.Model):
     annotation_task_id = db.Column(db.Integer, db.ForeignKey('annotation_tasks.id', ondelete='CASCADE'))
     revision_task_id = db.Column(db.Integer, db.ForeignKey('revision_tasks.id', ondelete='CASCADE'))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    app_id = db.Column(db.Integer, db.ForeignKey('apps.id'))
     type = db.Column(db.Integer)
     completed = db.Column(db.Boolean)
     locked = db.Column(db.Boolean)
     created = db.Column(db.DateTime(timezone=True), server_default=func.now())
     updated = db.Column(db.DateTime(timezone=True), onupdate=func.now())
     user = db.relationship("User", viewonly=True)
+    app = db.relationship("App", viewonly=True)
     annotation_task = db.relationship("AnnotationTask", viewonly=True)
     revision_task = db.relationship("RevisionTask", viewonly=True)
 
     def to_dict(self, skip_task=False):
         user_task = {
             "id": self.id,
-            "user": self.user.to_json(),
+            "user": self.user.to_dict(),
             "type": self.type,
             "completed": self.completed
         }
@@ -173,8 +192,8 @@ class AnnotationTask(db.Model):
         if context == "default":
             task = {**task, **{
                 "slides": [x.to_dict() for x in self.slides],
-                "project": self.project.to_json(),
-                "assigned": [x.user.to_json() for x in self.assigned],
+                "project": self.project.to_dict(),
+                "assigned": [x.user.to_dict() for x in self.assigned],
             }}
 
         return task
@@ -205,12 +224,12 @@ class RevisionTask(db.Model):
             "name": self.name,
             "task_id": self.task_id,
             "project_id": self.project_id,
-            "project": self.project.to_json(),
+            "project": self.project.to_dict(),
             "task": self.task.to_dict(),
             "type": 1
         }
         if with_assigned:
-            item["assigned"] = [x.user.to_json() for x in self.assigned]
+            item["assigned"] = [x.user.to_dict() for x in self.assigned]
         if include_revisions:
             item["revisions"] = [x.to_dict() for x in self.revisions]
         return item
@@ -278,7 +297,7 @@ class Annotation(db.Model):
             "description": self.description,
             "user_task_id": self.user_task_id,
             "slide_id": self.slide_id,
-            "label": self.label.to_json(),
+            "label": self.label.to_dict(),
             "geometry": self.data,
             "meta": {},
             "properties": self.properties

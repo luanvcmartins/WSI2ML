@@ -55,7 +55,7 @@ def edit():
                 color=label['color'],
             ))
         db.session.commit()
-    return jsonify(models.Project.query.get(new_project['id']).to_json())
+    return jsonify(models.Project.query.get(new_project['id']).to_dict())
 
 
 @project_api.route("valid_path", methods=["POST"])
@@ -90,7 +90,7 @@ def remove_label():
 
 @project_api.route("list")
 def list_projects():
-    return jsonify([x.to_json() for x in models.Project.query.all()])
+    return jsonify([x.to_dict() for x in models.Project.query.all()])
 
 
 def gen_progress_query():

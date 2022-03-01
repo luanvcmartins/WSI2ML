@@ -28,7 +28,7 @@ def new():
     )
     db.session.add(user)
     db.session.commit()
-    return jsonify(user.to_json())
+    return jsonify(user.to_dict())
 
 
 @user_api.route("edit", methods=["POST"])
@@ -41,7 +41,7 @@ def edit():
     user = db.session.query(models.User).get(new_user["id"])
     user.update(new_user)
     db.session.commit()
-    return jsonify(user.to_json())
+    return jsonify(user.to_dict())
 
 
 @user_api.route("list")
@@ -50,7 +50,7 @@ def list():
     logged_user = current_user
     if not logged_user.manages_users:
         return jsonify({"msg": "Not an admin!"}), 401
-    return jsonify([x.to_json() for x in models.User.query.all()])
+    return jsonify([x.to_dict() for x in models.User.query.all()])
 
 
 @user_api.route("remove")
@@ -84,7 +84,7 @@ def login():
         # user exists and knows the password:
         token = create_access_token(user)
         return jsonify({
-            "user": user.to_json(),
+            "user": user.to_dict(),
             "token": token
         })
     else:
