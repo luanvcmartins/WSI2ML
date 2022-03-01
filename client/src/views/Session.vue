@@ -82,7 +82,7 @@
                     <!--                      <v-radio v-for="slide in slides" :label="slide.name" :value="slide"/>-->
                     <!--                    </v-radio-group>-->
 
-                    <v-list dense shaped>
+                    <v-list dense shaped class="slides-list">
                       <v-list-item-group v-model="current_slide" color="orange" mandatory>
                         <v-list-item two-line v-for="slide in slides" :key="slide.id" :value="slide">
 
@@ -489,9 +489,9 @@ export default {
       // this.editing = annotation;
       switch (feedback) {
         case 'correct':
-          this.editing.feedback.feedback = 0;
-          this.editing.feedback.geometry = null;
-          this.editing.feedback.label_id = null;
+          annotation.feedback.feedback = 0;
+          annotation.feedback.geometry = null;
+          annotation.feedback.label_id = null;
           this.saveFeedback(annotation);
           break;
         case 'wrong-label':
@@ -539,6 +539,11 @@ export default {
   100% {
     background-color: white;
   }
+}
+
+.slides-list {
+  max-height: 400px;
+  overflow-y: scroll;
 }
 
 .highlighted {

@@ -1273,11 +1273,11 @@ class Annotation {
       geometry,
       label,
       id,
-      title,
-      description,
-      properties,
       feedback,
-      slide_id: slideId,
+      'properties': properties,
+      'slide_id': slideId,
+      'title': title,
+      'description': description,
     };
   }
 

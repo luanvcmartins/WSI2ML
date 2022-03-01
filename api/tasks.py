@@ -15,7 +15,7 @@ task_api = Blueprint("task_api", __name__)
 @task_api.route("new", methods=["POST"])
 @jwt_required()
 def new():
-    if not current_user.manage_tasks:
+    if not current_user.manages_tasks:
         return jsonify({"msg": 'Not an admin!'}), 401
     new_task = request.json
     task_type = new_task['type']

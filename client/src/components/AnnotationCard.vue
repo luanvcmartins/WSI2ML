@@ -7,9 +7,11 @@
     <AnnotationEditingCard v-else-if="value.state === 'editing'"
                            v-model="value"
                            v-on:cancel-edit="cancelEdit"
+                           v-on:annotation-update="updateRender"
                            v-on:save-annotation="saveAnnotation"/>
     <AnnotationFeedbackCard v-else-if="value.state === 'feedback'|| value.state === 'feedback-editing'"
                             v-model="value"
+                            v-on:annotation-update="updateRender"
                             v-on:annotation-feedback="annotationFeedback"/>
   </v-card>
 </template>
