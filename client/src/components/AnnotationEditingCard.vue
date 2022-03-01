@@ -6,7 +6,7 @@
     </v-card-title>
     <v-card-text @click.stop>
       <v-text-field v-model="value.description" label="Description"/>
-      <v-chip-group v-model="value.label" mandatory column @change="updateRender">
+      <v-chip-group v-model="selectedLabel" mandatory column>
         <v-chip :color="genColor(label.color)" outlined
                 v-for="label in projectLabels" filter :value="label"
                 :key="label.id">
@@ -28,6 +28,18 @@ import { Annotation } from '@/SliceDrawer';
 
 export default {
   name: 'AnnotationEditingCard',
+  watch: {
+    'value.label': {
+      immediate: true,
+      handler(newValue) {
+        this.selectedLabel = newValue;
+      }
+    },
+    selectedLabel(newValue) {
+      this.value.label = newValue;
+      this.updateRender();
+    }
+  },
   computed: {
     cardTitle() {
       if (this.value.title != null && this.value.title !== '') {
@@ -44,20 +56,22 @@ export default {
       return labels;
     }
   },
+  data() {
+    return {
+      selectedLabel: null
+    };
+  },
   methods: {
     genColor(color) {
       return `rgb(${color[0]},${color[1]},${color[2]})`;
     },
     editRegion() {
-      this.updating_label = true;
       this.$emit('edit-annotation', this.value);
     },
     saveRegion() {
-      this.updating_label = false;
       this.$emit('save-annotation', this.value);
     },
     cancelEdit() {
-      this.updating_label = false;
       this.$emit('cancel-edit');
     },
     dismissAnnotation() {
@@ -67,6 +81,8 @@ export default {
     updateRender() {
       this.$emit('annotation-update');
     },
+  },
+  mounted() {
   },
   props: { value: { type: Annotation } }
 };
