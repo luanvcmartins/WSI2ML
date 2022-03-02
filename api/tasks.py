@@ -3,6 +3,7 @@ import hashlib
 import models
 import uuid
 import os
+import re
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, current_user
 from app import db
@@ -113,13 +114,18 @@ def new_batch():
 
         # slides can be grouped based on a criteria
         if group_slides:
-            # slides should be grouped, at the current type, we take the first part of the filename
-            key = file['name'].split('-')[0]
-            if '_' in key:  # we are also ignoring the first number, which is unique to the file
-                key = key.split("_")[1]
-            if key not in grouped_slides:
-                grouped_slides[key] = []
-            grouped_slides[key].append(m_slide)
+            # slides should be grouped, we take the first part of the filename
+            key = re.search("H\\d+-\\d+", file['name'])
+
+            if key is not None:
+                key = key.group()
+                if key not in grouped_slides:
+                    grouped_slides[key] = []
+                grouped_slides[key].append(m_slide)
+            else:
+                # if match is not found, default to one-slide task
+                grouped_slides[idx] = [m_slide]
+                idx += 1
         else:
             # if user doesn't want to group slides, then each group will have one slide
             grouped_slides[idx] = [m_slide]
@@ -260,10 +266,14 @@ def edit():
 @task_api.route("remove", methods=["POST"])
 def remove():
     task = request.json
-    if task['type'] == 0:
+    if task['type'] == 0 or task['type'] == 1:
         db.session.query(models.AnnotationTask).filter(models.AnnotationTask.id == task['id']).delete()
         db.session.execute("DELETE FROM task_slides WHERE task_id = :task_id", {"task_id": task['id']})
         db.session.query(models.UserTask).filter(models.UserTask.annotation_task_id == task['id']).delete()
+        for revision in db.session.query(models.RevisionTask).filter(models.RevisionTask.task_id == task['id']).all():
+            db.session.query(models.UserTask).filter(models.UserTask.revision_task_id == revision.id).delete()
+            revision.delete()
+
     elif task['type'] == 1:
         db.session.query(models.RevisionTask).filter(models.RevisionTask.id == task['id']).delete()
         db.session.query(models.UserTask).filter(models.UserTask.revision_task_id == task['id']).delete()

@@ -352,16 +352,14 @@ export default {
 
     // eslint-disable-next-line no-param-reassign
     onNewRegionDraw(annotation) {
-      console.log(annotation);
-
       annotation.id = null; // making sure to reset the id
       annotation.slideId = this.current_slide.id;
       const self = this;
       this.$post(`session/${this.session_id}/add_region`, annotation.serialize())
           .then((resp) => {
             // Add the new region to the list
-            // self.annotations[self.current_slide.id] = self.annotations[self.current_slide.id].filter((item) => annotation.id !== item.id);
             annotation.id = resp.id;
+            annotation.state = 'idle';
             self.annotations[self.current_slide.id].push(annotation);
             self.annotationUpdate();
           })
@@ -434,6 +432,7 @@ export default {
         reader.readAsText(e.target.files[0], 'UTF-8');
         reader.onload = (readerEvent) => {
           const json = JSON.parse(readerEvent.target.result);
+          const slideId = this.current_slide.id;
           const annotations = json.features.map((feature, idx) => {
             const geo = feature.geometry;
             return {
@@ -449,11 +448,13 @@ export default {
                   y: coord[1],
                 }))),
               },
+              slide_id: slideId,
               state: 'importing'
             };
           });
           console.log('Annotations: ', annotations);
-          this.annotations[this.current_slide.id].push(...loadAnnotations(annotations));
+          const slideAnnotations = loadAnnotations({ 0: annotations })[0];
+          this.annotations[slideId].push(...slideAnnotations);
         };
       };
       input.click();
@@ -507,7 +508,7 @@ export default {
     },
 
     dismissAnnotation(annotation) {
-      if (annotation.currentlyImporting) {
+      if (annotation.state === 'importing') {
         this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id].filter((item) => item !== annotation);
       } else if (confirm('Are you sure you want to remove this annotation?')) {
         this.$post(`session/${this.session_id}/remove_annotation`, annotation.serialize())
@@ -542,8 +543,8 @@ export default {
 }
 
 .slides-list {
-  max-height: 400px;
-  overflow-y: scroll;
+  max-height: 200px;
+  overflow-y: auto;
 }
 
 .highlighted {

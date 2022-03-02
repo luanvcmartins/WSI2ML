@@ -9,6 +9,11 @@
                            v-on:cancel-edit="cancelEdit"
                            v-on:annotation-update="updateRender"
                            v-on:save-annotation="saveAnnotation"/>
+    <AnnotationImportingCard v-else-if="value.state === 'importing'"
+                             v-model="value"
+                             v-on:dismiss-annotation="dismissAnnotation"
+                             v-on:annotation-update="updateRender"
+                             v-on:import-annotation="importAnnotation"/>
     <AnnotationFeedbackCard v-else-if="value.state === 'feedback'|| value.state === 'feedback-editing'"
                             v-model="value"
                             v-on:annotation-update="updateRender"
@@ -22,12 +27,14 @@ import { Annotation } from '@/SliceDrawer';
 import AnnotationIdleCard from '@/components/AnnotationIdleCard';
 import AnnotationEditingCard from '@/components/AnnotationEditingCard';
 import AnnotationFeedbackCard from '@/components/AnnotationFeedbackCard';
+import AnnotationImportingCard from '@/components/AnnotationImportingCard';
 
 export default {
   name: 'AnnotationCard',
   components: {
     AnnotationFeedbackCard,
     AnnotationEditingCard,
+    AnnotationImportingCard,
     AnnotationIdleCard
   },
   computed: {
@@ -128,7 +135,6 @@ export default {
       this.$emit('cancel-edit');
     },
     importAnnotation() {
-      this.updating_label = false;
       this.$emit('import-annotation', this.value);
     },
     dismissAnnotation() {

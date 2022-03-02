@@ -230,9 +230,13 @@ def export_task():
     zip_stream = BytesIO()
     with zipfile.ZipFile(zip_stream, 'w') as zf:
         for slide, slide_geojson in geojson.items():
+            final_geojson = {
+                "type": "FeatureCollection",
+                "features": slide_geojson
+            }
             file_data = zipfile.ZipInfo(f"{slide.replace('.svs', '')}.geojson")
             file_data.compress_type = zipfile.ZIP_DEFLATED
-            zf.writestr(file_data, json.dumps(slide_geojson, indent=2))
+            zf.writestr(file_data, json.dumps(final_geojson, indent=2))
     zip_stream.seek(0)
 
     return Response(zip_stream,

@@ -11,9 +11,9 @@
     <v-card-text @click.stop>
       <v-text-field v-model="value.description" label="Description"/>
 
-      <v-chip-group v-model="value.label" mandatory column @change="updateRender">
+      <v-chip-group v-model="value.label" mandatory column @change="annotationUpdate">
         <v-chip :color="genColor(label.color)" outlined
-                v-for="label in project_labels" filter :value="label"
+                v-for="label in projectLabels" filter :value="label"
                 :key="label.id">
           {{ label.name }}
         </v-chip>
@@ -40,6 +40,14 @@ export default {
       }
       return this.value.label.name;
     },
+    projectLabels() {
+      const labels = {};
+      const data = this.$store.state.session.task.project.labels;
+      for (let i = 0; i < data.length; i += 1) {
+        labels[data[i].id] = data[i];
+      }
+      return labels;
+    },
   },
   methods: {
     genColor(color) {
@@ -51,6 +59,11 @@ export default {
     },
     dismissAnnotation() {
       this.$emit('dismiss-annotation', this.value);
+    },
+    annotationUpdate() {
+      this.$nextTick(() => {
+        this.$emit('annotation-update');
+      });
     },
   },
   props: { value: { type: Annotation } }

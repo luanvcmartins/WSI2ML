@@ -1245,7 +1245,7 @@ class Annotation {
       || this.imageLocation.left > userViewport.right
       || this.imageLocation.top > userViewport.bottom;
     const { filtering } = this.drawer;
-    const notFilteredOut = filtering[this.label.name];
+    const notFilteredOut = filtering[this.label.name] || this.state === 'importing';
     return !offScreen && notFilteredOut;
   }
 
