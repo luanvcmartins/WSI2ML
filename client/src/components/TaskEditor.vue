@@ -5,17 +5,21 @@
     <v-select label="Project" chips :items="projects" item-text="name"
               item-value="id" v-model="task.project_id"/>
     <v-tabs v-model="task.type">
-      <v-tab :disabled="task.id != null">
+      <v-tab :disabled="task.id != null || isAppContext">
         <v-simple-checkbox disabled :value="task.type === 0"/>
-        Annotate
+        User annotation
       </v-tab>
-      <v-tab :disabled="task.id != null">
+      <v-tab :disabled="task.id != null || isAppContext">
         <v-simple-checkbox disabled :value="task.type === 1"/>
         Revision
       </v-tab>
+      <v-tab :disabled="task.id != null">
+        <v-simple-checkbox disabled :value="task.type === 2"/>
+        App annotation
+      </v-tab>
     </v-tabs>
-    <v-tabs-items v-if="task.id == null" v-model="task.type">
-      <v-tab-item>
+    <v-tabs-items v-if="task.id == null" v-model="taskType">
+      <v-tab-item value="annotation">
         <!--        <v-select :label="`File to analyze ${current_folder != null ? `(from ${current_folder})` : '' }`"-->
         <!--                  v-model="task.slides"-->
         <!--                  :items="files" :readonly="task.project_id == null"-->
@@ -49,7 +53,7 @@
             hoverable
             selection-type="leaf"/>
       </v-tab-item>
-      <v-tab-item>
+      <v-tab-item value="revision">
         <v-select label="Tasks" v-model="review_task" :items="review_task_list" item-value="id" item-text="name"
                   return-object/>
         <v-select v-if="task.task_id != null" label="Users"
@@ -60,7 +64,11 @@
       </v-tab-item>
     </v-tabs-items>
 
-    <v-select :disabled="task.type === 2" label="Users assigned" chips multiple
+    <v-select v-if="value.type === 2" label="Apps assigned" chips multiple
+              :items="apps" item-text="name"
+              v-model="task.assigned"
+              return-object/>
+    <v-select v-else label="Users assigned" chips multiple
               :items="users" item-text="username"
               v-model="task.assigned"
               return-object/>
@@ -93,12 +101,12 @@ export default {
     },
     'task.project_id': function (newValue) {
       if (newValue != null) {
-        this.load_files(newValue);
+        this.loadFiles(newValue);
       }
     },
     'task.type': function (newValue) {
       if (newValue === 1 && this.review_task_list == null) {
-        this.load_review_tasks();
+        this.loadReviewTasks();
       }
     },
     review_task(newValue) {
@@ -121,6 +129,16 @@ export default {
     // },
     currentUser() {
       return this.$store.state.user;
+    },
+    taskType() {
+      if (this.task.type === 0 || this.task.type === 2) {
+        return 'annotation';
+      } else {
+        return 'revision';
+      }
+    },
+    isAppContext() {
+      return this.value.type === 2;
     }
   },
   data: () => ({
@@ -128,13 +146,14 @@ export default {
     editing_label: null,
     new_label: null,
     users: [],
+    apps: [],
     projects: [],
     files: [],
     review_task_list: null,
     review_task: [],
   }),
   methods: {
-    load_users() {
+    loadUsers() {
       this.$get('user/list')
           .then((resp) => {
             this.users = resp;
@@ -142,13 +161,21 @@ export default {
           .catch((err) => alert(err));
     },
 
-    load_projects() {
+    loadApps() {
+      this.$get('app/list')
+          .then((resp) => {
+            this.apps = resp;
+          })
+          .catch((err) => alert(err));
+    },
+
+    loadProjects() {
       this.$get('project/list')
           .then((resp) => this.projects = resp)
           .catch((err) => alert(err));
     },
 
-    load_review_tasks() {
+    loadReviewTasks() {
       this.$get('project/tasks')
           .then((resp) => {
             this.review_task_list = resp;
@@ -179,7 +206,7 @@ export default {
             });
       }
     },
-    load_files(projectId) {
+    loadFiles(projectId) {
       this.$get(`task/files?project_id=${projectId}`)
           .then((resp) => {
             this.files = resp;
@@ -190,10 +217,14 @@ export default {
     },
   },
   mounted() {
-    this.load_users();
-    this.load_projects();
+    this.loadProjects();
+    if (this.isAppContext) {
+      this.loadApps();
+    } else {
+      this.loadUsers();
+    }
     if (this.task.project != null) {
-      this.load_files(this.task.project.id);
+      this.loadFiles(this.task.project.id);
     }
   },
   props: ['value'],

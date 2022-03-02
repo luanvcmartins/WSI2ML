@@ -15,7 +15,7 @@ task_api = Blueprint("task_api", __name__)
 @task_api.route("new", methods=["POST"])
 @jwt_required()
 def new():
-    if not current_user.manages_tasks:
+    if not (current_user.manages_tasks or current_user.manages_apps):
         return jsonify({"msg": 'Not an admin!'}), 401
     new_task = request.json
     task_type = new_task['type']
@@ -32,7 +32,7 @@ def new():
             completed=False,
             type=new_task['type']
         )
-        if new_task['type'] == 0:
+        if task_type == 0:
             # user annotation task
             user_task.user_id = user['id']
             user_task.annotation_task_id = task.id
@@ -223,26 +223,44 @@ def app_tasks_list():
             f"id{i}": app for i, app in enumerate(user_apps)
         }
     )
+    tasks = list(tasks)
     projects_id = set([task[1] for task in tasks])
     projects = models.Project.query.filter(models.Project.id.in_(projects_id))
     app_task_list = {
-        "projects": [project.to_dict() for project in projects],
+        "projects": [project.to_dict(include_labels=False) for project in projects],
         "tasks": {}
     }
-    for project_id in projects_id:
-        for task in tasks:
-            app_tasks = models.UserTask.query.filter(models.UserTask.task_id == task[0],
-                                                     models.UserTask.app_id.in_(user_apps),
-                                                     models.UserTask.annotation_task.project_id == project_id)
-            if project_id not in app_task_list["tasks"]:
-                app_task_list["tasks"][project_id] = []
-            project_task_list = app_task_list["tasks"][project_id]
-            project_task_list.append({
-                "id": task[0],
-                "name": task[2],
-                "created": task[3],
-                "app_tasks": [app_task.to_dict() for app_task in app_tasks]
-            })
+    for task in tasks:
+        task_id, project_id, task_name, task_created, _ = task
+        app_tasks = db.session.execute("""SELECT user_tasks.id, user_tasks.completed, user_tasks.created, apps.* 
+        FROM user_tasks, annotation_tasks, apps WHERE
+        user_tasks.annotation_task_id AND
+        user_tasks.app_id = apps.id AND
+        annotation_tasks.id = :task_id""", {"task_id": task_id})
+        slides = db.session.execute("""
+        SELECT slides.id, slides.name, slides.file from slides, task_slides WHERE slides.id = task_slides.slide_id AND task_slides.task_id = :task_id
+        """, {"task_id": task_id})
+        if project_id not in app_task_list["tasks"]:
+            app_task_list["tasks"][project_id] = []
+        project_task_list = app_task_list["tasks"][project_id]
+        project_task_list.append({
+            "id": task_id,
+            "name": task_name,
+            "created": task_created,
+            "type": 2,
+            "slides": [{
+                "id": slide[0],
+                "name": slide[1],
+                "file": slide[2]
+            } for slide in slides],
+            "app_tasks": [{
+                "user_task_id": app_task[0],
+                "completed": app_task[1],
+                "created": app_task[2],
+                "app_id": app_task[3],
+                "app_name": app_task[4]
+            } for app_task in app_tasks]
+        })
     return jsonify(app_task_list)
 
 

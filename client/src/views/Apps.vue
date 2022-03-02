@@ -10,19 +10,43 @@
               </v-toolbar-title>
               <v-spacer/>
               <v-toolbar-items>
-                <v-btn @click="newApp" text>Create task</v-btn>
+                <v-btn @click="newAppTask" text>Create task</v-btn>
               </v-toolbar-items>
             </v-toolbar>
+
+            <v-tabs v-model="config.selected_tab">
+              <v-tab v-for="project in apps_tasks.projects" :key="project.id">
+                {{ project.name }}
+              </v-tab>
+            </v-tabs>
             <v-card-text v-if="apps_tasks.projects.length > 0">
+
               <v-data-table
-                  v-if="config.task_id != null"
                   :headers="config.app_task"
-                  :items="apps_tasks.tasks[config.task_id]"
-                  :items-per-page="5">
+                  :items="apps_tasks.tasks[projectId]"
+                  :items-per-page="10"
+                  :expanded.sync="config.extended_tasks"
+                  show-expand>
+
+
+                <template v-slot:expanded-item="{ headers, item }">
+                  <td :colspan="headers.length">
+                    <v-chip-group>
+                      <v-chip v-for="app_task in item.app_tasks" :key="app_task.user_task_id"
+                              :color="!app_task.completed ? 'orange' : 'gray'"
+                              @click="openSession(item, app_task)">
+                        <v-icon left>
+                          mdi-play
+                        </v-icon>
+                        {{ app_task.app_name }} ({{ app_task.created }})
+                      </v-chip>
+                    </v-chip-group>
+                  </td>
+                </template>
 
               </v-data-table>
             </v-card-text>
-            <v-card-text>
+            <v-card-text v-else>
               No task registered yet.
             </v-card-text>
             <v-card-actions>
@@ -54,6 +78,7 @@
         </v-toolbar>
         <v-container>
           <app-editor v-if="mode==='app'" v-model="current" v-on:done="done"/>
+          <task-editor v-else-if="mode==='task'" v-model="current" v-on:done="done"/>
         </v-container>
       </v-navigation-drawer>
     </v-container>
@@ -63,9 +88,15 @@
 <script>
 import LoadingContent from '@/components/LoadingContent';
 import AppEditor from '@/components/AppEditor';
+import TaskEditor from '@/components/TaskEditor';
 
 export default {
   name: 'Apps',
+  computed: {
+    projectId() {
+      return this.apps_tasks.projects[this.config.selected_tab].id;
+    }
+  },
   data() {
     return {
       isLoading: true,
@@ -78,7 +109,8 @@ export default {
         tasks: {}
       },
       config: {
-        task_id: null,
+        extended_tasks: [],
+        selected_tab: 0,
         app_table_header: [
           {
             text: 'id',
@@ -111,8 +143,12 @@ export default {
             value: 'name'
           },
           {
-            text: 'slides',
-            value: 'Slides'
+            text: 'Slides',
+            value: 'slides'
+          },
+          {
+            text: 'Registered tasks',
+            value: 'app_tasks'
           },
           {
             text: 'Actions',
@@ -123,6 +159,19 @@ export default {
     };
   },
   methods: {
+    openSession(task, appTask) {
+      this.$post('session/create', {
+        ...appTask,
+        type: 2,
+        id: task['id'],
+        slides: task['slides']
+      })
+          .then((resp) => {
+            this.$store.commit('set_session', resp);
+            this.$router.push(`/session/${resp.id}`);
+          })
+          .catch((err) => alert(err));
+    },
     newApp() {
       this.mode = 'app';
       this.current = {
@@ -132,7 +181,14 @@ export default {
       this.drawer = true;
     },
     newAppTask() {
-
+      this.mode = 'task';
+      this.current = {
+        name: '',
+        type: 2,
+        slides: [],
+        assigned: []
+      };
+      this.drawer = true;
     },
     loadApps() {
       this.isLoading = true;
@@ -149,7 +205,7 @@ export default {
           .then(resp => {
             this.apps_tasks = resp;
             if (resp.projects.length > 0) {
-              this.config.app_task = resp.projects[0].id;
+              this.config.project_id = resp.projects[0].id;
             }
             this.isLoading = false;
           })
@@ -171,6 +227,7 @@ export default {
     this.loadTasks();
   },
   components: {
+    TaskEditor,
     AppEditor,
     LoadingContent
   }

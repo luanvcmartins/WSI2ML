@@ -210,7 +210,7 @@ export default {
     slides() {
       const { session } = this.$store.state;
       console.log(session);
-      return session.type === 0 ? session.task.slides : session.task.task.slides;
+      return session.type !== 1 ? session.task.slides : session.task.task.slides;
     },
     revisions() {
       const revision = [];

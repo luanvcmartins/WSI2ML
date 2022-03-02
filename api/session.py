@@ -27,7 +27,10 @@ def create_session():
         user_task = models.UserTask.query.filter_by(revision_task_id=task['id'], user_id=current_user.id).first()
         slides = task['task']['slides']
     else:
-        user_task = models.UserTask.query.filter_by(annotation_task_id=task['id'], app_id=current_user.id).first()
+        if "user_task_id" not in task:
+            user_task = models.UserTask.query.filter_by(annotation_task_id=task['id'], app_id=current_user.id).first()
+        else:
+            user_task = models.UserTask.query.filter_by(id=task['user_task_id']).first()
         slides = task['slides']
 
     session_id = user_task.id

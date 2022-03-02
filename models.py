@@ -91,14 +91,16 @@ class Project(db.Model):
     folder = db.Column(db.Text)
     labels = db.relationship("Label")
 
-    def to_dict(self):
-        return {
+    def to_dict(self, include_labels=True):
+        project = {
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            "folder": self.folder,
-            "labels": [x.to_dict() for x in self.labels]
+            "folder": self.folder
         }
+        if include_labels:
+            project["labels"] = [x.to_dict() for x in self.labels]
+        return project
 
 
 class Label(db.Model):
@@ -161,12 +163,18 @@ class UserTask(db.Model):
     def to_dict(self, skip_task=False):
         user_task = {
             "id": self.id,
-            "user": self.user.to_dict(),
             "type": self.type,
             "completed": self.completed
         }
+        if self.type == 2:
+            user_task["app"] = self.app.to_dict()
+        else:
+            user_task["user"] = self.user.to_dict()
         if not skip_task:
-            user_task["task"] = self.annotation_task.to_dict() if self.type == 0 else self.revision_task.to_dict()
+            if self.type == 0 or self.type == 2:
+                user_task["task"] = self.annotation_task.to_dict()
+            else:
+                self.revision_task.to_dict()
         return user_task
 
 
@@ -193,7 +201,7 @@ class AnnotationTask(db.Model):
             task = {**task, **{
                 "slides": [x.to_dict() for x in self.slides],
                 "project": self.project.to_dict(),
-                "assigned": [x.user.to_dict() for x in self.assigned],
+                "assigned": [x.user.to_dict() if x.type != 2 else x.app.to_dict() for x in self.assigned],
             }}
 
         return task
