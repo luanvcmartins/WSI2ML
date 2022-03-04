@@ -1198,9 +1198,9 @@ class Annotation {
     this.geometry = annotation.geometry;
     this.label = annotation.label;
     this.slideId = annotation.slide_id;
-    this.title = annotation.title;
-    this.description = annotation.description;
-    this.properties = annotation.properties;
+    this.title = annotation.title == null ? null : annotation.title;
+    this.description = annotation.description == null ? null : annotation.description;
+    this.properties = annotation.properties == null ? null : annotation.properties;
     this.currentlyImporting = false;
     this.feedback = null;
     this.drawFeedback = false;
