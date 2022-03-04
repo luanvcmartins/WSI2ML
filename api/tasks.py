@@ -331,14 +331,17 @@ def edit():
 @task_api.route("remove", methods=["POST"])
 def remove():
     task = request.json
-    if task['type'] == 0 or task['type'] == 1:
+    if task['type'] == 0 or task['type'] == 2:
+        # honestly I don't know how to force SQLAlchemy to delete cascade
+        user_tasks = db.session.query(models.UserTask).filter(models.UserTask.annotation_task_id == task['id']).all()
+        for user_task in user_tasks:
+            db.session.query(models.Annotation).filter(models.Annotation.user_task_id == user_task.id).delete()
         db.session.query(models.AnnotationTask).filter(models.AnnotationTask.id == task['id']).delete()
         db.session.execute("DELETE FROM task_slides WHERE task_id = :task_id", {"task_id": task['id']})
         db.session.query(models.UserTask).filter(models.UserTask.annotation_task_id == task['id']).delete()
         for revision in db.session.query(models.RevisionTask).filter(models.RevisionTask.task_id == task['id']).all():
             db.session.query(models.UserTask).filter(models.UserTask.revision_task_id == revision.id).delete()
-            revision.delete()
-
+        db.session.query(models.RevisionTask).filter(models.RevisionTask.task_id == task['id']).delete()
     elif task['type'] == 1:
         db.session.query(models.RevisionTask).filter(models.RevisionTask.id == task['id']).delete()
         db.session.query(models.UserTask).filter(models.UserTask.revision_task_id == task['id']).delete()

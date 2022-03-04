@@ -234,10 +234,10 @@ export default {
     session: {
       immediate: true,
       handler(session) {
-        if (session.task.type === 0) {
+        if (session.task.type === 0 || session.task.type === 2) {
           this.annotations = loadAnnotations(session.labelled);
           this.current_slide = session.task.slides[0];
-        } else {
+        } else if (session.task.type === 1) {
           this.annotations = {};
           this.current_slide = session.task.task.slides[0];
         }

@@ -174,7 +174,7 @@ class UserTask(db.Model):
             if self.type == 0 or self.type == 2:
                 user_task["task"] = self.annotation_task.to_dict()
             else:
-                self.revision_task.to_dict()
+                user_task["task"] = self.revision_task.to_dict()
         return user_task
 
 
@@ -233,9 +233,10 @@ class RevisionTask(db.Model):
             "task_id": self.task_id,
             "project_id": self.project_id,
             "project": self.project.to_dict(),
-            "task": self.task.to_dict(),
             "type": 1
         }
+        if self.task is not None:
+            item["task"] = self.task.to_dict()
         if with_assigned:
             item["assigned"] = [x.user.to_dict() for x in self.assigned]
         if include_revisions:
