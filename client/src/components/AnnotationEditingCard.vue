@@ -33,12 +33,12 @@ export default {
       immediate: true,
       handler(newValue) {
         this.selectedLabel = newValue;
-      }
+      },
     },
     selectedLabel(newValue) {
       this.value.label = newValue;
       this.updateRender();
-    }
+    },
   },
   computed: {
     cardTitle() {
@@ -54,11 +54,11 @@ export default {
         labels[data[i].id] = data[i];
       }
       return labels;
-    }
+    },
   },
   data() {
     return {
-      selectedLabel: null
+      selectedLabel: null,
     };
   },
   methods: {
@@ -84,7 +84,7 @@ export default {
   },
   mounted() {
   },
-  props: { value: { type: Annotation } }
+  props: { value: { type: Annotation } },
 };
 </script>
 

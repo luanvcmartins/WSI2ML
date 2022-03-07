@@ -4,13 +4,13 @@
       <v-row>
         <v-col>
           <v-card>
-            <v-toolbar dark color="orange accent-4" dense outlined elevation="0">
+            <v-toolbar dense outlined elevation="0">
               <v-toolbar-title>
                 App classification tasks
               </v-toolbar-title>
               <v-spacer/>
               <v-toolbar-items>
-                <v-btn @click="newAppTask" text>Create task</v-btn>
+                <v-btn @click="newTask" text>Create task</v-btn>
               </v-toolbar-items>
             </v-toolbar>
 
@@ -28,6 +28,23 @@
                   :expanded.sync="config.extended_tasks"
                   show-expand>
 
+
+                <template v-slot:item.slides="{ item }">
+                  <v-chip-group column show-arrows>
+                    <v-chip style="pointer-events: none;"
+                            outlined :readonly="true"
+                            v-for="slide in item.slides">
+                      {{ slide.name }}
+                    </v-chip>
+                  </v-chip-group>
+                </template>
+
+                <template v-slot:item.actions="{ item }">
+                  <v-btn rounded @click="newAppTask(item)" elevation="0" color="orange accent-4" dark>
+                    <v-icon>mdi-plus</v-icon>
+                    New app task
+                  </v-btn>
+                </template>
 
                 <template v-slot:expanded-item="{ headers, item }">
                   <td :colspan="headers.length">
@@ -57,15 +74,29 @@
       <v-row>
         <v-col>
           <v-card>
-            <v-data-table
-                :headers="config.app_table_header"
-                :items="apps"
-                :items-per-page="5">
+            <v-toolbar dense outlined elevation="0">
+              <v-toolbar-title>Your apps</v-toolbar-title>
+              <v-spacer/>
+              <v-toolbar-items>
 
-            </v-data-table>
-            <v-card-actions>
-              <v-btn @click="newApp">New app</v-btn>
-            </v-card-actions>
+                <v-btn text @click="newApp">New app</v-btn>
+              </v-toolbar-items>
+            </v-toolbar>
+            <v-card-text>
+              <v-data-table
+                  :headers="config.app_table_header"
+                  :items="apps"
+                  :items-per-page="5"
+                  :expanded.sync="config.extended_apps">
+
+                <template v-slot:item.actions="{ item }">
+                  <v-btn rounded @click="newAppToken(item)" elevation="0" color="orange accent-4" dark>
+                    <v-icon>mdi-plus</v-icon>
+                    Access token
+                  </v-btn>
+                </template>
+              </v-data-table>
+            </v-card-text>
           </v-card>
         </v-col>
       </v-row>
@@ -79,8 +110,22 @@
         <v-container>
           <app-editor v-if="mode==='app'" v-model="current" v-on:done="done"/>
           <task-editor v-else-if="mode==='task'" v-model="current" v-on:done="done"/>
+          <app-task-editor v-else-if="mode==='app-task'" v-model="current" v-on:done="done"/>
         </v-container>
       </v-navigation-drawer>
+      <v-dialog max-width="500" v-model="config.dialog">
+        <v-card>
+          <v-card-title>Temporary app token</v-card-title>
+          <v-card-text>
+            <v-textarea readonly v-model="config.dialog_token" label="App token"/>
+          </v-card-text>
+          <v-divider/>
+          <v-card-actions>
+            <v-spacer/>
+            <v-btn @click="config.dialog=false" text>Continue</v-btn>
+          </v-card-actions>
+        </v-card>
+      </v-dialog>
     </v-container>
   </loading-content>
 </template>
@@ -89,13 +134,14 @@
 import LoadingContent from '@/components/LoadingContent';
 import AppEditor from '@/components/AppEditor';
 import TaskEditor from '@/components/TaskEditor';
+import AppTaskEditor from '@/components/AppTaskEditor';
 
 export default {
   name: 'Apps',
   computed: {
     projectId() {
       return this.apps_tasks.projects[this.config.selected_tab].id;
-    }
+    },
   },
   data() {
     return {
@@ -106,11 +152,14 @@ export default {
       apps: null,
       apps_tasks: {
         projects: [],
-        tasks: {}
+        tasks: {},
       },
       config: {
         extended_tasks: [],
+        extended_apps: [],
         selected_tab: 0,
+        dialog: false,
+        dialog_token: null,
         app_table_header: [
           {
             text: 'id',
@@ -120,16 +169,16 @@ export default {
           },
           {
             text: 'Name',
-            value: 'name'
+            value: 'name',
           },
           {
             text: 'Description',
-            value: 'Description'
+            value: 'Description',
           },
           {
             text: 'Actions',
-            value: 'actions'
-          }
+            value: 'actions',
+          },
         ],
         app_task: [
           {
@@ -140,22 +189,22 @@ export default {
           },
           {
             text: 'Name',
-            value: 'name'
+            value: 'name',
           },
           {
             text: 'Slides',
-            value: 'slides'
+            value: 'slides',
           },
           {
             text: 'Registered tasks',
-            value: 'app_tasks'
+            value: 'app_tasks',
           },
           {
             text: 'Actions',
-            value: 'actions'
-          }
-        ]
-      }
+            value: 'actions',
+          },
+        ],
+      },
     };
   },
   methods: {
@@ -163,8 +212,8 @@ export default {
       this.$post('session/create', {
         ...appTask,
         type: 2,
-        id: task['id'],
-        slides: task['slides']
+        id: task.id,
+        slides: task.slides,
       })
           .then((resp) => {
             this.$store.commit('set_session', resp);
@@ -176,61 +225,75 @@ export default {
       this.mode = 'app';
       this.current = {
         name: '',
-        description: ''
+        description: '',
       };
       this.drawer = true;
     },
-    newAppTask() {
+    newTask() {
       this.mode = 'task';
       this.current = {
         name: '',
         type: 2,
         slides: [],
-        assigned: []
+        assigned: [],
       };
       this.drawer = true;
+    },
+    newAppTask(task) {
+      this.mode = 'app-task';
+      this.current = task;
+      this.drawer = true;
+    },
+    newAppToken(app) {
+      this.$post('app/token', app)
+          .then(res => {
+            this.config.dialog_token = res.token;
+            this.config.dialog = true;
+          })
+          .catch(err => alert(err));
     },
     loadApps() {
       this.isLoading = true;
       this.$get('app/list')
-          .then(resp => {
+          .then((resp) => {
             this.apps = resp;
             this.isLoading = false;
           })
-          .catch(err => alert(err));
+          .catch((err) => alert(err));
     },
     loadTasks() {
       this.isLoading = true;
       this.$get('task/app_task_list')
-          .then(resp => {
+          .then((resp) => {
             this.apps_tasks = resp;
             if (resp.projects.length > 0) {
               this.config.project_id = resp.projects[0].id;
             }
             this.isLoading = false;
           })
-          .catch(err => alert(err));
+          .catch((err) => alert(err));
     },
     done() {
       this.current = null;
       this.drawer = false;
       if (this.mode === 'app') {
         this.loadApps();
-      } else if (this.mode === 'task') {
+      } else if (this.mode === 'task' || this.mode === 'app-task') {
         this.loadTasks();
       }
       this.mode = '';
-    }
+    },
   },
   mounted() {
     this.loadApps();
     this.loadTasks();
   },
   components: {
+    AppTaskEditor,
     TaskEditor,
     AppEditor,
-    LoadingContent
-  }
+    LoadingContent,
+  },
 };
 </script>
 

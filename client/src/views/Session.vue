@@ -261,10 +261,10 @@ export default {
     },
     'session.completed': function (new_value) {
       this.$get(`task/completed?id=${this.session.id}&completed=${new_value}`)
-          .catch((err) => {
-            this.session.completed = !this.session.completed;
-            alert(err);
-          });
+        .catch((err) => {
+          this.session.completed = !this.session.completed;
+          alert(err);
+        });
     },
     revisingUserTask: {
       handler(newRevisionUserTask) {
@@ -273,7 +273,7 @@ export default {
           this.annotations = loadAnnotations(userTaskAnnotations);
         } else {
           const annotations = {};
-          this.slides.forEach(item => {
+          this.slides.forEach((item) => {
             annotations[item.id] = [];
           });
           this.annotations = annotations;
@@ -322,10 +322,10 @@ export default {
 
     saveFeedback(annotation) {
       this.$post(`session/${this.session_id}/annotation_feedback`, annotation.serialize())
-          .then((resp) => {
-            annotation.feedback.id = resp.feedback.id;
-          })
-          .catch((err) => alert(err));
+        .then((resp) => {
+          annotation.feedback.id = resp.feedback.id;
+        })
+        .catch((err) => alert(err));
     },
 
     onRegionHover(region) {
@@ -356,16 +356,16 @@ export default {
       annotation.slideId = this.current_slide.id;
       const self = this;
       this.$post(`session/${this.session_id}/add_region`, annotation.serialize())
-          .then((resp) => {
-            // Add the new region to the list
-            annotation.id = resp.id;
-            annotation.state = 'idle';
-            self.annotations[self.current_slide.id].push(annotation);
-            self.annotationUpdate();
-          })
-          .catch((err) => {
-            alert(`Error while saving region: ${err}`);
-          });
+        .then((resp) => {
+          // Add the new region to the list
+          annotation.id = resp.id;
+          annotation.state = 'idle';
+          self.annotations[self.current_slide.id].push(annotation);
+          self.annotationUpdate();
+        })
+        .catch((err) => {
+          alert(`Error while saving region: ${err}`);
+        });
     },
 
     /**
@@ -377,13 +377,13 @@ export default {
       if (this.task_type === 0) {
         this.editing = null;
         this.$post(`session/${this.session_id}/edit_region`, annotation.serialize())
-            .then(function (resp) {
-              // Add the new region to the list
-              console.log(resp);
-            })
-            .catch((err) => {
-              alert(`Error while saving region: ${err}`);
-            });
+          .then((resp) => {
+            // Add the new region to the list
+            console.log(resp);
+          })
+          .catch((err) => {
+            alert(`Error while saving region: ${err}`);
+          });
       } else if (this.task_type === 1) {
         // Making sure to assign that this is a wrong-region type of feedback
         annotation.feedback.feedback = 2;
@@ -405,10 +405,10 @@ export default {
         // if element is null we will wait a few seconds before trying again (switching tabs)
         setTimeout(() => {
           document.getElementById(`region-${region.id}`)
-              .scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-              });
+            .scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+            });
         }, 250);
       } else {
         // element is already instantiated, we will jump to it:
@@ -449,7 +449,7 @@ export default {
                 }))),
               },
               slide_id: slideId,
-              state: 'importing'
+              state: 'importing',
             };
           });
           console.log('Annotations: ', annotations);
@@ -512,11 +512,11 @@ export default {
         this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id].filter((item) => item !== annotation);
       } else if (confirm('Are you sure you want to remove this annotation?')) {
         this.$post(`session/${this.session_id}/remove_annotation`, annotation.serialize())
-            .then((resp) => {
-              this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id].filter((item) => item.id !== annotation.id);
-              this.annotationUpdate();
-            })
-            .catch((err) => alert(err));
+          .then((resp) => {
+            this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id].filter((item) => item.id !== annotation.id);
+            this.annotationUpdate();
+          })
+          .catch((err) => alert(err));
       }
     },
   },

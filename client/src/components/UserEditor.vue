@@ -25,52 +25,50 @@
 </template>
 
 <script>
-    import _ from "lodash";
-    import VCheckChip from "./VCheckChip";
+import _ from 'lodash';
+import VCheckChip from './VCheckChip';
 
-    export default {
-        name: "UserEditor",
-        components: {VCheckChip},
-        watch: {
-            value: {
-                immediate: true,
-                handler: function (new_value) {
-                    this.user = _.cloneDeep(new_value)
-                }
-            },
-        },
-        data: () => {
-            return {user: null, test: []}
-        },
-        methods: {
-            save() {
-                if (this.user.id != null) {
-                    // update user profile information
-                    this.$post("user/edit", this.user)
-                        .then(resp => {
-                            this.user = resp
-                            this.$emit("input", this.user)
-                            this.$emit("done", "user")
-                        })
-                        .catch(err => {
-                            alert(err)
-                        })
-                } else {
-                    // create new user profile
-                    this.$post("user/new", this.user)
-                        .then(resp => {
-                            this.user = resp
-                            this.$emit("input", this.user)
-                            this.$emit("done", "user")
-                        })
-                        .catch(err => {
-                            alert(err)
-                        })
-                }
-            }
-        },
-        props: ["value"]
-    }
+export default {
+  name: 'UserEditor',
+  components: { VCheckChip },
+  watch: {
+    value: {
+      immediate: true,
+      handler(new_value) {
+        this.user = _.cloneDeep(new_value);
+      },
+    },
+  },
+  data: () => ({ user: null, test: [] }),
+  methods: {
+    save() {
+      if (this.user.id != null) {
+        // update user profile information
+        this.$post('user/edit', this.user)
+          .then((resp) => {
+            this.user = resp;
+            this.$emit('input', this.user);
+            this.$emit('done', 'user');
+          })
+          .catch((err) => {
+            alert(err);
+          });
+      } else {
+        // create new user profile
+        this.$post('user/new', this.user)
+          .then((resp) => {
+            this.user = resp;
+            this.$emit('input', this.user);
+            this.$emit('done', 'user');
+          })
+          .catch((err) => {
+            alert(err);
+          });
+      }
+    },
+  },
+  props: ['value'],
+};
 </script>
 
 <style scoped>

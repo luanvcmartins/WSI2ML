@@ -54,13 +54,42 @@
             selection-type="leaf"/>
       </v-tab-item>
       <v-tab-item value="revision">
-        <v-select label="Tasks" v-model="review_task" :items="review_task_list" item-value="id" item-text="name"
-                  return-object/>
-        <v-select v-if="task.task_id != null" label="Users"
+        <v-select label="Tasks" v-model="review_task"
+                  :items="review_task_list"
+                  item-value="id" item-text="name"
+                  return-object>
+          <template v-slot:item="{ item, on, attrs  }">
+            <v-list-item class="fit-window" three-line v-bind="attrs" v-on="on">
+              <v-list-item-content>
+                <v-list-item-title v-if="item.name !== ''">{{ item.name }}</v-list-item-title>
+                <v-list-item-title v-else>Annotation task number #{{ item.id }}</v-list-item-title>
+                <v-list-item-subtitle>Created: {{ item.created }}</v-list-item-subtitle>
+                <v-list-item-action-text>{{ item.user_tasks.length }} associated user tasks.</v-list-item-action-text>
+              </v-list-item-content>
+              <v-list-item-action>
+                <v-simple-checkbox disabled :value="attrs.inputValue" :ripple="false"/>
+              </v-list-item-action>
+            </v-list-item>
+          </template>
+        </v-select>
+        <v-select v-if="task.task_id != null" label="Annotator"
                   v-model="task.revision"
                   :items="review_task.user_tasks"
-                  item-value="id" item-text="user.name"
-                  multiple/>
+                  item-value="id" item-text="app.name"
+                  multiple>
+          <template v-slot:item="{ item, on, attrs  }">
+            <v-list-item class="fit-window" two-line v-bind="attrs" v-on="on">
+              <v-list-item-content>
+                <v-list-item-title v-if="'app' in item">{{ item.app.name }}</v-list-item-title>
+                <v-list-item-title v-else>{{ item.user.name }}</v-list-item-title>
+                <v-list-item-subtitle>{{ taskLabel[item.task.type] }} ♦ Created: {{ item.created }}</v-list-item-subtitle>
+              </v-list-item-content>
+              <v-list-item-action>
+                <v-simple-checkbox disabled :value="attrs.inputValue" :ripple="false"/>
+              </v-list-item-action>
+            </v-list-item>
+          </template>
+        </v-select>
       </v-tab-item>
     </v-tabs-items>
 
@@ -133,13 +162,12 @@ export default {
     taskType() {
       if (this.task.type === 0 || this.task.type === 2) {
         return 'annotation';
-      } else {
-        return 'revision';
       }
+      return 'revision';
     },
     isAppContext() {
       return this.value.type === 2;
-    }
+    },
   },
   data: () => ({
     task: null,
@@ -151,6 +179,10 @@ export default {
     files: [],
     review_task_list: null,
     review_task: [],
+    taskLabel: {
+      0: 'Human annotation',
+      2: 'App annotation'
+    }
   }),
   methods: {
     loadUsers() {
@@ -232,9 +264,7 @@ export default {
 </script>
 
 <style scoped>
-.color-box {
-  height: 30px;
-  width: 60px;
-  border: black 1px solid;
+.fit-window{
+  max-width: 500px;
 }
 </style>

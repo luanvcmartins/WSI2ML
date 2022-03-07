@@ -28,7 +28,7 @@ export default {
   watch: {},
   data() {
     return {
-      password: null
+      password: null,
     };
   },
   methods: {
@@ -37,13 +37,13 @@ export default {
     },
     submit() {
       this.$post('user/change_password', { password: this.password })
-          .then(resp => {
-            this.$emit('input', false);
-          })
-          .catch(err => alert(err));
-    }
+        .then((resp) => {
+          this.$emit('input', false);
+        })
+        .catch((err) => alert(err));
+    },
   },
-  props: ['value']
+  props: ['value'],
 };
 </script>
 

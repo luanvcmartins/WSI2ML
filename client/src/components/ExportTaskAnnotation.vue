@@ -127,7 +127,7 @@
                         </v-row>
                       </template>
                     </v-expansion-panel-header>
-                    <v-expansion-panel-content style="expansion-panel-revision">
+                    <v-expansion-panel-content class="expansion-panel-revision">
                       <div v-if="annotation.reviews != null && annotation.reviews.length > 0">
                         <p class="ma-0 text-muted">Include only annotations revised by:</p>
                         <v-chip-group

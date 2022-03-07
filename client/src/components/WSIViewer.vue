@@ -173,7 +173,7 @@ export default {
     info: [],
   }),
   watch: {
-    drawer: function () {
+    drawer() {
       // Changes on the drawer will immediately reset the current tool to none.
       if (this.annotationDrawer != null) {
         this.annotationDrawer.tool = null;
@@ -185,7 +185,7 @@ export default {
         this.labeled_regions = newValue;
         if (this.annotationDrawer != null) {
           this.annotationDrawer.annotations = newValue;
-          newValue.forEach(annotation => {
+          newValue.forEach((annotation) => {
             annotation.drawer = this.annotationDrawer;
           });
         }
@@ -391,7 +391,6 @@ export default {
       });
       this.no_model_action = false;
     });
-
   },
   props: {
     drawer: {

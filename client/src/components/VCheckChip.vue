@@ -5,10 +5,10 @@
 </template>
 
 <script>
-    export default {
-        name: "VCheckChip",
-        props: ['value', 'color']
-    }
+export default {
+  name: 'VCheckChip',
+  props: ['value', 'color'],
+};
 </script>
 
 <style scoped>

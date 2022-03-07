@@ -49,7 +49,7 @@ export default {
   methods: {
     startSession() {
       this.$emit('start-session', this.status.next);
-    }
+    },
   },
   computed: {
     progress() {
@@ -57,9 +57,9 @@ export default {
     },
     taskCompleted() {
       return this.status.done === this.status.total;
-    }
+    },
   },
-  props: ['status']
+  props: ['status'],
 };
 </script>
 

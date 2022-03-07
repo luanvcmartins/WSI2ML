@@ -164,7 +164,8 @@ class UserTask(db.Model):
         user_task = {
             "id": self.id,
             "type": self.type,
-            "completed": self.completed
+            "completed": self.completed,
+            "created": self.created
         }
         if self.type == 2:
             user_task["app"] = self.app.to_dict()

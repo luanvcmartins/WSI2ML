@@ -328,6 +328,36 @@ def edit():
     return jsonify(task.to_dict())
 
 
+@task_api.route("new_app_task", methods=['POST'])
+@jwt_required()
+def new_app_task():
+    app_task_request = request.json
+    app_task = models.UserTask(
+        id=str(uuid.uuid4()),
+        annotation_task_id=app_task_request['annotation_id'],
+        app_id=app_task_request['app_id'],
+        type=2
+    )
+    db.session.add(app_task)
+    annotations = app_task_request['annotations']
+    if annotations is None:
+        app_task.completed = False
+    else:
+        for slide_id, slide_annotations in annotations.items():
+            for slide_annotation in slide_annotations:
+                db.session.add(models.Annotation(
+                    user_task_id=app_task.id,
+                    title=slide_annotation['title'] if 'title' in slide_annotation else None,
+                    data=slide_annotation['geometry'],
+                    properties=slide_annotation['properties'] if 'properties' in slide_annotation else None,
+                    label_id=slide_annotation['label_id'],
+                    slide_id=slide_id
+                ))
+        app_task.completed = True
+    db.session.commit()
+    return jsonify(app_task.to_dict())
+
+
 @task_api.route("remove", methods=["POST"])
 def remove():
     task = request.json

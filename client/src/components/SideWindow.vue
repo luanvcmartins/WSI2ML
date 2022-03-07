@@ -15,7 +15,7 @@ export default {
   methods: {
     setBorderWidth() {
       const i = this.$refs.side_window.$el.querySelector(
-          '.v-navigation-drawer__border'
+        '.v-navigation-drawer__border',
       );
       i.style.width = `${this.borderSize}px`;
       i.style.cursor = 'ew-resize';
@@ -26,38 +26,38 @@ export default {
       const drawerBorder = el.querySelector('.v-navigation-drawer__border');
       const vm = this;
       const direction = el.classList.contains('v-navigation-drawer--right')
-          ? 'right'
-          : 'left';
+        ? 'right'
+        : 'left';
 
       function resize(e) {
         document.body.style.cursor = 'ew-resize';
         const f = direction === 'right'
-            ? document.body.scrollWidth - e.clientX
-            : e.clientX;
+          ? document.body.scrollWidth - e.clientX
+          : e.clientX;
         el.style.width = `${f}px`;
       }
 
       drawerBorder.addEventListener(
-          'mousedown',
-          (e) => {
-            if (e.offsetX < minSize) {
-              // m_pos = e.x;
-              el.style.transition = 'initial';
-              document.addEventListener('mousemove', resize, false);
-            }
-          },
-          false
+        'mousedown',
+        (e) => {
+          if (e.offsetX < minSize) {
+            // m_pos = e.x;
+            el.style.transition = 'initial';
+            document.addEventListener('mousemove', resize, false);
+          }
+        },
+        false,
       );
 
       document.addEventListener(
-          'mouseup',
-          () => {
-            el.style.transition = '';
-            vm.width = el.style.width;
-            document.body.style.cursor = '';
-            document.removeEventListener('mousemove', resize, false);
-          },
-          false,
+        'mouseup',
+        () => {
+          el.style.transition = '';
+          vm.width = el.style.width;
+          document.body.style.cursor = '';
+          document.removeEventListener('mousemove', resize, false);
+        },
+        false,
       );
     },
   },

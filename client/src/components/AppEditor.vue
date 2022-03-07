@@ -19,40 +19,40 @@ export default {
       immediate: true,
       handler(newValue) {
         this.app = _.cloneDeep(newValue);
-      }
-    }
+      },
+    },
   },
   data() {
     return {
-      app: null
+      app: null,
     };
   },
   methods: {
     save() {
       if (this.app.id == null) {
         this.$post('app/new', this.app)
-            .then((resp) => {
-              this.app = resp;
-              this.$emit('input', resp);
-              this.$emit('done', 'task');
-            })
-            .catch((err) => {
-              alert(err);
-            });
+          .then((resp) => {
+            this.app = resp;
+            this.$emit('input', resp);
+            this.$emit('done', 'task');
+          })
+          .catch((err) => {
+            alert(err);
+          });
       } else {
         this.$post('app/edit', this.app)
-            .then((resp) => {
-              this.app = resp;
-              this.$emit('input', resp);
-              this.$emit('done', 'task');
-            })
-            .catch((err) => {
-              alert(err);
-            });
+          .then((resp) => {
+            this.app = resp;
+            this.$emit('input', resp);
+            this.$emit('done', 'task');
+          })
+          .catch((err) => {
+            alert(err);
+          });
       }
-    }
+    },
   },
-  props: ['value']
+  props: ['value'],
 };
 </script>
 
