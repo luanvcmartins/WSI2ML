@@ -105,7 +105,11 @@ def get_default(item, key, default: Any = ""):
 
 
 @session_api.route("<string:session_id>/add_region", methods=['POST'])
+@jwt_required()
 def add_region(session_id):
+    current_task = models.UserTask.query.get(session_id)
+    if current_user.id != current_task.user_id:
+        return jsonify({"msg": "Not allowed"}), 401
     region_data = request.json
     region = models.Annotation(
         user_task_id=session_id,
@@ -122,7 +126,11 @@ def add_region(session_id):
 
 
 @session_api.route("<string:session_id>/edit_region", methods=['POST'])
+@jwt_required()
 def edit_region(session_id):
+    current_task = models.UserTask.query.get(session_id)
+    if current_user.id != current_task.user_id:
+        return jsonify({"msg": "Not allowed"}), 401
     region_data = request.json
     region = models.Annotation.query.filter_by(id=region_data['id']).first()
     region.label_id = region_data['label']['id']
@@ -135,7 +143,11 @@ def edit_region(session_id):
 
 
 @session_api.route("<string:session_id>/remove_annotation", methods=['POST'])
+@jwt_required()
 def remove_annotation(session_id):
+    current_task = models.UserTask.query.get(session_id)
+    if current_user.id != current_task.user_id:
+        return jsonify({"msg": "Not allowed"}), 401
     region_data = request.json
     region = db.session.query(models.Annotation).get(region_data['id'])
     db.session.delete(region)
@@ -144,7 +156,11 @@ def remove_annotation(session_id):
 
 
 @session_api.route("<string:session_id>/annotation_feedback", methods=['POST'])
+@jwt_required()
 def annotation_feedback(session_id):
+    current_task = models.UserTask.query.get(session_id)
+    if current_user.id != current_task.user_id:
+        return jsonify({"msg": "Not allowed"}), 401
     annotation_data = request.json
     user_task = sessions[session_id].user_task
     if annotation_data['feedback']['id'] is not None:

@@ -2,7 +2,7 @@
   <v-container style="overflow: hidden">
     <slice-viewer
         ref="slice_viewer"
-        :drawer="!session.completed && task_type === 0"
+        :drawer="!session.completed && task_type === 0 && taskBelongsToUser"
         :tile-sources="tile_sources"
         :labels="project_labels"
         :labels-visibility="labels_visible"
@@ -109,7 +109,7 @@
                     task you may mark it as completed.
                   </div>
                   <div class="pl-3 pr-3 pb-3">
-                    <v-switch v-model="session.completed" label="Task completed"/>
+                    <v-switch v-model="session.completed" :disabled="!taskBelongsToUser" label="Task completed"/>
                   </div>
                 </v-card>
               </v-flex>
@@ -128,7 +128,7 @@
                   </div>
                 </v-card>
               </v-flex>
-              <v-flex cols="12" sm="12" md="6" v-if="task_type === 0 || task_type === 2">
+              <v-flex cols="12" sm="12" md="6" v-if="annotationImportingEnabled">
                 <v-card>
                   <div class="pa-3 pb-0 text-h6 text--primary">Import annotations</div>
                   <div class="pl-3 pr-3 text-center font-weight-thin card-description">Select a geojson file to import
@@ -197,13 +197,13 @@ export default {
   computed: {
     /**
      * Returns true if annotation importing is enabled.
-     * Importing is enabled when the task is human or app annotation (type 0 and 2, respectively) and the task
-     * is not currently completed.
+     * Importing is enabled when the task is human or app annotation (type 0 and 2, respectively), the task
+     * is not currently completed and the task belongs to the current user.
      *
      * @returns {boolean} true if annotation importing is allowed
      */
     annotationImportingEnabled() {
-      return !this.completed && (this.session.type === 0 || this.session.type === 2);
+      return !this.completed && (this.session.type === 0 || this.session.type === 2) && this.taskBelongsToUser;
     },
     session_id() {
       return this.$route.params.session_id;
@@ -235,6 +235,13 @@ export default {
         });
       }
       return revision;
+    },
+    /**
+     * Checks if this task belongs to this user. Otherwise, this is currently only for visualization purposes.
+     * @returns {boolean} true if the task belongs to the user
+     */
+    taskBelongsToUser: function () {
+      return this.session.user.id === this.$store.state.user.id;
     },
     task_type() {
       return this.$store.state.session.type;
@@ -269,8 +276,9 @@ export default {
         console.log('labels_visible watcher:', value);
       },
     },
-    'session.completed': function (new_value) {
-      this.$get(`task/completed?id=${this.session.id}&completed=${new_value}`)
+
+    'session.completed': function (newValue) {
+      this.$get(`task/completed?id=${this.session.id}&completed=${newValue}`)
           .catch((err) => {
             this.session.completed = !this.session.completed;
             alert(err);
