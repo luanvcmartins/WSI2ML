@@ -190,7 +190,7 @@ class AnnotationTask(db.Model):
     assigned = db.relationship("UserTask", passive_deletes=True)
     slides = db.relationship("Slide", secondary=task_slides)
 
-    def to_dict(self, context="default"):
+    def to_dict(self, include_slides=True, include_project=True, include_assigned=True):
         task = {
             "id": self.id,
             "project_id": self.project_id,
@@ -198,13 +198,12 @@ class AnnotationTask(db.Model):
             "created": self.created,
             "type": 0
         }
-        if context == "default":
-            task = {**task, **{
-                "slides": [x.to_dict() for x in self.slides],
-                "project": self.project.to_dict(),
-                "assigned": [x.user.to_dict() if x.type != 2 else x.app.to_dict() for x in self.assigned],
-            }}
-
+        if include_slides:
+            task['slides'] = [x.to_dict() for x in self.slides]
+        if include_project:
+            task['project'] = self.project.to_dict()
+        if include_assigned:
+            task["assigned"] = [x.user.to_dict() if x.type != 2 else x.app.to_dict() for x in self.assigned]
         return task
 
     def update(self, update):

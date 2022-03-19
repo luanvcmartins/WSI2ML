@@ -128,7 +128,7 @@
                   </div>
                 </v-card>
               </v-flex>
-              <v-flex cols="12" sm="12" md="6" v-if="task_type === 0">
+              <v-flex cols="12" sm="12" md="6" v-if="task_type === 0 || task_type === 2">
                 <v-card>
                   <div class="pa-3 pb-0 text-h6 text--primary">Import annotations</div>
                   <div class="pl-3 pr-3 text-center font-weight-thin card-description">Select a geojson file to import
@@ -195,6 +195,16 @@ import { optimizePath, loadAnnotations } from '@/SliceDrawer';
 export default {
   name: 'Session',
   computed: {
+    /**
+     * Returns true if annotation importing is enabled.
+     * Importing is enabled when the task is human or app annotation (type 0 and 2, respectively) and the task
+     * is not currently completed.
+     *
+     * @returns {boolean} true if annotation importing is allowed
+     */
+    annotationImportingEnabled() {
+      return !this.completed && (this.session.type === 0 || this.session.type === 2);
+    },
     session_id() {
       return this.$route.params.session_id;
     },
@@ -219,7 +229,7 @@ export default {
       for (let i = 0; i < revisionMeta.length; i++) {
         revision.push({
           id: revisionMeta[i].id,
-          user: revisionMeta[i].user.name,
+          user: revisionMeta[i].user != null ? revisionMeta[i].user.name : revisionMeta[i].app.name,
           annotations: revisionData[revisionMeta[i].id],
           selected: false,
         });
@@ -261,10 +271,10 @@ export default {
     },
     'session.completed': function (new_value) {
       this.$get(`task/completed?id=${this.session.id}&completed=${new_value}`)
-        .catch((err) => {
-          this.session.completed = !this.session.completed;
-          alert(err);
-        });
+          .catch((err) => {
+            this.session.completed = !this.session.completed;
+            alert(err);
+          });
     },
     revisingUserTask: {
       handler(newRevisionUserTask) {
@@ -322,10 +332,10 @@ export default {
 
     saveFeedback(annotation) {
       this.$post(`session/${this.session_id}/annotation_feedback`, annotation.serialize())
-        .then((resp) => {
-          annotation.feedback.id = resp.feedback.id;
-        })
-        .catch((err) => alert(err));
+          .then((resp) => {
+            annotation.feedback.id = resp.feedback.id;
+          })
+          .catch((err) => alert(err));
     },
 
     onRegionHover(region) {
@@ -356,16 +366,16 @@ export default {
       annotation.slideId = this.current_slide.id;
       const self = this;
       this.$post(`session/${this.session_id}/add_region`, annotation.serialize())
-        .then((resp) => {
-          // Add the new region to the list
-          annotation.id = resp.id;
-          annotation.state = 'idle';
-          self.annotations[self.current_slide.id].push(annotation);
-          self.annotationUpdate();
-        })
-        .catch((err) => {
-          alert(`Error while saving region: ${err}`);
-        });
+          .then((resp) => {
+            // Add the new region to the list
+            annotation.id = resp.id;
+            annotation.state = 'idle';
+            self.annotations[self.current_slide.id].push(annotation);
+            self.annotationUpdate();
+          })
+          .catch((err) => {
+            alert(`Error while saving region: ${err}`);
+          });
     },
 
     /**
@@ -377,13 +387,13 @@ export default {
       if (this.task_type === 0) {
         this.editing = null;
         this.$post(`session/${this.session_id}/edit_region`, annotation.serialize())
-          .then((resp) => {
-            // Add the new region to the list
-            console.log(resp);
-          })
-          .catch((err) => {
-            alert(`Error while saving region: ${err}`);
-          });
+            .then((resp) => {
+              // Add the new region to the list
+              console.log(resp);
+            })
+            .catch((err) => {
+              alert(`Error while saving region: ${err}`);
+            });
       } else if (this.task_type === 1) {
         // Making sure to assign that this is a wrong-region type of feedback
         annotation.feedback.feedback = 2;
@@ -405,10 +415,10 @@ export default {
         // if element is null we will wait a few seconds before trying again (switching tabs)
         setTimeout(() => {
           document.getElementById(`region-${region.id}`)
-            .scrollIntoView({
-              behavior: 'smooth',
-              block: 'center',
-            });
+              .scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              });
         }, 250);
       } else {
         // element is already instantiated, we will jump to it:
@@ -455,6 +465,7 @@ export default {
           console.log('Annotations: ', annotations);
           const slideAnnotations = loadAnnotations({ 0: annotations })[0];
           this.annotations[slideId].push(...slideAnnotations);
+          this.annotationUpdate();
         };
       };
       input.click();
@@ -512,11 +523,11 @@ export default {
         this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id].filter((item) => item !== annotation);
       } else if (confirm('Are you sure you want to remove this annotation?')) {
         this.$post(`session/${this.session_id}/remove_annotation`, annotation.serialize())
-          .then((resp) => {
-            this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id].filter((item) => item.id !== annotation.id);
-            this.annotationUpdate();
-          })
-          .catch((err) => alert(err));
+            .then((resp) => {
+              this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id].filter((item) => item.id !== annotation.id);
+              this.annotationUpdate();
+            })
+            .catch((err) => alert(err));
       }
     },
   },

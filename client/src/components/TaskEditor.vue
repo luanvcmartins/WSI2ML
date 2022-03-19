@@ -55,7 +55,7 @@
       </v-tab-item>
       <v-tab-item value="revision">
         <v-select label="Tasks" v-model="review_task"
-                  :items="review_task_list"
+                  :items="reviewTaskList"
                   item-value="id" item-text="name"
                   return-object>
           <template v-slot:item="{ item, on, attrs  }">
@@ -64,7 +64,9 @@
                 <v-list-item-title v-if="item.name !== ''">{{ item.name }}</v-list-item-title>
                 <v-list-item-title v-else>Annotation task number #{{ item.id }}</v-list-item-title>
                 <v-list-item-subtitle>Created: {{ item.created }}</v-list-item-subtitle>
-                <v-list-item-action-text>{{ item.user_tasks.length }} associated user tasks.</v-list-item-action-text>
+                <v-list-item-action-text>
+                  <span class="fake-chip" v-for="slide in item.slides" :key="slide.id">{{ slide.name }}</span>
+                </v-list-item-action-text>
               </v-list-item-content>
               <v-list-item-action>
                 <v-simple-checkbox disabled :value="attrs.inputValue" :ripple="false"/>
@@ -82,7 +84,10 @@
               <v-list-item-content>
                 <v-list-item-title v-if="'app' in item">{{ item.app.name }}</v-list-item-title>
                 <v-list-item-title v-else>{{ item.user.name }}</v-list-item-title>
-                <v-list-item-subtitle>{{ taskLabel[item.task.type] }} ♦ Created: {{ item.created }}</v-list-item-subtitle>
+                <v-list-item-subtitle>{{ taskLabel[item.task.type] }} ♦ Created: {{
+                    item.created
+                  }}
+                </v-list-item-subtitle>
               </v-list-item-content>
               <v-list-item-action>
                 <v-simple-checkbox disabled :value="attrs.inputValue" :ripple="false"/>
@@ -128,14 +133,20 @@ export default {
       // this.editing_label.color = `${new_value.rgba.r};${new_value.rgba.g};${new_value.rgba.b}`
       this.editing_label.color = [newValue.rgba.r, newValue.rgba.g, newValue.rgba.b];
     },
-    'task.project_id': function (newValue) {
-      if (newValue != null) {
-        this.loadFiles(newValue);
+    'task.project_id': function (newProjectId) {
+      if (newProjectId != null) {
+        if (this.task.type === 1) {
+          // We have to load this project's tasks:
+          this.loadReviewTasks(newProjectId);
+        } else {
+          // We have to load this project's files:
+          this.loadFiles(newProjectId);
+        }
       }
     },
     'task.type': function (newValue) {
-      if (newValue === 1 && this.review_task_list == null) {
-        this.loadReviewTasks();
+      if (newValue === 1 && this.reviewTaskList.length === 0) {
+        this.loadReviewTasks(this.task.project_id);
       }
     },
     review_task(newValue) {
@@ -143,19 +154,6 @@ export default {
     },
   },
   computed: {
-    // current_folder() {
-    //   if (this.task != null) {
-    //     if (this.task.project != null) {
-    //       // We already have a project object read the folder
-    //       console.log(this.task.project);
-    //       return this.task.project.folder;
-    //     } if (this.task.project_id != null && this.projects.length === 0) {
-    //       // We have a assigned project id, we can search for it
-    //       const { project_id } = this.task;
-    //       return this.projects.filter((item) => item.id === project_id)[0].folder;
-    //     }
-    //   }
-    // },
     currentUser() {
       return this.$store.state.user;
     },
@@ -177,7 +175,7 @@ export default {
     apps: [],
     projects: [],
     files: [],
-    review_task_list: null,
+    reviewTaskList: [],
     review_task: [],
     taskLabel: {
       0: 'Human annotation',
@@ -207,10 +205,10 @@ export default {
           .catch((err) => alert(err));
     },
 
-    loadReviewTasks() {
-      this.$get('project/tasks')
+    loadReviewTasks(projectId) {
+      this.$get('project/tasks?project_id=' + projectId)
           .then((resp) => {
-            this.review_task_list = resp;
+            this.reviewTaskList = resp;
           })
           .catch((err) => alert(err));
     },
@@ -264,7 +262,16 @@ export default {
 </script>
 
 <style scoped>
-.fit-window{
+.fit-window {
   max-width: 500px;
+}
+
+.fake-chip {
+  margin-right: 2px;
+  margin-left: 2px;
+  border-radius: 10px;
+  padding-left: 4px;
+  padding-right: 4px;
+  border: 1px dotted #37474f;
 }
 </style>

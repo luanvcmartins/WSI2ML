@@ -18,20 +18,34 @@ sessions = {}
 @jwt_required()
 def create_session():
     task = request.json
-    # if current_user.id in [x['id'] for x in task['assigned']]:
-    # todo different logic for different task types
-    if task['type'] == 0:
-        user_task = models.UserTask.query.filter_by(annotation_task_id=task['id'], user_id=current_user.id).first()
-        slides = task['slides']
-    elif task['type'] == 1:
-        user_task = models.UserTask.query.filter_by(revision_task_id=task['id'], user_id=current_user.id).first()
-        slides = task['task']['slides']
+    user_task = models.UserTask.query.get(task['id'])
+    allowed = current_user.manages_tasks
+    if user_task.type == 0:
+        if not allowed and user_task.user.id != current_user.id: return jsonify({}), 401
+    elif user_task.type == 1:
+        if not allowed and user_task.user.id != current_user.id: return jsonify({}), 401
+    elif user_task.type == 2:
+        if not allowed and user_task.app.id != current_user.id: return jsonify({}), 401
+
+    if user_task.type == 1:
+        task = user_task.revision_task
+        slides = [slide.to_dict() for slide in user_task.revision_task.task.slides]
     else:
-        if "user_task_id" not in task:
-            user_task = models.UserTask.query.filter_by(annotation_task_id=task['id'], app_id=current_user.id).first()
-        else:
-            user_task = models.UserTask.query.filter_by(id=task['user_task_id']).first()
-        slides = task['slides']
+        task = user_task.annotation_task
+        slides = [slide.to_dict() for slide in user_task.annotation_task.slides]
+
+    # if task['type'] == 0:
+    #     user_task = models.UserTask.query.filter_by(annotation_task_id=task['id'], user_id=current_user.id).first()
+    #     slides = user_task.task.slides
+    # elif task['type'] == 1:
+    #     user_task = models.UserTask.query.filter_by(revision_task_id=task['id'], user_id=current_user.id).first()
+    #     slides = user_task.task.slides
+    # else:
+    #     if "user_task_id" not in task:
+    #         user_task = models.UserTask.query.filter_by(annotation_task_id=task['id'], app_id=current_user.id).first()
+    #     else:
+    #         user_task = models.UserTask.query.filter_by(id=task['user_task_id']).first()
+    #     slides = user_task.task.slides
 
     session_id = user_task.id
     if session_id in sessions:
@@ -41,10 +55,10 @@ def create_session():
         sessions[session_id] = new_session
     session = user_task.to_dict()
 
-    if task['type'] == 1:
+    if user_task.type == 1:
         # revision task has the labelled data from all the user_tasks associated with it
         session['revision'] = {}
-        for revision_task in task['revisions']:
+        for revision_task in task.revisions:
             # data = db.session.query(models.Annotation, models.AnnotationRevised).filter(
             #     models.Annotation.user_task_id == revision_id['id'],
             #     models.AnnotationRevised.user_task_id == task['id'],
@@ -54,11 +68,11 @@ def create_session():
                 models.AnnotationRevised.user_task_id == user_task.id).subquery()
             data = db.session.query(models.Annotation, user_feedback) \
                 .join(user_feedback, user_feedback.c.annotation_id == models.Annotation.id, isouter=True).filter(
-                models.Annotation.user_task_id == revision_task['id']).all()
+                models.Annotation.user_task_id == revision_task.id).all()
             # db.session.query(models.Annotation, models.AnnotationRevised).select_from(models.Annotation) \
             #     .outerjoin(models.AnnotationRevised) \
             #     .filter(models.Annotation.user_task_id == revision_task['id']).all()
-            session['revision'][revision_task['id']] = {
+            session['revision'][revision_task.id] = {
                 k['id']: [{
                     **x[0].to_dict(),
                     "feedback": {
@@ -66,12 +80,12 @@ def create_session():
                         "feedback": x[4],
                         "label_id": x[5],
                         "geometry": json.loads(x[6]) if x[6] is not None else None,
-                    }} for x in filter(lambda x: x[0].slide_id == k['id'], data)] for k in task['task']['slides']}
+                    }} for x in filter(lambda x: x[0].slide_id == k['id'], data)] for k in slides}
     else:
         # common annotation task, we will put the annotations we have associated with it:
         data = models.Annotation.query.filter_by(user_task_id=session_id).all()
         session['labelled'] = {k['id']: [x.to_dict() for x in filter(lambda x: x.slide_id == k['id'], data)] for k
-                               in task['slides']}
+                               in slides}
     session['viewer'] = new_session.get_info()
     return jsonify(session)
     # else:

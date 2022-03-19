@@ -183,8 +183,11 @@ def task_list():
         .order_by(models.UserTask.completed).all()
     annotation_tasks = list(annotation_tasks)
     review_tasks = list(review_tasks)
-    next_annotation = annotation_tasks[0][0].to_dict() if len(annotation_tasks) > 0 else None
-    next_revision = review_tasks[0][0].to_dict() if len(review_tasks) > 0 else None
+    next_annotation = {
+        **annotation_tasks[0][0].to_dict(),
+        **annotation_tasks[0][1].to_dict()
+    } if len(annotation_tasks) > 0 else None
+    next_revision = {**review_tasks[0][0].to_dict(), **review_tasks[0][1].to_dict()} if len(review_tasks) > 0 else None
     return jsonify({
         "annotation_status": {
             "next": next_annotation,
@@ -196,8 +199,8 @@ def task_list():
             "done": len([task for task in review_tasks if task[1].completed]),
             "total": len(review_tasks)
         },
-        "annotations": [{**x[1].to_dict(), **x[0].to_dict()} for x in annotation_tasks],
-        "review": [{**x[1].to_dict(), **x[0].to_dict()} for x in review_tasks]
+        "annotations": [{**x[0].to_dict(), **x[1].to_dict()} for x in annotation_tasks],
+        "review": [{**x[0].to_dict(), **x[1].to_dict()} for x in review_tasks]
     })
 
 
@@ -205,11 +208,27 @@ def task_list():
 @jwt_required()
 def management_list():
     if current_user.manages_tasks:
-        annotations = db.session.query(models.AnnotationTask).all()
-        revisions = db.session.query(models.RevisionTask).all()
+        annotation_tasks = db.session.query(models.AnnotationTask).all()
+        revision_tasks = db.session.query(models.RevisionTask).all()
+        annotations = []
+        for annotation in annotation_tasks:
+            user_tasks = models.UserTask.query.filter_by(annotation_task_id=annotation.id).all()
+            annotations.append({
+                **annotation.to_dict(),
+                "user_tasks": [user_task.to_dict(skip_task=True) for user_task in user_tasks]
+            })
+
+        revisions = []
+        for revision in revision_tasks:
+            user_tasks = models.UserTask.query.filter_by(revision_task_id=revision.id).all()
+            revisions.append({
+                **revision.to_dict(),
+                "user_tasks": [user_task.to_dict(skip_task=True) for user_task in user_tasks]
+            })
+
         return jsonify({
-            0: [x.to_dict() for x in annotations],
-            1: [x.to_dict() for x in revisions]
+            0: annotations,
+            1: revisions
         })
     return jsonify({"msg": "Not an admin!"}), 401
 
@@ -260,7 +279,7 @@ def app_tasks_list():
                 "file": slide[2]
             } for slide in slides],
             "app_tasks": [{
-                "user_task_id": app_task[0],
+                "id": app_task[0],
                 "completed": app_task[1],
                 "created": app_task[2],
                 "app_id": app_task[3],

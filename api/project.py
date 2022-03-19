@@ -68,13 +68,15 @@ def valid_path():
 
 @project_api.route("tasks")
 def tasks():
-    tasks = models.AnnotationTask.query.join(models.UserTask).filter(models.UserTask.completed == True).all()
+    project_id = request.args['project_id']
+    tasks = models.AnnotationTask.query.join(models.UserTask).filter(models.UserTask.completed == True,
+                                                                     models.AnnotationTask.project_id == project_id).all()
     resp = []
     for task in tasks:
         user_tasks = models.UserTask.query.filter(
             models.UserTask.annotation_task_id == task.id, models.UserTask.completed == True).all()
         resp.append({
-            **task.to_dict("simple"),
+            **task.to_dict(include_project=False, include_assigned=False),
             "user_tasks": [x.to_dict() for x in user_tasks]
         })
     return jsonify(resp)

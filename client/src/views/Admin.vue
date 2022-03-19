@@ -25,29 +25,45 @@
                     </v-chip>
                   </v-chip-group>
                 </template>
-                <template v-slot:item.assigned="{ item }">
-                  <v-chip-group active-class="primary--text" column show-arrows>
-                    <v-chip style="pointer-events: none;" :readonly="true" v-for="user in item.assigned" dark>
-                      {{ user.name }}
+                <template v-slot:item.task="{ item }">
+                  <v-chip-group column show-arrows>
+                    <v-chip style="pointer-events: none;"
+                            outlined :readonly="true"
+                            v-for="slide in item.task.slides">
+                      {{ slide.name }}
+                    </v-chip>
+                  </v-chip-group>
+                </template>
+                <template v-slot:item.usertasks="{ item }">
+                  <v-chip-group column show-arrows>
+                    <v-chip :readonly="true"
+                            v-for="task in item.user_tasks"
+                            :outlined="task.user == null"
+                            color="primary"
+                            @click="openTask(task)">
+                      <v-icon v-if="task.completed">mdi-check</v-icon>
+                      {{ task.user != null ? task.user.name : task.app.name }}
                     </v-chip>
                   </v-chip-group>
                 </template>
                 <template v-slot:item.revisions="{ item }">
                   <v-chip-group active-class="primary--text" column show-arrows>
-                    <v-chip style="pointer-events: none;" :readonly="true" v-for="user_task in item.revisions" dark>
-                      {{ user_task.user.name }}
+                    <v-chip :readonly="true"
+                            v-for="user_task in item.revisions" dark
+                            @click="openTask(user_task)">
+                      {{ user_task.user != null ? user_task.user.name : user_task.app.name }}
                     </v-chip>
                   </v-chip-group>
                 </template>
                 <template v-slot:item.actions="{ item }">
-                  <v-icon small class="mr-2" @click="edit_task(item)"> mdi-pencil</v-icon>
-                  <v-icon small @click="remove_task(item)"> mdi-delete</v-icon>
+                  <v-icon small class="mr-2" @click="editTask(item)">mdi-pencil</v-icon>
+                  <v-icon small @click="removeTask(item)">mdi-delete</v-icon>
                 </template>
               </v-data-table>
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn text @click="new_task">New task</v-btn>
-                <v-btn text @click="new_batch">New batch</v-btn>
+                <v-btn text @click="newTask">New task</v-btn>
+                <v-btn text @click="newBatch">New batch</v-btn>
               </v-card-actions>
             </v-expansion-panel-content>
           </v-expansion-panel>
@@ -63,15 +79,15 @@
                   :items="users"
                   :items-per-page="5">
                 <template v-slot:item.actions="{ item }">
-                  <v-icon small class="mr-2" @click="edit_user(item)">
+                  <v-icon small class="mr-2" @click="editUser(item)">
                     mdi-pencil
                   </v-icon>
-                  <v-icon small @click="remove_user(item)">mdi-delete</v-icon>
+                  <v-icon small @click="removeUser(item)">mdi-delete</v-icon>
                 </template>
               </v-data-table>
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn text @click="new_user">New user</v-btn>
+                <v-btn text @click="newUser">New user</v-btn>
               </v-card-actions>
             </v-expansion-panel-content>
           </v-expansion-panel>
@@ -97,7 +113,7 @@
                   </v-chip-group>
                 </template>
                 <template v-slot:item.actions="{ item }">
-                  <v-icon small class="mr-2" @click="edit_project(item)">
+                  <v-icon small class="mr-2" @click="editProject(item)">
                     mdi-pencil
                   </v-icon>
                   <v-tooltip bottom>
@@ -111,7 +127,7 @@
 
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn text @click="new_project">New project</v-btn>
+                <v-btn text @click="newProject">New project</v-btn>
               </v-card-actions>
             </v-expansion-panel-content>
           </v-expansion-panel>
@@ -198,8 +214,8 @@ export default {
             value: 'project.name',
           },
           {
-            text: 'Users',
-            value: 'assigned',
+            text: 'Annotators',
+            value: 'usertasks',
           },
           {
             text: 'Actions',
@@ -214,8 +230,8 @@ export default {
             value: 'id',
           },
           {
-            text: 'Project',
-            value: 'project.name',
+            text: 'Original task',
+            value: 'task',
           },
           {
             text: 'To review',
@@ -223,7 +239,7 @@ export default {
           },
           {
             text: 'Users',
-            value: 'assigned',
+            value: 'usertasks',
           },
           {
             text: 'Actions',
@@ -283,17 +299,25 @@ export default {
       this.editing = null;
       switch (which) {
         case 'user':
-          this.load_users();
+          this.loadUsers();
           break;
         case 'project':
-          this.load_projects();
+          this.loadProjects();
           break;
         case 'task':
-          this.load_tasks();
+          this.loadTasks();
           break;
       }
     },
-    new_user() {
+    openTask(task) {
+      this.$post('session/create', task)
+          .then((resp) => {
+            this.$store.commit('set_session', resp);
+            this.$router.push(`/session/${resp.id}`);
+          })
+          .catch((err) => alert(err));
+    },
+    newUser() {
       this.editing = {
         username: '',
         is_admin: false,
@@ -306,29 +330,29 @@ export default {
       this.drawer = true;
     },
 
-    new_batch() {
+    newBatch() {
       this.mode = 'batch';
       this.drawer = true;
     },
 
-    edit_user(user) {
+    editUser(user) {
       this.is_editing = true;
       this.editing = user;
       this.mode = 'user';
       this.drawer = true;
     },
 
-    remove_user(user) {
+    removeUser(user) {
       if (confirm('Are sure you want to remove this user?')) {
         this.$get(`user/remove?user_id=${user.id}`)
-          .then((res) => {
-            this.load_users();
-          })
-          .catch((err) => alert(err));
+            .then((res) => {
+              this.loadUsers();
+            })
+            .catch((err) => alert(err));
       }
     },
 
-    new_project() {
+    newProject() {
       this.editing = {
         name: '',
         description: '',
@@ -339,14 +363,14 @@ export default {
       this.drawer = true;
     },
 
-    edit_project(project) {
+    editProject(project) {
       this.is_editing = true;
       this.editing = project;
       this.mode = 'project';
       this.drawer = true;
     },
 
-    new_task() {
+    newTask() {
       this.editing = {
         name: '',
         type: 0,
@@ -357,68 +381,66 @@ export default {
       this.drawer = true;
     },
 
-    edit_task(task) {
+    editTask(task) {
       this.is_editing = true;
       this.editing = task;
       this.mode = 'task';
       this.drawer = true;
     },
 
-    remove_task(task) {
+    removeTask(task) {
       if (confirm('Are you sure you want to remove this task? Annotations may be lost.')) {
         this.$post('task/remove', task)
-          .then((resp) => {
-            console.log(resp);
-            this.load_tasks();
-          })
-          .catch((err) => {
-            alert(err);
-          });
+            .then((resp) => {
+              console.log(resp);
+              this.loadTasks();
+            })
+            .catch((err) => {
+              alert(err);
+            });
       }
     },
 
-    load_users() {
+    loadUsers() {
       if (this.user.manages_users) {
         this.$get('user/list')
-          .then((resp) => {
-            console.log(resp);
-            this.users = resp;
-          })
-          .catch((err) => {
-            alert(err);
-          });
+            .then((resp) => {
+              console.log(resp);
+              this.users = resp;
+            })
+            .catch((err) => {
+              alert(err);
+            });
       }
     },
 
-    load_projects() {
+    loadProjects() {
       if (this.user.manages_projects) {
         this.$get('project/list')
-          .then((resp) => {
-            console.log(resp);
-            this.projects = resp;
-          })
-          .catch((err) => {
-            alert(err);
-          });
+            .then((resp) => {
+              console.log(resp);
+              this.projects = resp;
+            })
+            .catch((err) => {
+              alert(err);
+            });
       }
     },
 
-    load_tasks() {
+    loadTasks() {
       if (this.user.manages_tasks) {
         this.$get('task/management_list')
-          .then((resp) => {
-            console.log(resp);
-            this.tasks = resp;
-          })
-          .catch((err) => alert(err));
+            .then((resp) => {
+              this.tasks = resp;
+            })
+            .catch((err) => alert(err));
       }
     },
   },
   mounted() {
-    // todo improve this to only load if the panel is opened
-    this.load_users();
-    this.load_projects();
-    this.load_tasks();
+    this.loadUsers();
+    this.loadProjects();
+    this.loadTasks();
   },
 };
 </script>

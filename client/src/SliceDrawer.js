@@ -1921,7 +1921,8 @@ class AnnotationDrawer {
     if (this.isPanningMode) {
       // No tools are allowed when in panning mode (when pressing SPACE):
       return false;
-    } if (this.currentTool != null) {
+    }
+    if (this.currentTool != null) {
       // Only makes sense if there is a current tool
       if (this.currentTool instanceof PathMeshEditor) {
         // if current tool is the PathMeshEditor (for editing), we want to bypass hovering locks
@@ -2025,7 +2026,7 @@ class AnnotationDrawer {
         annotation.updateViewport(); // for collision checks
         if (annotation.shouldBeVisible(self.currentViewport)) {
           // Annotation would be visible on the screen, does the user want to see it?
-          if (self.filtering[annotation.label.name]) {
+          if (self.filtering[annotation.label.name] || annotation.state === 'importing') {
             // This annotation must be drawn:
             annotation.update();
             annotation.draw();

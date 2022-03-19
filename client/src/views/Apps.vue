@@ -4,7 +4,7 @@
       <v-row>
         <v-col>
           <v-card>
-            <v-toolbar dense outlined elevation="0">
+            <v-toolbar dense outlined elevation="0" extended>
               <v-toolbar-title>
                 App classification tasks
               </v-toolbar-title>
@@ -12,13 +12,17 @@
               <v-toolbar-items>
                 <v-btn @click="newTask" text>Create task</v-btn>
               </v-toolbar-items>
+
+              <template v-slot:extension>
+                <v-tabs v-model="config.selected_tab">
+                  <v-tab v-for="project in apps_tasks.projects" :key="project.id">
+                    {{ project.name }}
+                  </v-tab>
+                </v-tabs>
+              </template>
             </v-toolbar>
 
-            <v-tabs v-model="config.selected_tab">
-              <v-tab v-for="project in apps_tasks.projects" :key="project.id">
-                {{ project.name }}
-              </v-tab>
-            </v-tabs>
+
             <v-card-text v-if="apps_tasks.projects.length > 0">
 
               <v-data-table
@@ -48,16 +52,18 @@
 
                 <template v-slot:expanded-item="{ headers, item }">
                   <td :colspan="headers.length">
-                    <v-chip-group>
-                      <v-chip v-for="app_task in item.app_tasks" :key="app_task.user_task_id"
-                              :color="!app_task.completed ? 'orange' : 'gray'"
-                              @click="openSession(item, app_task)">
-                        <v-icon left>
-                          mdi-play
-                        </v-icon>
-                        {{ app_task.app_name }} ({{ app_task.created }})
-                      </v-chip>
-                    </v-chip-group>
+                    <v-row>
+                      <v-chip-group>
+                        <v-chip v-for="app_task in item.app_tasks" :key="app_task.user_task_id"
+                                :color="!app_task.completed ? 'orange' : 'gray'"
+                                @click="openSession(item, app_task)">
+                          <v-icon left>
+                            mdi-play
+                          </v-icon>
+                          {{ app_task.app_name }} ({{ app_task.created }})
+                        </v-chip>
+                      </v-chip-group>
+                    </v-row>
                   </td>
                 </template>
 
@@ -209,12 +215,7 @@ export default {
   },
   methods: {
     openSession(task, appTask) {
-      this.$post('session/create', {
-        ...appTask,
-        type: 2,
-        id: task.id,
-        slides: task.slides,
-      })
+      this.$post('session/create', appTask)
           .then((resp) => {
             this.$store.commit('set_session', resp);
             this.$router.push(`/session/${resp.id}`);
