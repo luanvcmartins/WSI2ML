@@ -221,24 +221,24 @@ def class_balance(session_id, slide_id):
         else:
             # this annotation has no description, we most likely will be using it
             counts[annotation_label.name]['certain_area'] += area
-    total_area = max([count['area'] for count in counts.values()])
-    total_c_area = max([count['certain_area'] for count in counts.values()])
-    total_desc = max([count['desc'] for count in counts.values()])
-    total_count = max([count['count'] for count in counts.values()])
-    for value in counts.values():
-        if total_area > 0:
-            value['area'] = value['area'] / total_area
-        if total_c_area > 0:
-            value['certain_area'] = value['certain_area'] / total_c_area
-        if total_desc > 0:
-            value['desc_perc'] = value['desc'] / total_desc
-        else:
-            value['desc_perc'] = 0
-        if total_count > 0:
-            value['count_perc'] = value['count'] / total_count
-        else:
-            value['count_perc'] = 0
-
+    if len(counts) > 0:
+        total_area = max([count['area'] for count in counts.values()])
+        total_c_area = max([count['certain_area'] for count in counts.values()])
+        total_desc = max([count['desc'] for count in counts.values()])
+        total_count = max([count['count'] for count in counts.values()])
+        for value in counts.values():
+            if total_area > 0:
+                value['area'] = value['area'] / total_area
+            if total_c_area > 0:
+                value['certain_area'] = value['certain_area'] / total_c_area
+            if total_desc > 0:
+                value['desc_perc'] = value['desc'] / total_desc
+            else:
+                value['desc_perc'] = 0
+            if total_count > 0:
+                value['count_perc'] = value['count'] / total_count
+            else:
+                value['count_perc'] = 0
     return jsonify(counts)
 
 
