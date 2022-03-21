@@ -31,6 +31,12 @@
           <!-- Controls tab -->
           <v-container fluid grid-list-md>
             <v-layout row wrap>
+              <v-flex v-if="task_type === 0" cols="12" sm="12" md="6">
+                <session-class-balance
+                    ref="classBalance"
+                    :session-id="session_id"
+                    :slide-id="current_slide.id"/>
+              </v-flex>
               <v-flex cols="12" sm="12" md="6">
                 <v-card>
                   <v-card-title>Annotation visibility</v-card-title>
@@ -45,7 +51,7 @@
                         :color="genColor(label.color)"/>
                   </div>
                   <v-divider></v-divider>
-                  <div style="display: flex">
+                  <div class="flex-container">
                     <v-slider hide-details class="pl-2 pr-2"
                               style="width: 50%"
                               prepend-icon="mdi-circle-opacity"
@@ -59,6 +65,18 @@
                     </v-slider>
                     <v-slider hide-details class="pl-2 pr-2"
                               style="width: 50%"
+                              prepend-icon="mdi-gesture-tap"
+                              v-model="drawingStyle.hoverOpacity"
+                              step="0"
+                              thumb-label
+                              min="0.0" max="1">
+                      <template v-slot:thumb-label="{ value }">
+                        {{ value.toFixed(2) }}
+                      </template>
+                    </v-slider>
+                    <div class="break"/>
+                    <v-slider hide-details class="pl-2 pr-2"
+                              style="width: 50%"
                               prepend-icon="mdi-format-line-weight"
                               v-model="drawingStyle.lineWidth"
                               step="1"
@@ -68,6 +86,10 @@
                         {{ value.toFixed(2) }}
                       </template>
                     </v-slider>
+                    <v-switch
+                        style="width: 50%; margin:0px;"
+                        hide-details
+                        v-model="highlightOnTab" label="Highlight"/>
                   </div>
                 </v-card>
               </v-flex>
@@ -191,6 +213,7 @@ import SliceViewer from '../components/WSIViewer';
 import SideWindow from '../components/SideWindow';
 import AnnotationCard from '../components/AnnotationCard';
 import { optimizePath, loadAnnotations } from '@/SliceDrawer';
+import SessionClassBalance from '@/components/SessionClassBalance';
 
 export default {
   name: 'Session',
@@ -241,7 +264,13 @@ export default {
      * @returns {boolean} true if the task belongs to the user
      */
     taskBelongsToUser: function () {
-      return this.session.user.id === this.$store.state.user.id;
+      if (this.task_type === 2) {
+        // This is an app annotation task, the task belongs to the user if the user owns the app:
+        return this.session.app.owner.id === this.$store.state.user.id;
+      } else {
+        // This is a user-based task
+        return this.session.user.id === this.$store.state.user.id;
+      }
     },
     task_type() {
       return this.$store.state.session.type;
@@ -312,10 +341,12 @@ export default {
       drawingStyle: {
         fillOpacity: 0.3,
         lineWidth: 1,
+        hoverOpacity: 0.7
       },
       line_weight: 1,
       revisingUserTask: 'none',
       feedback_dialog: false,
+      highlightOnTab: true,
       draw_events: {
         onHover: self.onRegionHover,
         onLeave: self.onRegionLeave,
@@ -347,15 +378,16 @@ export default {
     },
 
     onRegionHover(region) {
-      const element = document.getElementById(`region-${region.id}`);
-      if (element == null) return;
-
-      this.selected_tab = 1;
-      element.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      });
-      element.classList.add('hovered');
+      if (this.highlightOnTab) {
+        const element = document.getElementById(`region-${region.id}`);
+        if (element == null) return;
+        this.selected_tab = 1;
+        element.scrollIntoView({
+          behavior: 'smooth',
+          block: 'center',
+        });
+        element.classList.add('hovered');
+      }
     },
 
     onRegionLeave(region) {
@@ -380,6 +412,7 @@ export default {
             annotation.state = 'idle';
             self.annotations[self.current_slide.id].push(annotation);
             self.annotationUpdate();
+            this.$refs.classBalance.refresh();
           })
           .catch((err) => {
             alert(`Error while saving region: ${err}`);
@@ -398,6 +431,7 @@ export default {
             .then((resp) => {
               // Add the new region to the list
               console.log(resp);
+              this.$refs.classBalance.refresh();
             })
             .catch((err) => {
               alert(`Error while saving region: ${err}`);
@@ -416,7 +450,6 @@ export default {
      * @param short
      */
     regionClicked(region, short = false) {
-      console.log('regionClicked', region);
       const element = document.getElementById(`region-${region.id}`);
       this.selected_tab = 1;
       if (element == null) {
@@ -540,6 +573,7 @@ export default {
     },
   },
   components: {
+    SessionClassBalance,
     AnnotationCard,
     SideWindow,
     SliceViewer,
@@ -575,6 +609,17 @@ export default {
 
 .hovered {
   background-color: darkgrey;
+}
+
+.flex-container {
+  display: flex;
+  flex-wrap: wrap;
+}
+
+
+.break {
+  flex-basis: 100%;
+  height: 0;
 }
 
 .card-description {

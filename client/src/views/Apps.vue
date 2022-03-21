@@ -43,6 +43,10 @@
                   </v-chip-group>
                 </template>
 
+                <template v-slot:item.app_tasks="{ item }">
+                  {{ item.app_tasks.length }} tasks
+                </template>
+
                 <template v-slot:item.actions="{ item }">
                   <v-btn rounded @click="newAppTask(item)" elevation="0" color="orange accent-4" dark>
                     <v-icon>mdi-plus</v-icon>

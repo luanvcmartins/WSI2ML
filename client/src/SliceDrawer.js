@@ -1286,7 +1286,7 @@ class Annotation {
     const { color } = this.label;
     return {
       color: `${color[0]},${color[1]},${color[2]}`,
-      opacity: this.isHovering ? '0.9' : style.fillOpacity,
+      opacity: this.isHovering ? style.hoverOpacity : style.fillOpacity,
     };
   }
 
@@ -1659,7 +1659,7 @@ class AnnotationDrawer {
     };
 
     // Defining function that keeps track of screen updates:
-    this.viewer.addHandler('update-viewport', this.updateViewport.bind(this));
+    this.viewer.addHandler('update-viewport', _.throttle(this.updateViewport.bind(this)));
 
     // Setting resize events to handle the annotation canvas size:
     this.viewer.addHandler('resize', () => {

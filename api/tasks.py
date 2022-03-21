@@ -239,15 +239,18 @@ def app_tasks_list():
     if not current_user.manages_apps:
         return jsonify({"msg": "Not an admin!"}), 401
     user_apps = [app.id for app in models.App.query.filter_by(owner_id=current_user.id).all()]
-    query_filter = ",".join([f":id{i}" for i in range(len(user_apps))])
-    tasks = db.session.execute(
-        f"""SELECT annotation_tasks.* FROM user_tasks, annotation_tasks WHERE
-        user_tasks.annotation_task_id = annotation_tasks.id AND
-        user_tasks.app_id in ({query_filter})
-        GROUP BY annotation_tasks.id""", {
-            f"id{i}": app for i, app in enumerate(user_apps)
-        }
-    )
+    if len(user_apps) > 0:
+        query_filter = ",".join([f":id{i}" for i in range(len(user_apps))])
+        tasks = db.session.execute(
+            f"""SELECT annotation_tasks.* FROM user_tasks, annotation_tasks WHERE
+            user_tasks.annotation_task_id = annotation_tasks.id AND
+            user_tasks.app_id in ({query_filter})
+            GROUP BY annotation_tasks.id""", {
+                f"id{i}": app for i, app in enumerate(user_apps)
+            }
+        )
+    else:
+        tasks = []
     tasks = list(tasks)
     projects_id = set([task[1] for task in tasks])
     projects = models.Project.query.filter(models.Project.id.in_(projects_id))
