@@ -16,27 +16,36 @@ task_api = Blueprint("task_api", __name__)
 @task_api.route("new", methods=["POST"])
 @jwt_required()
 def new():
-    if not current_user.manages_tasks:
+    if not (current_user.manages_tasks or current_user.manages_apps):
         return jsonify({"msg": 'Not an admin!'}), 401
     new_task = request.json
-    if new_task['type'] == 0:
+    task_type = new_task['type']
+    if task_type == 0 or task_type == 2:
         # Annotation task:
         task = new_annotation_task(new_task)
-    else:  # if new_task['type'] == 1:
+    else:  # new_task['type'] == 1:
         # the task type is revision
         task = new_revision_task(new_task)
 
     for user in new_task['assigned']:
         user_task = models.UserTask(
             id=str(uuid.uuid4()),
-            user_id=user['id'],
             completed=False,
             type=new_task['type']
         )
-        if new_task['type'] == 0:
+        if task_type == 0:
+            # user annotation task
+            user_task.user_id = user['id']
             user_task.annotation_task_id = task.id
-        else:
+        elif task_type == 1:
+            # revision task
+            user_task.user_id = user['id']
             user_task.revision_task_id = task.id
+        else:
+            # app annotation task:
+            user_task.app_id = user['id']
+            user_task.annotation_task_id = task.id
+
         db.session.add(user_task)
 
     db.session.commit()
@@ -174,8 +183,11 @@ def task_list():
         .order_by(models.UserTask.completed).all()
     annotation_tasks = list(annotation_tasks)
     review_tasks = list(review_tasks)
-    next_annotation = annotation_tasks[0][0].to_dict() if len(annotation_tasks) > 0 else None
-    next_revision = review_tasks[0][0].to_dict() if len(review_tasks) > 0 else None
+    next_annotation = {
+        **annotation_tasks[0][0].to_dict(),
+        **annotation_tasks[0][1].to_dict()
+    } if len(annotation_tasks) > 0 else None
+    next_revision = {**review_tasks[0][0].to_dict(), **review_tasks[0][1].to_dict()} if len(review_tasks) > 0 else None
     return jsonify({
         "annotation_status": {
             "next": next_annotation,
@@ -187,8 +199,8 @@ def task_list():
             "done": len([task for task in review_tasks if task[1].completed]),
             "total": len(review_tasks)
         },
-        "annotations": [{**x[1].to_dict(), **x[0].to_dict()} for x in annotation_tasks],
-        "review": [{**x[1].to_dict(), **x[0].to_dict()} for x in review_tasks]
+        "annotations": [{**x[0].to_dict(), **x[1].to_dict()} for x in annotation_tasks],
+        "review": [{**x[0].to_dict(), **x[1].to_dict()} for x in review_tasks]
     })
 
 
@@ -196,13 +208,88 @@ def task_list():
 @jwt_required()
 def management_list():
     if current_user.manages_tasks:
-        annotations = db.session.query(models.AnnotationTask).all()
-        revisions = db.session.query(models.RevisionTask).all()
+        annotation_tasks = db.session.query(models.AnnotationTask).all()
+        revision_tasks = db.session.query(models.RevisionTask).all()
+        annotations = []
+        for annotation in annotation_tasks:
+            user_tasks = models.UserTask.query.filter_by(annotation_task_id=annotation.id).all()
+            annotations.append({
+                **annotation.to_dict(),
+                "user_tasks": [user_task.to_dict(skip_task=True) for user_task in user_tasks]
+            })
+
+        revisions = []
+        for revision in revision_tasks:
+            user_tasks = models.UserTask.query.filter_by(revision_task_id=revision.id).all()
+            revisions.append({
+                **revision.to_dict(),
+                "user_tasks": [user_task.to_dict(skip_task=True) for user_task in user_tasks]
+            })
+
         return jsonify({
-            0: [x.to_dict() for x in annotations],
-            1: [x.to_dict() for x in revisions]
+            0: annotations,
+            1: revisions
         })
     return jsonify({"msg": "Not an admin!"}), 401
+
+
+@task_api.route("app_task_list", methods=['GET'])
+@jwt_required()
+def app_tasks_list():
+    if not current_user.manages_apps:
+        return jsonify({"msg": "Not an admin!"}), 401
+    user_apps = [app.id for app in models.App.query.filter_by(owner_id=current_user.id).all()]
+    if len(user_apps) > 0:
+        query_filter = ",".join([f":id{i}" for i in range(len(user_apps))])
+        tasks = db.session.execute(
+            f"""SELECT annotation_tasks.* FROM user_tasks, annotation_tasks WHERE
+            user_tasks.annotation_task_id = annotation_tasks.id AND
+            user_tasks.app_id in ({query_filter})
+            GROUP BY annotation_tasks.id""", {
+                f"id{i}": app for i, app in enumerate(user_apps)
+            }
+        )
+    else:
+        tasks = []
+    tasks = list(tasks)
+    projects_id = set([task[1] for task in tasks])
+    projects = models.Project.query.filter(models.Project.id.in_(projects_id))
+    app_task_list = {
+        "projects": [project.to_dict(include_labels=False) for project in projects],
+        "tasks": {}
+    }
+    for task in tasks:
+        task_id, project_id, task_name, task_created, _ = task
+        app_tasks = db.session.execute("""SELECT user_tasks.id, user_tasks.completed, user_tasks.created, apps.* 
+        FROM user_tasks, annotation_tasks, apps WHERE
+        user_tasks.annotation_task_id AND
+        user_tasks.app_id = apps.id AND
+        annotation_tasks.id = :task_id""", {"task_id": task_id})
+        slides = db.session.execute("""
+        SELECT slides.id, slides.name, slides.file from slides, task_slides WHERE slides.id = task_slides.slide_id AND task_slides.task_id = :task_id
+        """, {"task_id": task_id})
+        if project_id not in app_task_list["tasks"]:
+            app_task_list["tasks"][project_id] = []
+        project_task_list = app_task_list["tasks"][project_id]
+        project_task_list.append({
+            "id": task_id,
+            "name": task_name,
+            "created": task_created,
+            "type": 2,
+            "slides": [{
+                "id": slide[0],
+                "name": slide[1],
+                "file": slide[2]
+            } for slide in slides],
+            "app_tasks": [{
+                "id": app_task[0],
+                "completed": app_task[1],
+                "created": app_task[2],
+                "app_id": app_task[3],
+                "app_name": app_task[4]
+            } for app_task in app_tasks]
+        })
+    return jsonify(app_task_list)
 
 
 @task_api.route("edit", methods=["POST"])
@@ -263,17 +350,50 @@ def edit():
     return jsonify(task.to_dict())
 
 
+@task_api.route("new_app_task", methods=['POST'])
+@jwt_required()
+def new_app_task():
+    app_task_request = request.json
+    app_task = models.UserTask(
+        id=str(uuid.uuid4()),
+        annotation_task_id=app_task_request['annotation_id'],
+        app_id=app_task_request['app_id'],
+        type=2
+    )
+    db.session.add(app_task)
+    annotations = app_task_request['annotations']
+    if annotations is None:
+        app_task.completed = False
+    else:
+        for slide_id, slide_annotations in annotations.items():
+            for slide_annotation in slide_annotations:
+                db.session.add(models.Annotation(
+                    user_task_id=app_task.id,
+                    title=slide_annotation['title'] if 'title' in slide_annotation else None,
+                    data=slide_annotation['geometry'],
+                    properties=slide_annotation['properties'] if 'properties' in slide_annotation else None,
+                    label_id=slide_annotation['label_id'],
+                    slide_id=slide_id
+                ))
+        app_task.completed = True
+    db.session.commit()
+    return jsonify(app_task.to_dict())
+
+
 @task_api.route("remove", methods=["POST"])
 def remove():
     task = request.json
-    if task['type'] == 0 or task['type'] == 1:
+    if task['type'] == 0 or task['type'] == 2:
+        # honestly I don't know how to force SQLAlchemy to delete cascade
+        user_tasks = db.session.query(models.UserTask).filter(models.UserTask.annotation_task_id == task['id']).all()
+        for user_task in user_tasks:
+            db.session.query(models.Annotation).filter(models.Annotation.user_task_id == user_task.id).delete()
         db.session.query(models.AnnotationTask).filter(models.AnnotationTask.id == task['id']).delete()
         db.session.execute("DELETE FROM task_slides WHERE task_id = :task_id", {"task_id": task['id']})
         db.session.query(models.UserTask).filter(models.UserTask.annotation_task_id == task['id']).delete()
         for revision in db.session.query(models.RevisionTask).filter(models.RevisionTask.task_id == task['id']).all():
             db.session.query(models.UserTask).filter(models.UserTask.revision_task_id == revision.id).delete()
-            revision.delete()
-
+        db.session.query(models.RevisionTask).filter(models.RevisionTask.task_id == task['id']).delete()
     elif task['type'] == 1:
         db.session.query(models.RevisionTask).filter(models.RevisionTask.id == task['id']).delete()
         db.session.query(models.UserTask).filter(models.UserTask.revision_task_id == task['id']).delete()

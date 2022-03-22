@@ -66,7 +66,7 @@ export default {
       });
     },
   },
-  props: { value: { type: Annotation } }
+  props: { value: { type: Annotation } },
 };
 </script>
 

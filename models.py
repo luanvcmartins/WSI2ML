@@ -50,7 +50,7 @@ class User(UserMixin, db.Model):
         """
         return check_password_hash(self.password_hash, password)
 
-    def to_json(self):
+    def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
@@ -66,6 +66,23 @@ class User(UserMixin, db.Model):
         }
 
 
+class App(db.Model):
+    __tablename__ = "apps"
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(60))
+    description = db.Column(db.String(120))
+    owner_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    owner = db.relationship("User", viewonly=True)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "name": self.name,
+            "description": self.description,
+            "owner": self.owner.to_dict()
+        }
+
+
 class Project(db.Model):
     __tablename__ = "projects"
     id = db.Column(db.Integer, primary_key=True)
@@ -74,14 +91,16 @@ class Project(db.Model):
     folder = db.Column(db.Text)
     labels = db.relationship("Label")
 
-    def to_json(self):
-        return {
+    def to_dict(self, include_labels=True):
+        project = {
             "id": self.id,
             "name": self.name,
             "description": self.description,
-            "folder": self.folder,
-            "labels": [x.to_json() for x in self.labels]
+            "folder": self.folder
         }
+        if include_labels:
+            project["labels"] = [x.to_dict() for x in self.labels]
+        return project
 
 
 class Label(db.Model):
@@ -99,7 +118,7 @@ class Label(db.Model):
     def color(self, new_color):
         self.label_color = ";".join(map(str, new_color))
 
-    def to_json(self):
+    def to_dict(self):
         return {
             "id": self.id,
             "name": self.name,
@@ -130,24 +149,33 @@ class UserTask(db.Model):
     annotation_task_id = db.Column(db.Integer, db.ForeignKey('annotation_tasks.id', ondelete='CASCADE'))
     revision_task_id = db.Column(db.Integer, db.ForeignKey('revision_tasks.id', ondelete='CASCADE'))
     user_id = db.Column(db.Integer, db.ForeignKey('users.id'))
+    app_id = db.Column(db.Integer, db.ForeignKey('apps.id'))
     type = db.Column(db.Integer)
     completed = db.Column(db.Boolean)
     locked = db.Column(db.Boolean)
     created = db.Column(db.DateTime(timezone=True), server_default=func.now())
     updated = db.Column(db.DateTime(timezone=True), onupdate=func.now())
     user = db.relationship("User", viewonly=True)
+    app = db.relationship("App", viewonly=True)
     annotation_task = db.relationship("AnnotationTask", viewonly=True)
     revision_task = db.relationship("RevisionTask", viewonly=True)
 
     def to_dict(self, skip_task=False):
         user_task = {
             "id": self.id,
-            "user": self.user.to_json(),
             "type": self.type,
-            "completed": self.completed
+            "completed": self.completed,
+            "created": self.created
         }
+        if self.type == 2:
+            user_task["app"] = self.app.to_dict()
+        else:
+            user_task["user"] = self.user.to_dict()
         if not skip_task:
-            user_task["task"] = self.annotation_task.to_dict() if self.type == 0 else self.revision_task.to_dict()
+            if self.type == 0 or self.type == 2:
+                user_task["task"] = self.annotation_task.to_dict()
+            else:
+                user_task["task"] = self.revision_task.to_dict()
         return user_task
 
 
@@ -162,7 +190,7 @@ class AnnotationTask(db.Model):
     assigned = db.relationship("UserTask", passive_deletes=True)
     slides = db.relationship("Slide", secondary=task_slides)
 
-    def to_dict(self, context="default"):
+    def to_dict(self, include_slides=True, include_project=True, include_assigned=True):
         task = {
             "id": self.id,
             "project_id": self.project_id,
@@ -170,13 +198,12 @@ class AnnotationTask(db.Model):
             "created": self.created,
             "type": 0
         }
-        if context == "default":
-            task = {**task, **{
-                "slides": [x.to_dict() for x in self.slides],
-                "project": self.project.to_json(),
-                "assigned": [x.user.to_json() for x in self.assigned],
-            }}
-
+        if include_slides:
+            task['slides'] = [x.to_dict() for x in self.slides]
+        if include_project:
+            task['project'] = self.project.to_dict()
+        if include_assigned:
+            task["assigned"] = [x.user.to_dict() if x.type != 2 else x.app.to_dict() for x in self.assigned]
         return task
 
     def update(self, update):
@@ -205,12 +232,13 @@ class RevisionTask(db.Model):
             "name": self.name,
             "task_id": self.task_id,
             "project_id": self.project_id,
-            "project": self.project.to_json(),
-            "task": self.task.to_dict(),
+            "project": self.project.to_dict(),
             "type": 1
         }
+        if self.task is not None:
+            item["task"] = self.task.to_dict()
         if with_assigned:
-            item["assigned"] = [x.user.to_json() for x in self.assigned]
+            item["assigned"] = [x.user.to_dict() for x in self.assigned]
         if include_revisions:
             item["revisions"] = [x.to_dict() for x in self.revisions]
         return item
@@ -278,7 +306,7 @@ class Annotation(db.Model):
             "description": self.description,
             "user_task_id": self.user_task_id,
             "slide_id": self.slide_id,
-            "label": self.label.to_json(),
+            "label": self.label.to_dict(),
             "geometry": self.data,
             "meta": {},
             "properties": self.properties

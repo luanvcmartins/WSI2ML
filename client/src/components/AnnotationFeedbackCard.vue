@@ -91,7 +91,7 @@ export default {
     feedbackLabelId(newFeedbackLabelId) {
       this.value.feedback.label_id = newFeedbackLabelId;
       this.annotationUpdate();
-    }
+    },
   },
   computed: {
     cardTitle() {
@@ -189,7 +189,7 @@ export default {
       this.$emit('annotation-feedback', 'correct', this.value);
     },
   },
-  props: { value: { type: Annotation } }
+  props: { value: { type: Annotation } },
 };
 </script>
 

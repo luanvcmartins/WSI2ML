@@ -24,7 +24,7 @@
         <v-list-item @click="changePassword = true">
           <v-list-item-title>Change password</v-list-item-title>
         </v-list-item>
-      <v-divider></v-divider>
+        <v-divider></v-divider>
         <v-list-item @click="logout">
           <v-list-item-title>Logout</v-list-item-title>
         </v-list-item>
@@ -38,6 +38,7 @@
           <span style="font-weight: 300">Overview</span>
         </v-tab>
         <v-tab to="/tasks">Tasks</v-tab>
+        <v-tab v-if="manage_apps" to="/apps">Apps</v-tab>
         <v-tab v-if="can_export" to="/export">Export</v-tab>
         <v-tab v-if="is_admin" to="/admin">Management</v-tab>
       </v-tabs>
@@ -67,6 +68,10 @@ export default {
     access_overview() {
       const { user } = this.$store.state;
       return user.access_overview;
+    },
+    manage_apps() {
+      const { user } = this.$store.state;
+      return user.manages_apps;
     },
     user_name() {
       return this.$store.state.user.name;

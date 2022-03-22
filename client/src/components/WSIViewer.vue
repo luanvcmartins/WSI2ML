@@ -2,10 +2,10 @@
   <div>
     <div id="seadragon-viewer"/>
 
-    <div v-if="drawer" class="drawing-tool-container">
+    <div class="drawing-tool-container">
 
       <div class="tool-item">
-        <div class="zoom-shortcuts" v-if="task_type === 0">
+        <div class="zoom-shortcuts" v-if="task_type === 0" >
           <v-menu top :close-on-click="true" offset-y>
             <template v-slot:activator="{ on, attrs }">
               <v-btn text v-bind="attrs" v-on="on">
@@ -31,7 +31,7 @@
           </v-menu>
         </div>
 
-        <v-divider></v-divider>
+        <v-divider v-if="drawer"></v-divider>
         <div v-if="annotationDrawer != null && annotationDrawer.isDrawingEnabled && editing.element == null"
              class="zoom-shortcuts">
           <v-btn text icon
@@ -40,16 +40,19 @@
             <v-icon>mdi-cursor-default</v-icon>
           </v-btn>
           <v-btn text icon @click="annotationDrawer.tool = 'polygon'"
-                 :color="'polygon' === annotationDrawer.tool ? 'primary' : 'grey'">
+                 :color="'polygon' === annotationDrawer.tool ? 'primary' : 'grey'"
+                 v-if="drawer">
             <v-icon>mdi-vector-polygon</v-icon>
           </v-btn>
           <v-btn text icon @click="annotationDrawer.tool = 'rect'"
-                 :color="'rect' === annotationDrawer.tool ? 'primary' : 'grey'">
+                 :color="'rect' === annotationDrawer.tool ? 'primary' : 'grey'"
+                 v-if="drawer">
             <v-icon>mdi-vector-rectangle</v-icon>
           </v-btn>
           <v-btn text icon
                  @click="annotationDrawer.tool = 'circle'"
-                 :color="'circle' === annotationDrawer.tool ? 'primary' : 'grey'">
+                 :color="'circle' === annotationDrawer.tool ? 'primary' : 'grey'"
+                 v-if="drawer">
             <v-icon>mdi-circle-outline</v-icon>
           </v-btn>
           <v-btn text icon
@@ -173,7 +176,7 @@ export default {
     info: [],
   }),
   watch: {
-    drawer: function () {
+    drawer() {
       // Changes on the drawer will immediately reset the current tool to none.
       if (this.annotationDrawer != null) {
         this.annotationDrawer.tool = null;
@@ -185,7 +188,7 @@ export default {
         this.labeled_regions = newValue;
         if (this.annotationDrawer != null) {
           this.annotationDrawer.annotations = newValue;
-          newValue.forEach(annotation => {
+          newValue.forEach((annotation) => {
             annotation.drawer = this.annotationDrawer;
           });
         }
@@ -249,6 +252,7 @@ export default {
     },
     drawingStyle: {
       deep: true,
+      immediate: true,
       handler(newStyle) {
         if (this.annotationDrawer != null) {
           this.annotationDrawer.style = newStyle;
@@ -391,7 +395,6 @@ export default {
       });
       this.no_model_action = false;
     });
-
   },
   props: {
     drawer: {

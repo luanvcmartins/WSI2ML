@@ -35,7 +35,7 @@ export default {
     AnnotationFeedbackCard,
     AnnotationEditingCard,
     AnnotationImportingCard,
-    AnnotationIdleCard
+    AnnotationIdleCard,
   },
   computed: {
     task_type() {
@@ -48,7 +48,7 @@ export default {
         labels[data[i].id] = data[i];
       }
       return labels;
-    }
+    },
   },
   watch: {
     value: {
@@ -143,8 +143,8 @@ export default {
     },
   },
   props: {
-    'editing': { type: Boolean },
-    'value': { type: Annotation }
+    editing: { type: Boolean },
+    value: { type: Annotation },
   },
 };
 </script>

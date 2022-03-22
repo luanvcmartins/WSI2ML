@@ -13,9 +13,9 @@
                 <v-tab>Revisions</v-tab>
               </v-tabs>
               <v-data-table
-                      :headers="config.task_headers[task_type]"
-                      :items="tasks[task_type]"
-                      :items-per-page="5">
+                  :headers="config.task_headers[task_type]"
+                  :items="tasks[task_type]"
+                  :items-per-page="5">
                 <template v-slot:item.slides="{ item }">
                   <v-chip-group column show-arrows>
                     <v-chip style="pointer-events: none;"
@@ -25,29 +25,45 @@
                     </v-chip>
                   </v-chip-group>
                 </template>
-                <template v-slot:item.assigned="{ item }">
-                  <v-chip-group active-class="primary--text" column show-arrows>
-                    <v-chip style="pointer-events: none;" :readonly="true" v-for="user in item.assigned" dark>
-                      {{ user.name }}
+                <template v-slot:item.task="{ item }">
+                  <v-chip-group column show-arrows>
+                    <v-chip style="pointer-events: none;"
+                            outlined :readonly="true"
+                            v-for="slide in item.task.slides">
+                      {{ slide.name }}
+                    </v-chip>
+                  </v-chip-group>
+                </template>
+                <template v-slot:item.usertasks="{ item }">
+                  <v-chip-group column show-arrows>
+                    <v-chip :readonly="true"
+                            v-for="task in item.user_tasks"
+                            :outlined="task.user == null"
+                            color="primary"
+                            @click="openTask(task)">
+                      <v-icon v-if="task.completed">mdi-check</v-icon>
+                      {{ task.user != null ? task.user.name : task.app.name }}
                     </v-chip>
                   </v-chip-group>
                 </template>
                 <template v-slot:item.revisions="{ item }">
                   <v-chip-group active-class="primary--text" column show-arrows>
-                    <v-chip style="pointer-events: none;" :readonly="true" v-for="user_task in item.revisions" dark>
-                      {{ user_task.user.name }}
+                    <v-chip :readonly="true"
+                            v-for="user_task in item.revisions" dark
+                            @click="openTask(user_task)">
+                      {{ user_task.user != null ? user_task.user.name : user_task.app.name }}
                     </v-chip>
                   </v-chip-group>
                 </template>
                 <template v-slot:item.actions="{ item }">
-                  <v-icon small class="mr-2" @click="edit_task(item)"> mdi-pencil</v-icon>
-                  <v-icon small @click="remove_task(item)"> mdi-delete</v-icon>
+                  <v-icon small class="mr-2" @click="editTask(item)">mdi-pencil</v-icon>
+                  <v-icon small @click="removeTask(item)">mdi-delete</v-icon>
                 </template>
               </v-data-table>
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn text @click="new_task">New task</v-btn>
-                <v-btn text @click="new_batch">New batch</v-btn>
+                <v-btn text @click="newTask">New task</v-btn>
+                <v-btn text @click="newBatch">New batch</v-btn>
               </v-card-actions>
             </v-expansion-panel-content>
           </v-expansion-panel>
@@ -59,19 +75,19 @@
             </v-expansion-panel-header>
             <v-expansion-panel-content>
               <v-data-table
-                      :headers="config.user_headers"
-                      :items="users"
-                      :items-per-page="5">
+                  :headers="config.user_headers"
+                  :items="users"
+                  :items-per-page="5">
                 <template v-slot:item.actions="{ item }">
-                  <v-icon small class="mr-2" @click="edit_user(item)">
+                  <v-icon small class="mr-2" @click="editUser(item)">
                     mdi-pencil
                   </v-icon>
-                  <v-icon small @click="remove_user(item)">mdi-delete</v-icon>
+                  <v-icon small @click="removeUser(item)">mdi-delete</v-icon>
                 </template>
               </v-data-table>
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn text @click="new_user">New user</v-btn>
+                <v-btn text @click="newUser">New user</v-btn>
               </v-card-actions>
             </v-expansion-panel-content>
           </v-expansion-panel>
@@ -83,9 +99,9 @@
             </v-expansion-panel-header>
             <v-expansion-panel-content>
               <v-data-table
-                      :headers="config.project_header"
-                      :items="projects"
-                      :items-per-page="5">
+                  :headers="config.project_header"
+                  :items="projects"
+                  :items-per-page="5">
                 <template v-slot:item.labels="{ item }">
                   <v-chip-group show-arrows column>
                     <v-chip style="pointer-events: none;"
@@ -97,7 +113,7 @@
                   </v-chip-group>
                 </template>
                 <template v-slot:item.actions="{ item }">
-                  <v-icon small class="mr-2" @click="edit_project(item)">
+                  <v-icon small class="mr-2" @click="editProject(item)">
                     mdi-pencil
                   </v-icon>
                   <v-tooltip bottom>
@@ -111,7 +127,7 @@
 
               <v-card-actions>
                 <v-spacer></v-spacer>
-                <v-btn text @click="new_project">New project</v-btn>
+                <v-btn text @click="newProject">New project</v-btn>
               </v-card-actions>
             </v-expansion-panel-content>
           </v-expansion-panel>
@@ -137,237 +153,296 @@
 
 <script>
 
-    import UserEditor from "../components/UserEditor";
-    import ProjectEditor from "../components/ProjectEditor";
-    import TaskEditor from "../components/TaskEditor";
-    import TaskBatch from "../components/TaskBatch";
+import UserEditor from '../components/UserEditor';
+import ProjectEditor from '../components/ProjectEditor';
+import TaskEditor from '../components/TaskEditor';
+import TaskBatch from '../components/TaskBatch';
 
-    export default {
-        name: "Admin",
-        components: {TaskBatch, TaskEditor, ProjectEditor, UserEditor},
-        watch: {
-            editing: function (new_value, old_value) {
-                // if (old_value != null && old_value.id == null) {
-                //     if (new_value != null && new_value.id != null && !this.is_editing) {
-                //         if (this.mode === "user")
-                //             this.users.push(new_value)
-                //         else if (this.mode === "project")
-                //             this.projects.push(new_value)
-                //         else if (this.mode === "task")
-                //             this.tasks.push(new_value)
-                //         this.drawer = false
-                //     }
-                // this.drawer = false
-                // }
-            }
+export default {
+  name: 'Admin',
+  components: {
+    TaskBatch,
+    TaskEditor,
+    ProjectEditor,
+    UserEditor,
+  },
+  watch: {
+    editing(new_value, old_value) {
+      // if (old_value != null && old_value.id == null) {
+      //     if (new_value != null && new_value.id != null && !this.is_editing) {
+      //         if (this.mode === "user")
+      //             this.users.push(new_value)
+      //         else if (this.mode === "project")
+      //             this.projects.push(new_value)
+      //         else if (this.mode === "task")
+      //             this.tasks.push(new_value)
+      //         this.drawer = false
+      //     }
+      // this.drawer = false
+      // }
+    },
+  },
+  computed: {
+    user() {
+      return this.$store.state.user;
+    },
+  },
+  data: () => ({
+    drawer: false,
+    mode: 'user',
+    is_editing: false,
+    editing: null,
+    users: [],
+    projects: [],
+    tasks: [],
+    task_type: 'annotations',
+    config: {
+      task_headers: {
+        0: [
+          {
+            text: 'id',
+            align: 'start',
+            sortable: false,
+            value: 'id',
+          },
+          {
+            text: 'Slides',
+            value: 'slides',
+          },
+          {
+            text: 'Project',
+            value: 'project.name',
+          },
+          {
+            text: 'Annotators',
+            value: 'usertasks',
+          },
+          {
+            text: 'Actions',
+            value: 'actions',
+          },
+        ],
+        1: [
+          {
+            text: 'id',
+            align: 'start',
+            sortable: false,
+            value: 'id',
+          },
+          {
+            text: 'Original task',
+            value: 'task',
+          },
+          {
+            text: 'To review',
+            value: 'revisions',
+          },
+          {
+            text: 'Users',
+            value: 'usertasks',
+          },
+          {
+            text: 'Actions',
+            value: 'actions',
+          },
+        ],
+      },
+      user_headers: [
+        {
+          text: 'id',
+          align: 'start',
+          sortable: false,
+          value: 'id',
         },
-        computed: {
-            user: function () {
-                return this.$store.state.user
-            }
+        {
+          text: 'Name',
+          value: 'name',
         },
-        data: () => {
-            return {
-                drawer: false,
-                mode: 'user',
-                is_editing: false,
-                editing: null,
-                users: [],
-                projects: [],
-                tasks: [],
-                task_type: "annotations",
-                config: {
-                    task_headers: {
-                        0: [
-                            {
-                                text: 'id',
-                                align: 'start',
-                                sortable: false,
-                                value: 'id',
-                            },
-                            {text: 'Slides', value: 'slides'},
-                            {text: 'Project', value: 'project.name'},
-                            {text: 'Users', value: 'assigned'},
-                            {text: "Actions", value: 'actions'}
-                        ],
-                        1: [
-                            {
-                                text: 'id',
-                                align: 'start',
-                                sortable: false,
-                                value: 'id',
-                            },
-                            {text: 'Project', value: 'project.name'},
-                            {text: 'To review', value: 'revisions'},
-                            {text: 'Users', value: 'assigned'},
-                            {text: "Actions", value: 'actions'}
-                        ]
-                    },
-                    user_headers: [
-                        {
-                            text: 'id',
-                            align: 'start',
-                            sortable: false,
-                            value: 'id',
-                        },
-                        {text: 'Name', value: 'name'},
-                        {text: 'Username (login)', value: 'username'},
-                        {text: 'Is admin?', value: 'is_admin'},
-                        {text: 'Actions', value: 'actions'},
-                    ],
-                    project_header: [
-                        {
-                            text: 'Project name',
-                            align: 'start',
-                            sortable: false,
-                            value: 'name',
-                        },
-                        {text: 'Description', value: 'description'},
-                        {text: "Labels", value: 'labels'},
-                        {text: "Actions", value: 'actions'}
-                    ]
-                }
-            }
+        {
+          text: 'Username (login)',
+          value: 'username',
         },
-        methods: {
-            done(which) {
-                this.drawer = false
-                this.editing = null
-                switch (which) {
-                    case 'user':
-                        this.load_users()
-                        break
-                    case 'project':
-                        this.load_projects()
-                        break
-                    case 'task':
-                        this.load_tasks()
-                        break
-                }
-            },
-            new_user() {
-                this.editing = {
-                    username: "",
-                    is_admin: false,
-                    manages_apps: false,
-                    manages_users: false,
-                    manages_tasks: false,
-                    manages_projects: false
-                }
-                this.mode = "user"
-                this.drawer = true
-            },
-
-            new_batch() {
-                this.mode = "batch"
-                this.drawer = true
-            },
-
-            edit_user(user) {
-                this.is_editing = true
-                this.editing = user
-                this.mode = "user"
-                this.drawer = true
-            },
-
-            remove_user(user) {
-                if (confirm("Are sure you want to remove this user?"))
-                    this.$get("user/remove?user_id=" + user.id)
-                        .then(res => {
-                            this.load_users()
-                        })
-                        .catch(err => alert(err))
-            },
-
-            new_project() {
-                this.editing = {
-                    name: "",
-                    description: "",
-                    folder: "",
-                    labels: []
-                }
-                this.mode = "project"
-                this.drawer = true
-            },
-
-            edit_project(project) {
-                this.is_editing = true
-                this.editing = project
-                this.mode = "project"
-                this.drawer = true
-            },
-
-            new_task() {
-                this.editing = {
-                    name: "",
-                    type: 0,
-                    slides: [],
-                    assigned: []
-                }
-                this.mode = "task"
-                this.drawer = true
-            },
-
-            edit_task(task) {
-                this.is_editing = true
-                this.editing = task
-                this.mode = "task"
-                this.drawer = true
-            },
-
-            remove_task(task) {
-                if (confirm("Are you sure you want to remove this task? Annotations may be lost."))
-                    this.$post("task/remove", task)
-                        .then(resp => {
-                            console.log(resp)
-                            this.load_tasks()
-                        })
-                        .catch(err => {
-                            alert(err)
-                        })
-            },
-
-            load_users() {
-                if (this.user.manages_users)
-                    this.$get("user/list")
-                        .then(resp => {
-                            console.log(resp)
-                            this.users = resp
-                        })
-                        .catch(err => {
-                            alert(err)
-                        })
-            },
-
-            load_projects() {
-                if (this.user.manages_projects)
-                    this.$get("project/list")
-                        .then(resp => {
-                            console.log(resp)
-                            this.projects = resp
-                        })
-                        .catch(err => {
-                            alert(err)
-                        })
-            },
-
-            load_tasks() {
-                if (this.user.manages_tasks)
-                    this.$get("task/management_list")
-                        .then(resp => {
-                            console.log(resp)
-                            this.tasks = resp
-                        })
-                        .catch(err => alert(err))
-            }
+        {
+          text: 'Is admin?',
+          value: 'is_admin',
         },
-        mounted() {
-            // todo improve this to only load if the panel is opened
-            this.load_users()
-            this.load_projects()
-            this.load_tasks()
-        }
-    }
+        {
+          text: 'Actions',
+          value: 'actions',
+        },
+      ],
+      project_header: [
+        {
+          text: 'Project name',
+          align: 'start',
+          sortable: false,
+          value: 'name',
+        },
+        {
+          text: 'Description',
+          value: 'description',
+        },
+        {
+          text: 'Labels',
+          value: 'labels',
+        },
+        {
+          text: 'Actions',
+          value: 'actions',
+        },
+      ],
+    },
+  }),
+  methods: {
+    done(which) {
+      this.drawer = false;
+      this.editing = null;
+      switch (which) {
+        case 'user':
+          this.loadUsers();
+          break;
+        case 'project':
+          this.loadProjects();
+          break;
+        case 'task':
+          this.loadTasks();
+          break;
+      }
+    },
+    openTask(task) {
+      this.$post('session/create', task)
+          .then((resp) => {
+            this.$store.commit('set_session', resp);
+            this.$router.push(`/session/${resp.id}`);
+          })
+          .catch((err) => alert(err));
+    },
+    newUser() {
+      this.editing = {
+        username: '',
+        is_admin: false,
+        manages_apps: false,
+        manages_users: false,
+        manages_tasks: false,
+        manages_projects: false,
+      };
+      this.mode = 'user';
+      this.drawer = true;
+    },
+
+    newBatch() {
+      this.mode = 'batch';
+      this.drawer = true;
+    },
+
+    editUser(user) {
+      this.is_editing = true;
+      this.editing = user;
+      this.mode = 'user';
+      this.drawer = true;
+    },
+
+    removeUser(user) {
+      if (confirm('Are sure you want to remove this user?')) {
+        this.$get(`user/remove?user_id=${user.id}`)
+            .then((res) => {
+              this.loadUsers();
+            })
+            .catch((err) => alert(err));
+      }
+    },
+
+    newProject() {
+      this.editing = {
+        name: '',
+        description: '',
+        folder: '',
+        labels: [],
+      };
+      this.mode = 'project';
+      this.drawer = true;
+    },
+
+    editProject(project) {
+      this.is_editing = true;
+      this.editing = project;
+      this.mode = 'project';
+      this.drawer = true;
+    },
+
+    newTask() {
+      this.editing = {
+        name: '',
+        type: 0,
+        slides: [],
+        assigned: [],
+      };
+      this.mode = 'task';
+      this.drawer = true;
+    },
+
+    editTask(task) {
+      this.is_editing = true;
+      this.editing = task;
+      this.mode = 'task';
+      this.drawer = true;
+    },
+
+    removeTask(task) {
+      if (confirm('Are you sure you want to remove this task? Annotations may be lost.')) {
+        this.$post('task/remove', task)
+            .then((resp) => {
+              console.log(resp);
+              this.loadTasks();
+            })
+            .catch((err) => {
+              alert(err);
+            });
+      }
+    },
+
+    loadUsers() {
+      if (this.user.manages_users) {
+        this.$get('user/list')
+            .then((resp) => {
+              console.log(resp);
+              this.users = resp;
+            })
+            .catch((err) => {
+              alert(err);
+            });
+      }
+    },
+
+    loadProjects() {
+      if (this.user.manages_projects) {
+        this.$get('project/list')
+            .then((resp) => {
+              console.log(resp);
+              this.projects = resp;
+            })
+            .catch((err) => {
+              alert(err);
+            });
+      }
+    },
+
+    loadTasks() {
+      if (this.user.manages_tasks) {
+        this.$get('task/management_list')
+            .then((resp) => {
+              this.tasks = resp;
+            })
+            .catch((err) => alert(err));
+      }
+    },
+  },
+  mounted() {
+    this.loadUsers();
+    this.loadProjects();
+    this.loadTasks();
+  },
+};
 </script>
 
 <style scoped>

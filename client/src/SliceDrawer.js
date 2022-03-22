@@ -126,10 +126,10 @@ class CircleAnnotationTool {
               type: 'circle',
               points: [
                 this.drawer.mousePointToImagePoint(e.position),
-                this.drawer.mousePointToImagePoint(e.position)
-              ]
+                this.drawer.mousePointToImagePoint(e.position),
+              ],
             },
-            label
+            label,
           });
 
           this.dragging = true;
@@ -248,7 +248,7 @@ class RulerTool {
       const endPoint = drawer.imagePointToCanvasPoint(this.endingPoint.x, this.endingPoint.y);
       const distance = Math.hypot(
         this.startingPoint.x - this.endingPoint.x,
-        this.startingPoint.y - this.endingPoint.y
+        this.startingPoint.y - this.endingPoint.y,
       );
       // const perpendicular = this.perpendicularLine(startPoint, endPoint)
       const ruler = new Path2D();
@@ -442,10 +442,10 @@ class PolygonAnnotationTool {
               type: 'polygon',
               points: [imagePosition, {
                 x: imagePosition.x,
-                y: imagePosition.y
-              }]
+                y: imagePosition.y,
+              }],
             },
-            label
+            label,
           });
         } else {
           this.newAnnotation.geometry.points.push(imagePosition);
@@ -900,7 +900,6 @@ const PathMeshFreeEditor = {
 };
 
 class PathMeshEditor {
-
   constructor(annotation, drawer) {
     this.drawer = drawer;
     this.annotation = annotation;
@@ -930,7 +929,7 @@ class PathMeshEditor {
 
   getIntersectingControl(position) {
     let intersectingControl = null;
-    this.controls.forEach(control => {
+    this.controls.forEach((control) => {
       if (this.intersectsControl(position, control.point)) {
         intersectingControl = control;
       }
@@ -968,7 +967,6 @@ class PathMeshEditor {
         }
       }
     } else if (func === 'release') {
-
       if (this.hasMoved === false) {
         // True click, as no movement was done between press and release
         if (this.control != null) {
@@ -1104,25 +1102,23 @@ class PathMeshEditor {
       // On feedback annotations, we will edit the feedback geometry instead of the original's
       if (this.annotation.feedback.geometry == null) {
         // There is no feedback data currently, we will instantiate based on the original
-        this.annotation.feedback.geometry = this.annotation.geometry.points.map(point => {
-          return {
-            x: point.x,
-            y: point.y
-          };
-        });
+        this.annotation.feedback.geometry = this.annotation.geometry.points.map((point) => ({
+          x: point.x,
+          y: point.y,
+        }));
       }
       // Not we will create the points based on the feedback data
       this.controls = this.annotation.feedback.geometry.map((point, index) => ({
         canvasPosition: null,
         index,
-        point
+        point,
       }));
     } else {
       // This is a normal edit operation, we will interact with the original geometry
       this.controls = this.annotation.geometry.points.map((point, index) => ({
         canvasPosition: null,
         index,
-        point
+        point,
       }));
     }
   }
@@ -1274,10 +1270,10 @@ class Annotation {
       label,
       id,
       feedback,
-      'properties': properties,
-      'slide_id': slideId,
-      'title': title,
-      'description': description,
+      properties,
+      slide_id: slideId,
+      title,
+      description,
     };
   }
 
@@ -1290,7 +1286,7 @@ class Annotation {
     const { color } = this.label;
     return {
       color: `${color[0]},${color[1]},${color[2]}`,
-      opacity: this.isHovering ? '0.9' : style.fillOpacity,
+      opacity: this.isHovering ? style.hoverOpacity : style.fillOpacity,
     };
   }
 
@@ -1354,7 +1350,7 @@ class RectAnnotation extends Annotation {
     if (this.drawFeedback) {
       ctx.setLineDash([2, 2]);
       ctx.font = '18px Arial';
-      ctx.fillStyle = `black`;
+      ctx.fillStyle = 'black';
       ctx.fillText('Feedback version', point0.x, point0.y);
     } else if (this.state === 'editing' || this.state === 'feedback-editing') {
       ctx.setLineDash([10, 5]);
@@ -1605,7 +1601,7 @@ class PolygonAnnotation extends Annotation {
       const startPoint = this.drawer.imagePointToCanvasPoint(points[0].x, points[0].y);
       this.drawer.ctx.setLineDash([2, 2]);
       this.drawer.ctx.font = '18px Arial';
-      this.drawer.ctx.fillStyle = `black`;
+      this.drawer.ctx.fillStyle = 'black';
       this.drawer.ctx.fillText('Feedback version', startPoint.x, startPoint.y);
     } else if (this.state === 'editing' || this.state === 'feedback-editing') {
       this.drawer.ctx.setLineDash([10, 5]);
@@ -1663,7 +1659,7 @@ class AnnotationDrawer {
     };
 
     // Defining function that keeps track of screen updates:
-    this.viewer.addHandler('update-viewport', this.updateViewport.bind(this));
+    this.viewer.addHandler('update-viewport', _.throttle(this.updateViewport.bind(this)));
 
     // Setting resize events to handle the annotation canvas size:
     this.viewer.addHandler('resize', () => {
@@ -1819,10 +1815,10 @@ class AnnotationDrawer {
       this.currentTool.destroy();
     }
     const tools = {
-      'rect': RectAnnotationTool,
-      'polygon': PolygonAnnotationTool,
-      'circle': CircleAnnotationTool,
-      'ruler': RulerTool
+      rect: RectAnnotationTool,
+      polygon: PolygonAnnotationTool,
+      circle: CircleAnnotationTool,
+      ruler: RulerTool,
     };
 
     // We will instantiate the tool:
@@ -1836,9 +1832,8 @@ class AnnotationDrawer {
   get tool() {
     if (this.currentTool != null) {
       return this.currentTool.name;
-    } else {
-      return 'none';
     }
+    return 'none';
   }
 
   set label(value) {
@@ -1852,14 +1847,12 @@ class AnnotationDrawer {
   set panningMode(value) {
     if (value) {
       this.canvas.style.cursor = 'grab';
+    } else if (!this.isCurrentlyHoveringAnnotation) {
+      // We will assume the user is currently on a blank space:
+      this.canvas.style.cursor = 'default';
     } else {
-      if (!this.isCurrentlyHoveringAnnotation) {
-        // We will assume the user is currently on a blank space:
-        this.canvas.style.cursor = 'default';
-      } else {
-        // Just for continuity, we will assume the user is hovering over an annotation:
-        this.canvas.style.cursor = 'pointer';
-      }
+      // Just for continuity, we will assume the user is hovering over an annotation:
+      this.canvas.style.cursor = 'pointer';
     }
     this.isPanningMode = value;
   }
@@ -1893,12 +1886,12 @@ class AnnotationDrawer {
   }
 
   //   concludeEdit() {
-//     // Disable the editing tool and update view
-//     console.log('concludeEdit:', this.currently_editing.geometry);
-//     this.callback.onFinishedEditing(true, this.currently_editing.geometry);
-//     this.currently_editing = null;
-//     this.update();
-//   },
+  //     // Disable the editing tool and update view
+  //     console.log('concludeEdit:', this.currently_editing.geometry);
+  //     this.callback.onFinishedEditing(true, this.currently_editing.geometry);
+  //     this.currently_editing = null;
+  //     this.update();
+  //   },
 
   /**
    * Load the annotations and instantiate the drawers.
@@ -1928,7 +1921,8 @@ class AnnotationDrawer {
     if (this.isPanningMode) {
       // No tools are allowed when in panning mode (when pressing SPACE):
       return false;
-    } else if (this.currentTool != null) {
+    }
+    if (this.currentTool != null) {
       // Only makes sense if there is a current tool
       if (this.currentTool instanceof PathMeshEditor) {
         // if current tool is the PathMeshEditor (for editing), we want to bypass hovering locks
@@ -1955,7 +1949,6 @@ class AnnotationDrawer {
    * @returns {boolean} true if the viewport has changed
    */
   calculateViewport() {
-
     const { ctx } = this;
     const viewportMin = this.viewer.viewport.windowToImageCoordinates(
       new OpenSeadragon.Point(0, 0),
@@ -2009,7 +2002,7 @@ class AnnotationDrawer {
     const verticalCenter = annotationHeight / 2;
     const panTo = viewer.viewport.imageToViewportCoordinates(
       imageLocation.left + horizontalCenter,
-      imageLocation.top + verticalCenter
+      imageLocation.top + verticalCenter,
     );
     viewer.viewport.panTo(panTo, false);
     const tiledImage = viewer.world.getItemAt(0);
@@ -2033,7 +2026,7 @@ class AnnotationDrawer {
         annotation.updateViewport(); // for collision checks
         if (annotation.shouldBeVisible(self.currentViewport)) {
           // Annotation would be visible on the screen, does the user want to see it?
-          if (self.filtering[annotation.label.name]) {
+          if (self.filtering[annotation.label.name] || annotation.state === 'importing') {
             // This annotation must be drawn:
             annotation.update();
             annotation.draw();
@@ -2076,7 +2069,7 @@ function loadAnnotations(rawAnnotations, drawer) {
   const annotations = {};
   Object.entries(rawAnnotations)
     .forEach(([slideId, slideAnnotations]) => {
-      annotations[slideId] = slideAnnotations.map(annotation => {
+      annotations[slideId] = slideAnnotations.map((annotation) => {
         const { type } = annotation.geometry;
         return new instantiators[type](drawerInstance, annotation);
       });
@@ -2090,7 +2083,7 @@ export {
   PolygonAnnotationTool,
   Annotation,
   optimizePath,
-  loadAnnotations
+  loadAnnotations,
 };
 
 //

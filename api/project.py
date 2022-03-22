@@ -55,7 +55,7 @@ def edit():
                 color=label['color'],
             ))
         db.session.commit()
-    return jsonify(models.Project.query.get(new_project['id']).to_json())
+    return jsonify(models.Project.query.get(new_project['id']).to_dict())
 
 
 @project_api.route("valid_path", methods=["POST"])
@@ -68,13 +68,15 @@ def valid_path():
 
 @project_api.route("tasks")
 def tasks():
-    tasks = models.AnnotationTask.query.join(models.UserTask).filter(models.UserTask.completed == True).all()
+    project_id = request.args['project_id']
+    tasks = models.AnnotationTask.query.join(models.UserTask).filter(models.UserTask.completed == True,
+                                                                     models.AnnotationTask.project_id == project_id).all()
     resp = []
     for task in tasks:
         user_tasks = models.UserTask.query.filter(
             models.UserTask.annotation_task_id == task.id, models.UserTask.completed == True).all()
         resp.append({
-            **task.to_dict("simple"),
+            **task.to_dict(include_project=False, include_assigned=False),
             "user_tasks": [x.to_dict() for x in user_tasks]
         })
     return jsonify(resp)
@@ -90,7 +92,7 @@ def remove_label():
 
 @project_api.route("list")
 def list_projects():
-    return jsonify([x.to_json() for x in models.Project.query.all()])
+    return jsonify([x.to_dict() for x in models.Project.query.all()])
 
 
 def gen_progress_query():

@@ -1,5 +1,6 @@
-import VueSplit from 'vue-split-panel'
-import Vue from 'vue'
-Vue.use(VueSplit)
+import VueSplit from 'vue-split-panel';
+import Vue from 'vue';
 
-export default VueSplit
+Vue.use(VueSplit);
+
+export default VueSplit;

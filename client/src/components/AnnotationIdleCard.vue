@@ -29,9 +29,9 @@ export default {
       return this.value.label.name;
     },
     labelColor() {
-      const color = this.value.label.color;
+      const { color } = this.value.label;
       return `rgb(${color[0]},${color[1]},${color[2]})`;
-    }
+    },
   },
   methods: {
     editRegion(region) {
@@ -43,7 +43,7 @@ export default {
       this.$emit('dismiss-annotation', this.value);
     },
   },
-  props: { value: { type: Annotation } }
+  props: { value: { type: Annotation } },
 };
 </script>
 

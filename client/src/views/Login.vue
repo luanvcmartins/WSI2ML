@@ -28,33 +28,31 @@
 </template>
 
 <script>
-    export default {
-        name: "Login",
-        data: () => {
-            return {
-                login_info: {
-                    username: null,
-                    password: null
-                }
-            }
-        },
-        methods: {
-            login() {
-                this.$post('/user/login', this.login_info)
-                    .then(resp => {
-                        if (resp.token != null) {
-                            // Successfully login, we have a JWT token
-                            this.$store.commit("login", resp)
-                            this.$router.push("/tasks")
-                        }
-                    })
-                    .catch(err => {
-                        this.login_info.password = null
-                        alert("Check login information and try again.")
-                    })
-            }
-        }
-    }
+export default {
+  name: 'Login',
+  data: () => ({
+    login_info: {
+      username: null,
+      password: null,
+    },
+  }),
+  methods: {
+    login() {
+      this.$post('/user/login', this.login_info)
+        .then((resp) => {
+          if (resp.token != null) {
+            // Successfully login, we have a JWT token
+            this.$store.commit('login', resp);
+            this.$router.push('/tasks');
+          }
+        })
+        .catch((err) => {
+          this.login_info.password = null;
+          alert('Check login information and try again.');
+        });
+    },
+  },
+};
 </script>
 
 <style scoped>

@@ -25,12 +25,14 @@ def create_app(context="development"):
     from api.project import project_api
     from api.tasks import task_api
     from api.export import export_api
+    from api.apps import apps_api
     CORS(app, supports_credentials=True)
     app.register_blueprint(user_api, url_prefix="/api/user")
     app.register_blueprint(session_api, url_prefix="/api/session")
     app.register_blueprint(project_api, url_prefix="/api/project")
     app.register_blueprint(task_api, url_prefix="/api/task")
     app.register_blueprint(export_api, url_prefix="/api/export")
+    app.register_blueprint(apps_api, url_prefix="/api/app")
 
     db.init_app(app)
     jwt.init_app(app)
@@ -45,12 +47,19 @@ def create_app(context="development"):
 
     @jwt.user_lookup_loader
     def load_user(_jwt_header, jwt_data):
-        username = jwt_data["sub"]
-        return models.User.query.filter_by(username=username).first()
+        content = jwt_data["sub"]
+        which, identification = content.split(";")
+        if which == 'user':
+            return models.User.query.filter_by(username=identification).first()
+        else:
+            return models.App.query.get(identification)
 
     @jwt.user_identity_loader
     def gen_user_id(user):
-        return user.username
+        if isinstance(user, models.User):
+            return f"user;{user.username}"
+        else:
+            return f"app;{user.id}"
 
     return app
 

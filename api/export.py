@@ -13,7 +13,7 @@ export_api = Blueprint("export_api", __name__)
 @export_api.route("list")
 def list_projects():
     projects = models.Project.query.all()
-    return jsonify([x.to_json() for x in projects])
+    return jsonify([x.to_dict() for x in projects])
 
 
 @export_api.route("list/by_task")
@@ -160,7 +160,7 @@ def create_polygon(annotation):
             "description": annotation.description,
             "slide": annotation.slide.to_dict(),
             "label_id": annotation.label_id,
-            "label": annotation.label.to_json()
+            "label": annotation.label.to_dict()
         }
     }
 

@@ -6,15 +6,15 @@
         <v-row v-if="tasks.annotation_status != null">
           <v-col md="6">
             <task-status-overview
-                    :status="tasks.annotation_status"
-                    v-on:start-session="startTask">
+                :status="tasks.annotation_status"
+                v-on:start-session="startTask">
               Slide Annotation Progress
             </task-status-overview>
           </v-col>
           <v-col md="6">
             <task-status-overview
-                    :status="tasks.review_status"
-                    v-on:start-session="startTask">
+                :status="tasks.review_status"
+                v-on:start-session="startTask">
               Annotation Revision Progress
             </task-status-overview>
           </v-col>
@@ -26,17 +26,18 @@
       <v-row v-if="tasks.annotations != null && tasks.annotations.length > 0">
         <v-col>
           <v-data-table
-                  :headers="annotation_headers"
-                  :items="tasks.annotations">
+              :headers="annotation_headers"
+              :items="tasks.annotations">
             <template v-slot:item.slides="{ item }">
-              <v-chip-group column show-arrows>
-                <v-chip style="pointer-events: none;"
-                        outlined :readonly="true"
-                        v-for="slide in item.slides"
-                        :key="slide.id">
-                  {{ slide.name }}
-                </v-chip>
-              </v-chip-group>
+              {{item.slides.length}} slide(s) task
+<!--              <v-chip-group column show-arrows>-->
+<!--                <v-chip style="pointer-events: none;"-->
+<!--                        outlined :readonly="true"-->
+<!--                        v-for="slide in item.slides"-->
+<!--                        :key="slide.id">-->
+<!--                  {{ slide.name }}-->
+<!--                </v-chip>-->
+<!--              </v-chip-group>-->
             </template>
             <template v-slot:item.assigned="{ item }">
               <v-chip-group active-class="primary--text" column show-arrows>
@@ -65,17 +66,18 @@
       <v-row v-if="tasks.review != null && tasks.review.length > 0">
         <v-col>
           <v-data-table
-                  :headers="review_headers"
-                  :items="tasks.review">
+              :headers="review_headers"
+              :items="tasks.review">
             <template v-slot:item.slides="{ item }">
-              <v-chip-group column show-arrows>
-                <v-chip style="pointer-events: none;"
-                        outlined :readonly="true"
-                        :key="slide.id"
-                        v-for="slide in item.task.slides">
-                  {{ slide.name }}
-                </v-chip>
-              </v-chip-group>
+              {{item.task.task.slides.length}} slide(s) task
+<!--              <v-chip-group column show-arrows>-->
+<!--                <v-chip style="pointer-events: none;"-->
+<!--                        outlined :readonly="true"-->
+<!--                        :key="slide.id"-->
+<!--                        v-for="slide in item.task.task.slides">-->
+<!--                  {{ slide.name }}-->
+<!--                </v-chip>-->
+<!--              </v-chip-group>-->
             </template>
             <template v-slot:item.revisions="{ item }">
               <v-chip-group column show-arrows>
@@ -83,7 +85,7 @@
                         outlined :readonly="true"
                         :key="revision.id"
                         v-for="revision in item.revisions">
-                  {{ revision.user.name }}
+                  {{ revision.user != null ? revision.user.name : revision.app.name }}
                 </v-chip>
               </v-chip-group>
             </template>
@@ -185,24 +187,24 @@ export default {
   methods: {
     startTask(task) {
       this.$post('session/create', task)
-        .then((resp) => {
-          this.$store.commit('set_session', resp);
-          this.$router.push(`/session/${resp.id}`);
-        })
-        .catch((err) => alert(err));
+          .then((resp) => {
+            this.$store.commit('set_session', resp);
+            this.$router.push(`/session/${resp.id}`);
+          })
+          .catch((err) => alert(err));
     },
 
     loadTasks() {
       this.loading = true;
       this.$get('task/list')
-        .then((resp) => {
-          this.tasks = resp;
-          this.loading = false;
-        })
-        .catch((err) => {
-          alert(err);
-          this.loading = false;
-        });
+          .then((resp) => {
+            this.tasks = resp;
+            this.loading = false;
+          })
+          .catch((err) => {
+            alert(err);
+            this.loading = false;
+          });
     },
   },
   mounted() {

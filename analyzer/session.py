@@ -49,6 +49,13 @@ def get_slide_properties(filename):
     return properties
 
 
+def get_metadata(slide_properties, key, default="0"):
+    if key in slide_properties:
+        return slide_properties[key]
+    else:
+        return default
+
+
 class Session:
     def __init__(self, slides, user_task) -> None:
         self._session_slides = {slide['id']: slide for slide in slides}
@@ -60,8 +67,8 @@ class Session:
     def get_info(self):
         return {k: {
             "filename": self._session_slides[k],
-            "pixel_width": float(self._slides_instance[k].properties[openslide.PROPERTY_NAME_MPP_X]),
-            "pixel_height": float(self._slides_instance[k].properties[openslide.PROPERTY_NAME_MPP_Y])
+            "pixel_width": float(get_metadata(self._slides_instance[k].properties, openslide.PROPERTY_NAME_MPP_X)),
+            "pixel_height": float(get_metadata(self._slides_instance[k].properties, openslide.PROPERTY_NAME_MPP_Y))
         } for k in self._slides_instance}
 
     def load_slide(self, slide_id):
