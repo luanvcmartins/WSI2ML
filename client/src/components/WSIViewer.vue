@@ -252,6 +252,7 @@ export default {
     },
     drawingStyle: {
       deep: true,
+      immediate: true,
       handler(newStyle) {
         if (this.annotationDrawer != null) {
           this.annotationDrawer.style = newStyle;

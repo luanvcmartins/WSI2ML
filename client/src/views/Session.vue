@@ -346,7 +346,7 @@ export default {
       line_weight: 1,
       revisingUserTask: 'none',
       feedback_dialog: false,
-      highlightOnTab: true,
+      highlightOnTab: false,
       draw_events: {
         onHover: self.onRegionHover,
         onLeave: self.onRegionLeave,

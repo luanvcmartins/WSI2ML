@@ -29,14 +29,15 @@
               :headers="annotation_headers"
               :items="tasks.annotations">
             <template v-slot:item.slides="{ item }">
-              <v-chip-group column show-arrows>
-                <v-chip style="pointer-events: none;"
-                        outlined :readonly="true"
-                        v-for="slide in item.slides"
-                        :key="slide.id">
-                  {{ slide.name }}
-                </v-chip>
-              </v-chip-group>
+              {{item.slides.length}} slide(s) task
+<!--              <v-chip-group column show-arrows>-->
+<!--                <v-chip style="pointer-events: none;"-->
+<!--                        outlined :readonly="true"-->
+<!--                        v-for="slide in item.slides"-->
+<!--                        :key="slide.id">-->
+<!--                  {{ slide.name }}-->
+<!--                </v-chip>-->
+<!--              </v-chip-group>-->
             </template>
             <template v-slot:item.assigned="{ item }">
               <v-chip-group active-class="primary--text" column show-arrows>
@@ -68,14 +69,15 @@
               :headers="review_headers"
               :items="tasks.review">
             <template v-slot:item.slides="{ item }">
-              <v-chip-group column show-arrows>
-                <v-chip style="pointer-events: none;"
-                        outlined :readonly="true"
-                        :key="slide.id"
-                        v-for="slide in item.task.task.slides">
-                  {{ slide.name }}
-                </v-chip>
-              </v-chip-group>
+              {{item.task.task.slides.length}} slide(s) task
+<!--              <v-chip-group column show-arrows>-->
+<!--                <v-chip style="pointer-events: none;"-->
+<!--                        outlined :readonly="true"-->
+<!--                        :key="slide.id"-->
+<!--                        v-for="slide in item.task.task.slides">-->
+<!--                  {{ slide.name }}-->
+<!--                </v-chip>-->
+<!--              </v-chip-group>-->
             </template>
             <template v-slot:item.revisions="{ item }">
               <v-chip-group column show-arrows>

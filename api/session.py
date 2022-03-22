@@ -135,9 +135,12 @@ def edit_region(session_id):
     region = models.Annotation.query.filter_by(id=region_data['id']).first()
     region.label_id = region_data['label']['id']
     region.data = region_data['geometry']
-    region.title = region_data['title']
-    region.description = region_data['description']
-    region.properties = region_data['properties']
+    if 'title' in region_data:
+        region.title = region_data['title']
+    if 'description' in region_data:
+        region.description = region_data['description']
+    if 'properties' in region_data:
+        region.properties = region_data['properties']
     db.session.commit()
     return jsonify(region.to_dict())
 
@@ -187,7 +190,10 @@ def annotation_feedback(session_id):
 
 @session_api.route("<string:session_id>/<string:slide_id>/class_balance", methods=['POST'])
 def class_balance(session_id, slide_id):
-    annotations = models.Annotation.query.filter_by(user_task_id=session_id, slide_id=slide_id).all()
+    if slide_id == 'all':
+        annotations = models.Annotation.query.filter_by(user_task_id=session_id).all()
+    else:
+        annotations = models.Annotation.query.filter_by(user_task_id=session_id, slide_id=slide_id).all()
     counts = {}
     for annotation in annotations:
         annotation_label = annotation.label
@@ -228,9 +234,11 @@ def class_balance(session_id, slide_id):
         total_count = max([count['count'] for count in counts.values()])
         for value in counts.values():
             if total_area > 0:
-                value['area'] = value['area'] / total_area
+                value['area_perc'] = value['area'] / total_area
+                value['area'] = "{:.2f}%".format(100 * (value['area'] / total_area))
             if total_c_area > 0:
-                value['certain_area'] = value['certain_area'] / total_c_area
+                value['certain_area_perc'] = value['certain_area'] / total_c_area
+                value['certain_area'] = "{:.2f}%".format(100 * (value['certain_area'] / total_c_area))
             if total_desc > 0:
                 value['desc_perc'] = value['desc'] / total_desc
             else:
