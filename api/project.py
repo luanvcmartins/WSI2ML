@@ -3,6 +3,7 @@ import os, os.path
 from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, current_user
 from app import db
+from analyzer.stats import annotation_stats
 
 project_api = Blueprint("project_api", __name__)
 
@@ -145,3 +146,52 @@ def general_progress():
         })
 
     return jsonify(progress)
+
+
+@project_api.route("<int:project_id>/annotation_stats")
+@jwt_required()
+def general_annotation_stats(project_id):
+    if not current_user.access_overview:
+        return jsonify({}), 401
+
+    counts = {}
+    user_tasks = db.session.query(models.UserTask, models.AnnotationTask).filter(
+        models.UserTask.annotation_task_id == models.AnnotationTask.id,
+        models.AnnotationTask.project_id == project_id
+    ).all()
+    for user_task in user_tasks:
+        annotations = models.Annotation.query.filter_by(user_task_id=user_task[0].id).all()
+        task_stats = annotation_stats(annotations)
+        for label, values in task_stats.items():
+            if label not in counts:
+                counts[label] = {}
+            for attr, attr_value in values.items():
+                if isinstance(attr_value, list):
+                    counts[label][attr] = attr_value
+                else:
+                    if attr not in counts[label]:
+                        counts[label][attr] = 0
+                    counts[label][attr] += attr_value
+
+    if len(counts) > 0:
+        total_area = max([count['area'] for count in counts.values()])
+        total_c_area = max([count['certain_area'] for count in counts.values()])
+        total_desc = max([count['desc'] for count in counts.values()])
+        total_count = max([count['count'] for count in counts.values()])
+        for value in counts.values():
+            if total_area > 0:
+                value['area_perc'] = value['area'] / total_area
+                value['area'] = "{:.2f}%".format(100 * (value['area'] / total_area))
+            if total_c_area > 0:
+                value['certain_area_perc'] = value['certain_area'] / total_c_area
+                value['certain_area'] = "{:.2f}%".format(100 * (value['certain_area'] / total_c_area))
+            if total_desc > 0:
+                value['desc_perc'] = value['desc'] / total_desc
+            else:
+                value['desc_perc'] = 0
+            if total_count > 0:
+                value['count_perc'] = value['count'] / total_count
+            else:
+                value['count_perc'] = 0
+
+    return jsonify(counts)

@@ -32,6 +32,23 @@
                              :readonly="true"/>
         </p>
       </div>
+      <v-divider v-if="stats != null"/>
+      <p class="text-h4 text--primary" v-if="stats != null">
+        Annotation stats
+      </p>
+      <div class="link-container">
+        <a :class="`link ${stat === 'area' ? 'selected' : ''}`" @click="switchMode('area', 'area_perc')">Area (all)</a>
+        <a :class="`link ${stat === 'count' ? 'selected' : ''}`" @click="switchMode('count', 'count_perc')">Count
+          (all)</a>
+        <a :class="`link ${stat === 'desc' ? 'selected' : ''}`" @click="switchMode('desc', 'desc_perc')">Count
+          (comments)</a>
+        <a :class="`link ${stat === 'certain_area' ? 'selected' : ''}`"
+           @click="switchMode('certain_area', 'certain_area_perc')">Area (not including comments)</a>
+      </div>
+      <div v-if="stats != null" v-for="item in Object.keys(stats)">
+        <span>{{ item }} ({{ stats[item][stat] }})</span>
+        <v-progress-linear :value="stats[item][statPerc]*100" :color="genColor(stats[item].color)" :readonly="true"/>
+      </div>
     </v-card-text>
   </v-card>
 </template>
@@ -39,10 +56,40 @@
 <script>
 export default {
   name: 'ProjectStatus',
-  props: ['status'],
+  data() {
+    return {
+      stat: 'count',
+      statPerc: 'count'
+    };
+  },
+  methods: {
+    switchMode(stat, statPerc) {
+      this.stat = stat;
+      this.statPerc = statPerc;
+    },
+
+    genColor(rgb) {
+      return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
+    }
+  },
+  props: ['status', 'stats'],
 };
 </script>
 
 <style scoped>
+.link {
+  text-decoration: underline;
+}
 
+.link.selected {
+  text-decoration: none;
+  font-weight: bolder;
+}
+
+.link-container {
+  display: inline-flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  column-gap: 10px;
+}
 </style>

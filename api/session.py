@@ -5,9 +5,9 @@ import models
 from analyzer.session import Session
 from flask import Blueprint, jsonify, request, make_response
 from flask_jwt_extended import current_user, jwt_required
+
+from analyzer.stats import annotation_stats
 from app import db
-from shapely.affinity import scale
-from shapely.geometry import Polygon, box, Point
 
 session_api = Blueprint("session_api", __name__)
 
@@ -194,39 +194,9 @@ def class_balance(session_id, slide_id):
         annotations = models.Annotation.query.filter_by(user_task_id=session_id).all()
     else:
         annotations = models.Annotation.query.filter_by(user_task_id=session_id, slide_id=slide_id).all()
-    counts = {}
-    for annotation in annotations:
-        annotation_label = annotation.label
-        annotation_type = annotation.data["type"]
-        points = annotation.data["points"]
-        if annotation_type == "polygon":
-            area = Polygon([(point['x'], point['y']) for point in points]).area
-        elif annotation_type == "rect":
-            point1, point2 = points
-            area = box(point1['x'], point1['y'], point2['x'], point2['y']).area
-        elif annotation_type == "circle":
-            point1, point2 = points
-            circle = Point((point1['x'], point1['y'])).buffer(1)
-            circle = scale(circle, point1['x'] - point2['x'], point1['y'] - point2['y'])
-            area = circle.area
-        else:
-            area = 0
-        if annotation_label.name not in counts:
-            counts[annotation_label.name] = {
-                'count': 0,
-                'area': 0,
-                'certain_area': 0,
-                'desc': 0,
-                'color': annotation_label.color
-            }
-        counts[annotation_label.name]['count'] += 1
-        counts[annotation_label.name]['area'] += area
-        if annotation.description != "" and annotation.description is not None:
-            # this annotation has a description, it might not be 100 trustworthy
-            counts[annotation_label.name]['desc'] += 1
-        else:
-            # this annotation has no description, we most likely will be using it
-            counts[annotation_label.name]['certain_area'] += area
+
+    counts = annotation_stats(annotations)
+
     if len(counts) > 0:
         total_area = max([count['area'] for count in counts.values()])
         total_c_area = max([count['certain_area'] for count in counts.values()])
@@ -247,6 +217,7 @@ def class_balance(session_id, slide_id):
                 value['count_perc'] = value['count'] / total_count
             else:
                 value['count_perc'] = 0
+
     return jsonify(counts)
 
 
