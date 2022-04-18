@@ -2,87 +2,45 @@
 import OpenSeadragon from 'openseadragon';
 import _ from 'lodash';
 
-const freeDrawingDefaultKeyboardBehavior = function (func, e) {
-  const drawer = this.instance;
-  switch (func) {
-    case 'keyDown':
-      if (e.keyCode === 32) {
-        this.drawer_panning = true;
-        // console.log("drawer_panning", this.drawer_panning)
-        drawer.set_canvas_pan(true);
-        if (drawer.currently_drawing != null) {
-          drawer.currently_drawing.meta._enabled = false;
-        }
-      }
-      break;
-    case 'keyUp':
-      if (e.keyCode === 13) {
-        // User pressed ENTER, we will save the drawing
-        drawer.set_canvas_pan(true);
-        // Before saving, we remove the redundant points for this shape
-        drawer.currently_drawing.geometry.points = optimizePath(drawer.currently_drawing.geometry.points);
-        // Call the onFinishNewDrawing callback, which handles what happens to the shape
-        drawer.callback.onFinishNewDrawing(drawer.currently_drawing.geometry);
-        // Complete the drawing preview by resetting it
-        drawer.currently_drawing = null;
-        if (drawer.stateRestorer != null) drawer.stateRestorer.cancel();
-      }
-      if (e.keyCode === 32) {
-        this.drawer_panning = false;
-        // user released space, we will disable dragging
-        drawer.set_canvas_pan(false);
-      }
-      if (e.keyCode === 27) {
-        // User pressed ESC, we will reset the drawing
-        drawer.currently_drawing = null;
-        if (drawer.stateRestorer != null) drawer.stateRestorer.cancel();
-        drawer.set_canvas_pan(true);
-      }
-      break;
-  }
-};
-
-const lineFunction = function (point1, point2, point3) {
-  const line1_slope = (point2.y - point1.y) / (point2.x - point1.x);
-  const line2_slope = (point3.y - point2.y) / (point3.x - point2.x);
-  const line1_b = point1.x * line1_slope - point1.y;
-  const line2_b = point3.x * line2_slope - point3.y;
+function lineFunction(point1, point2, point3) {
+  const line1Slope = (point2.y - point1.y) / (point2.x - point1.x);
+  const line2Slope = (point3.y - point2.y) / (point3.x - point2.x);
+  const line1B = point1.x * line1Slope - point1.y;
+  const line2B = point3.x * line2Slope - point3.y;
   return [
     {
-      slope: line1_slope,
-      b: line1_b,
+      slope: line1Slope,
+      b: line1B,
     },
     {
-      slope: line2_slope,
-      b: line2_b,
+      slope: line2Slope,
+      b: line2B,
     },
   ];
-};
+}
 
 /**
- * A simple algorithm to detect and remove redundant points made in free draw. It returns an array of points
- * without the points that don't contribute to the shape.
+ * A simple algorithm to detect and remove redundant points made in free draw.
+ * It returns an array of points without the points that don't contribute to the shape.
  *
  * @param points the array of points
  * @returns {*}
  */
-const optimizePath = function (points) {
+function optimizePath(points) {
   let toRemove = [];
   do {
-    console.log('New iteration');
     toRemove = [];
-    for (let i = 1; i < points.length - 1; i++) {
+    for (let i = 1; i < points.length - 1; i += 1) {
       const point1 = points[i - 1];
       const point2 = points[i];
       const point3 = points[i + 1];
       const lineFunc = lineFunction(point1, point2, point3);
       if (lineFunc[0].slope === lineFunc[1].slope && lineFunc[0].b === lineFunc[1].b) {
-        // we could introduce a margin
         toRemove.push(i);
       }
     }
 
-    for (let i = 1; i < points.length; i++) {
+    for (let i = 1; i < points.length; i += 1) {
       const point1 = points[i - 1];
       const point2 = points[i];
       const distance1 = Math.hypot(point1.x - point2.x, point1.y - point2.y);
@@ -91,19 +49,10 @@ const optimizePath = function (points) {
       }
     }
 
-    console.log(toRemove.length, 'points removed from', points.length, `(${(toRemove.length / points.length) * 100}%)`);
-    console.log('Size (before): ', points.length);
     points = points.filter((item, idx) => !toRemove.includes(idx));
-    console.log('Size (after): ', points.length);
   } while (toRemove.length !== 0);
-  // console.log(toRemove.length, "points removed from", points.length, "(" + ((toRemove.length / points.length) * 100) + "%)")
-  // console.log("Size (before): ", points.length)
-  // // for (let i = 0; i < toRemove.length; i++) {
-  // //     points.splice(toRemove[i], 1)
-  // // }
-  // console.log("Size (after): ", points.length)
   return points;
-};
+}
 
 class CircleAnnotationTool {
   constructor(drawer) {
@@ -148,6 +97,8 @@ class CircleAnnotationTool {
       case 'release':
         this.dragging = false;
         break;
+      default:
+        break;
     }
   }
 
@@ -165,6 +116,8 @@ class CircleAnnotationTool {
           this.newAnnotation = null;
           this.drawer.refresh();
         }
+        break;
+      default:
         break;
     }
   }
@@ -192,11 +145,11 @@ class RulerTool {
   }
 
   perpendicularLine(point1, point2) {
-    const line1_slope = (point2.y - point1.y) / (point2.x - point1.x);
-    const line1_b = point1.x * line1_slope - point1.y;
+    const line1Slope = (point2.y - point1.y) / (point2.x - point1.x);
+    const line1B = point1.x * line1Slope - point1.y;
     return {
-      slope: -1 / line1_slope,
-      b: -1 / line1_b,
+      slope: -1 / line1Slope,
+      b: -1 / line1B,
     };
   }
 
@@ -224,6 +177,8 @@ class RulerTool {
           this.perpendicular = this.perpendicularLine(this.startingPoint, this.endingPoint);
           drawer.refresh();
         }
+        break;
+      default:
         break;
     }
   }
@@ -255,20 +210,6 @@ class RulerTool {
       ruler.moveTo(startPoint.x, startPoint.y);
       ruler.lineTo(endPoint.x, endPoint.y);
 
-      // const angle = perpendicular.slope
-      // const direction = [Math.sin(angle), Math.cos(angle)]
-      // const direction = [perpendicular.slope, perpendicular.slope]
-      // const m1X = ((startPoint.y - 30) - perpendicular.b) / perpendicular.slope
-      // const m2X = ((startPoint.y + 30) - perpendicular.b) / perpendicular.slope
-      /**
-       * perpendicular = y=x*slope+b
-       * startingPoint = (x0,y0)
-       * distancia = 3 pixels
-       * distancia^2 = (x1-x2)^2 + (y1-y2)^2 // y2 = x2*slope+b
-       * (x2,y2) = perpendicular
-       */
-      // ruler.moveTo(startPoint.x - direction[0] * 30, startPoint.y - direction[1] * 30)
-      // ruler.lineTo(startPoint.x + direction[0] * 30, startPoint.y + direction[1] * 30)
       ctx.lineWidth = 3;
       ctx.setLineDash([5, 5]);
       ctx.strokeStyle = 'black';
@@ -280,119 +221,19 @@ class RulerTool {
       ctx.font = '30px Arial';
       ctx.fillStyle = 'black';
       const text = `${(distance * this.drawer.pixelWidth).toFixed(2)}µm`;
-      ctx.fillText(text, 30 + startPoint.x + ((endPoint.x - startPoint.x) / 2), startPoint.y + ((endPoint.y - startPoint.y) / 2));
-      ctx.strokeText(text, 30 + startPoint.x + ((endPoint.x - startPoint.x) / 2), startPoint.y + ((endPoint.y - startPoint.y) / 2));
+      ctx.fillText(
+        text,
+        30 + startPoint.x + ((endPoint.x - startPoint.x) / 2),
+        startPoint.y + ((endPoint.y - startPoint.y) / 2),
+      );
+      ctx.strokeText(
+        text,
+        30 + startPoint.x + ((endPoint.x - startPoint.x) / 2),
+        startPoint.y + ((endPoint.y - startPoint.y) / 2),
+      );
     }
   }
 }
-
-const polygonTool = {
-  name: 'polygon',
-  instance: null,
-  geometry: null,
-
-  info(...help) {
-    const info = [];
-    if (help.includes('start')) {
-      info.push('[db-Click] To put the first point');
-    }
-    if (help.includes('start-2')) {
-      info.push('[db-Click] To put the second point');
-    }
-    if (help.includes('save')) {
-      info.push('[Enter] To save annotation');
-    }
-    if (help.includes('undo')) {
-      info.push('[Esc] To undo');
-    }
-    if (help.includes('continue')) {
-      info.push('[Click] To continue dragging');
-    }
-    if (help.includes('point')) {
-      info.push('[db-Click] To add a point');
-    }
-    if (help.includes('cancel')) {
-      info.push('[Esc] To cancel');
-    }
-    this.instance.callback.onInfoUpdate(info);
-  },
-
-  mouseEvent(func, e) {
-    const drawer = this.instance;
-    const imagePosition = drawer._mousePointToImagePoint(e.position);
-    switch (func) {
-      case 'dblClick':
-        // On double click, we will create a new drawing if there none in the moment
-        if (drawer.currently_drawing == null) {
-          this.geometry = {
-            type: 'polygon',
-            points: [imagePosition, imagePosition],
-          };
-          drawer.currently_drawing = {
-            label: drawer.current_label,
-            geometry: this.geometry,
-            meta: {},
-          };
-
-          drawer.stateRestorer = StateRestorer.init(drawer, this.geometry);
-          this.info('start-2', 'cancel');
-        } else {
-          // On double click we will continue the drawing by adding the new
-          this.geometry.points.push(imagePosition);
-          drawer.stateRestorer.addRestorePoint('point');
-          this.info('save', 'undo', 'point');
-        }
-        break;
-      case 'move':
-        if (drawer.currently_drawing != null) {
-          // On mouse move we will update the preview if we currently drawing
-          this.geometry.points[this.geometry.points.length - 1] = imagePosition;
-          drawer.update();
-        }
-        break;
-    }
-  },
-
-  keyboardEvent(func, e) {
-    const drawer = this.instance;
-    // We are only interested in this events if we are drawing
-    if (drawer.currently_drawing != null) {
-      switch (func) {
-        case 'keyUp':
-          if (e.keyCode === 13) {
-            // User pressed enter, we will complete the drawing
-            this.geometry.points.pop();
-            drawer.callback.onFinishNewDrawing(this.geometry);
-            drawer.currently_drawing = null;
-            drawer.stateRestorer.cancel();
-            this.info('');
-          }
-          if (e.keyCode === 27) {
-            // User pressed ESC, undo the drawing
-            if (drawer.currently_drawing.geometry.points.length > 3) {
-              // Undo the last point added
-              this.geometry.points.splice(this.geometry.points.length - 2, 1);
-
-              this.info('save', 'point', this.geometry.points.length > 3 ? 'undo' : 'cancel');
-            } else {
-              // Cancel the drawing
-              drawer.currently_drawing = null;
-              drawer.stateRestorer.cancel();
-              this.info('');
-            }
-            drawer.update();
-          }
-          break;
-      }
-    }
-  },
-
-  init(instance) {
-    this.instance = instance;
-    this.info('start');
-    return this;
-  },
-};
 
 class PolygonAnnotationTool {
   constructor(drawer) {
@@ -451,42 +292,18 @@ class PolygonAnnotationTool {
           this.newAnnotation.geometry.points.push(imagePosition);
         }
         this.drawer.refresh();
-        // if (!this.drawer_panning) {
-        //   if (drawer.currently_drawing == null) {
-        //     this.geometry = {
-        //       type: 'polygon',
-        //       points: [imagePosition],
-        //     };
-        //     drawer.currently_drawing = {
-        //       label: drawer.current_label,
-        //       geometry: this.geometry,
-        //       meta: { _enabled: true },
-        //     };
-        //
-        //     drawer.stateRestorer = StateRestorer.init(drawer, this.geometry);
-        //   } else {
-        //     drawer.currently_drawing.meta._enabled = true;
-        //   }
-        //
-        //   this.info('pan');
-        // }
-        // return true
         break;
       case 'move':
         if (this.dragging && this.newAnnotation != null) {
           this.newAnnotation.geometry.points.push(imagePosition);
           this.drawer.refresh();
         }
-        // if (!this.drawer_panning && drawer.currently_drawing != null && drawer.currently_drawing.meta._enabled) {
-        //   this.geometry.points.push(imagePosition);
-        //   drawer.stateRestorer.addRestorePoint('point');
-        //   // this.info("start", "pan")
-        //   // return true
-        // }
         break;
       case 'release':
         this.dragging = false;
         this.info('continue', 'pan', 'save', 'cancel');
+        break;
+      default:
         break;
     }
   }
@@ -519,386 +336,6 @@ class PolygonAnnotationTool {
   // keyboardEvent: freeDrawingDefaultKeyboardBehavior;
 }
 
-const brushTool = {
-  name: 'brush',
-  instance: null,
-  size: 500,
-  drawer_panning: false,
-  geometry: null,
-
-  mouseEvent(func, e) {
-    const drawer = this.instance;
-    const imagePosition = drawer._mousePointToImagePoint(e.position);
-    switch (func) {
-      case 'press':
-        if (this.drawer_panning) return;
-        drawer.set_canvas_pan(false);
-
-        if (drawer.currently_drawing == null) {
-          this.geometry = {
-            type: 'brush',
-            size: this.size,
-            points: [imagePosition],
-          };
-          drawer.currently_drawing = {
-            label: drawer.current_label,
-            geometry: this.geometry,
-            meta: { _enabled: true },
-          };
-          // drawer.stateRestorer = StateRestorer.init(drawer, this.geometry)
-        }
-        break;
-      case 'move':
-        if (!this.drawer_panning && drawer.currently_drawing != null && drawer.currently_drawing.meta._enabled) {
-          this.geometry.points.push(imagePosition);
-        }
-        break;
-      case 'release':
-        if (drawer.currently_drawing != null) {
-          drawer.currently_drawing.meta._enabled = false;
-        }
-        drawer.set_canvas_pan(true);
-
-        break;
-    }
-    drawer.update();
-  },
-
-  keyboardEvent: freeDrawingDefaultKeyboardBehavior,
-
-  init(instance) {
-    this.instance = instance;
-    instance.set_canvas_pan(false);
-    return this;
-  },
-};
-
-const PathMeshEraser = {
-  editor: null,
-  active: false,
-
-  mouseEvent(func, e) {
-    const { editor } = this;
-    const drawer = editor.instance;
-
-    switch (func) {
-      case 'press':
-        this.active = true;
-        drawer.set_canvas_pan(false);
-        break;
-      case 'release':
-        this.active = false;
-        drawer.set_canvas_pan(true);
-        break;
-      case 'move':
-        if (this.active === true) {
-          const mousePosition = drawer._mousePointToImagePoint(e.position);
-          // On the eraser mode, we will check if for intersection and remove those elements
-          editor.controls.some((control) => {
-            if (editor.intersectsControl(mousePosition, control.point)) {
-              // We will remove this line
-              const index = editor.geometry.points.indexOf(control.point);
-              editor.geometry.points.splice(index, 1);
-              editor.controls.splice(index, 1);
-              editor.addRestorePoint('erased');
-              return true; // stop iterating
-            }
-          });
-          drawer.update();
-        }
-        break;
-    }
-  },
-
-  init(editor) {
-    this.editor = editor;
-    return this;
-  },
-};
-
-const PathMeshMover = {
-  editor: null,
-  control: null,
-
-  mouseEvent(func, e) {
-    const { editor } = this;
-    const drawer = editor.instance;
-    switch (func) {
-      case 'press':
-        const mousePosition = drawer._mousePointToImagePoint(e.position);
-        // On the dragging mode, the node is dragged to the
-        editor.controls.forEach((control) => {
-          const position = control.point;
-          const intersects = editor.intersectsControl(mousePosition, position);
-          if (intersects) {
-            // User is dragging with this element
-            this.control = control;
-            drawer.set_canvas_pan(false);
-          }
-        });
-
-        break;
-      case 'release':
-        this.control = null;
-        drawer.set_canvas_pan(true);
-        editor.addRestorePoint('moved');
-        break;
-      case 'move':
-        if (this.control != null) {
-          const mousePosition = drawer._mousePointToImagePoint(e.position);
-          this.control.point.x = mousePosition.x;
-          this.control.point.y = mousePosition.y;
-          drawer.update();
-        }
-        break;
-    }
-  },
-
-  init(editor) {
-    this.editor = editor;
-    return this;
-  },
-};
-
-const PathMeshCreator = {
-  editor: null,
-  cursor: null,
-  instance: null,
-
-  checkPathCreation(position) {
-    const { points } = this.editor.geometry;
-    for (let i = 1; i < points.length; i++) {
-      const point1 = points[i - 1];
-      const point2 = points[i];
-      const left = Math.min(point1.x, point2.x) - 10;
-      const right = Math.max(point1.x, point2.x) + 10;
-      const top = Math.min(point1.y, point2.y) - 10;
-      const bottom = Math.max(point1.y, point2.y) + 10;
-
-      if (left < position.x && position.x < right
-        && top < position.y && position.y < bottom) {
-        return i;
-      }
-    }
-    return null;
-  },
-
-  mouseEvent(func, e) {
-    const { editor } = this;
-    const drawer = editor.instance;
-    const position = drawer._mousePointToImagePoint(e.position);
-    switch (func) {
-      case 'move':
-        if (drawer.ctx.isPointInPath(editor.annotation.meta.path, e.position.x, e.position.y)) {
-          const newIndex = this.checkPathCreation(position);
-          // console.log("check", newIndex)
-          if (newIndex != null) {
-            this.cursor = {
-              position,
-              index: newIndex,
-            };
-          } else {
-            this.cursor = null;
-          }
-          drawer.update();
-        } else if (this.cursor != null) {
-          this.cursor = null;
-          drawer.update();
-        }
-        break;
-      case 'click':
-        if (drawer.ctx.isPointInPath(editor.annotation.meta.path, e.position.x, e.position.y)) {
-          const { points } = editor.geometry;
-          const newIndex = this.checkPathCreation(position);
-          if (newIndex != null) {
-            editor.addRestorePoint('created');
-            points.splice(newIndex, 0, position);
-          }
-          console.log('Ended');
-          editor.create_controls();
-          drawer.update();
-        }
-        break;
-    }
-  },
-
-  draw(ctx) {
-    const { instance } = this;
-    // Drawing the reference cursor where the new point will appear
-    ctx.beginPath();
-    if (this.cursor != null) {
-      const { points } = this.editor.geometry;
-      const position = instance._imagePointToCanvasPoint(this.cursor.position.x, this.cursor.position.y);
-      ctx.ellipse(position.x, position.y, 5, 5, 0, 2 * Math.PI, 0, false);
-      const prevPoint = instance._imagePointToCanvasPoint(points[this.cursor.index - 1].x, points[this.cursor.index - 1].y);
-      const nextPoint = instance._imagePointToCanvasPoint(points[this.cursor.index].x, points[this.cursor.index].y);
-      ctx.moveTo(prevPoint.x, prevPoint.y);
-      ctx.lineTo(position.x, position.y);
-      ctx.lineTo(nextPoint.x, nextPoint.y);
-      ctx.fill();
-      ctx.stroke();
-    }
-  },
-
-  init(editor) {
-    this.editor = editor;
-    this.instance = editor.instance;
-    return this;
-  },
-};
-
-const PathMeshFreeEditor = {
-  currently_drawing: null,
-  current_path: null,
-  editor: null,
-  editing: false,
-  panning: false,
-  mouseEvent(func, e) {
-    const { editor } = this;
-    const { annotation } = editor;
-    const { instance } = editor;
-    const position = editor.instance._mousePointToImagePoint(e.position);
-    switch (func) {
-      case 'press':
-        if (this.currently_drawing == null) {
-          if (editor.instance.ctx.isPointInPath(annotation.meta.path, e.position.x, e.position.y)) {
-            this.currently_drawing = [];
-            this.editing = true;
-            instance.set_canvas_pan(false);
-          }
-        } else {
-          this.editing = true;
-          instance.set_canvas_pan(false);
-        }
-        break;
-      case 'move':
-        if (this.panning) return;
-        if (this.currently_drawing != null && this.editing) {
-          this.currently_drawing.push(position);
-          editor.instance.update();
-        }
-        break;
-      case 'release':
-        this.editing = false;
-        instance.set_canvas_pan(true);
-        break;
-    }
-  },
-
-  polygonOrientation(points) {
-    let sum = 0;
-    const li = points.length;
-    for (let i = 1; i < li; i++) {
-      sum += (points[i].x - points[i - 1].x) * (points[i].y + points[i - 1].y);
-    }
-    sum += (points[li - 1].x - points[li - 2].x) * (points[li - 1].y + points[li - 2].y);
-    return sum > 0;
-  },
-
-  keyboardEvent(func, e) {
-    const drawer = this.editor.instance;
-    switch (func) {
-      case 'keyUp':
-        if (e.keyCode === 32) {
-          drawer.set_canvas_pan(false);
-          this.panning = false;
-        } else if (e.keyCode === 27) {
-          drawer.set_canvas_pan(true);
-          this.currently_drawing = null;
-          drawer.update();
-        } else if (e.keyCode === 13) {
-          drawer.set_canvas_pan(true);
-          const intersects = (path, point) => {
-            const canvasPoint = drawer._imagePointToCanvasPoint(point.x, point.y);
-            return drawer.ctx.isPointInPath(path, canvasPoint.x, canvasPoint.y, 'nonzero');
-          };
-          const originalToRemove = this.editor.geometry.points.map((item, index) => {
-            if (intersects(this.current_path, item)) return index;
-          })
-            .filter((item) => item != null);
-          const additionToRemove = this.currently_drawing.map((item, index) => {
-            if (intersects(this.editor.geometry.path, item)) return index;
-          })
-            .filter((item) => item != null);
-          console.log('Original To Remove', originalToRemove, additionToRemove);
-          const newOriginalPath = this.editor.geometry.points.filter((i, idx) => !originalToRemove.includes(idx));
-          const newAdditionPath = this.currently_drawing.filter((i, idx) => !additionToRemove.includes(idx));
-          console.log('newOriginalPath:', newOriginalPath);
-          console.log('newAdditionPath:', newAdditionPath);
-
-          const originalX = this.polygonOrientation(newOriginalPath);
-          const additionX = this.polygonOrientation(newAdditionPath);
-          console.log('Order:', originalX, additionX);
-          if (additionX !== originalX) {
-            console.log('Reversing array');
-            // newAdditionPath.reverse()
-          }
-
-          let oIndex = 1;
-          let aIndex = 0;
-          const newPath = [newOriginalPath[0]];
-          do {
-            const cPoint = newPath[newPath.length - 1];
-            const oPoint = newOriginalPath[oIndex];
-            const aPoint = newAdditionPath[aIndex];
-
-            const oDistance = oIndex < newOriginalPath.length ? Math.hypot(cPoint.x - oPoint.x, cPoint.y - oPoint.y) : -1;
-            const aDistance = aIndex < newAdditionPath.length ? Math.hypot(cPoint.x - aPoint.x, cPoint.y - aPoint.y) : -1;
-
-            console.log('Iteration | ', cPoint, oIndex, aIndex, '|', oDistance, aDistance);
-            if (oDistance === -1 && aDistance === -1) {
-              break;
-            } else if (aDistance === -1 || (oDistance !== -1 && oDistance < aDistance)) {
-              newPath.push(oPoint);
-              oIndex++;
-            } else if (oDistance === -1 || (aDistance !== -1 && oDistance > aDistance)) {
-              newPath.push(aPoint);
-              aIndex++;
-            }
-          } while (oIndex < newOriginalPath.length || aIndex < newAdditionPath.length);
-          this.editor.geometry.points = optimizePath(newPath);
-          this.editor.instance.update();
-          return false;
-          // const newToRemove =
-        }
-        break;
-      case 'keyDown':
-        if (e.keyCode === 32) {
-          drawer.set_canvas_pan(true);
-          this.panning = true;
-        }
-        break;
-    }
-
-    // We are going to handle the input
-    return true;
-  },
-
-  draw(ctx) {
-    const points = this.currently_drawing;
-    if (points != null) {
-      const path = new Path2D();
-      const firstPosition = this.editor.instance._imagePointToCanvasPoint(points[0].x, points[0].y);
-      ctx.beginPath();
-      path.moveTo(firstPosition.x, firstPosition.y);
-
-      points.forEach((point) => {
-        const position = this.editor.instance._imagePointToCanvasPoint(point.x, point.y);
-        path.lineTo(position.x, position.y);
-      });
-      path.closePath();
-      this.current_path = path;
-      ctx.stroke(path);
-    }
-  },
-
-  init(editor) {
-    this.editor = editor;
-    this.currently_drawing = null;
-    return this;
-  },
-};
-
 class PathMeshEditor {
   constructor(annotation, drawer) {
     this.drawer = drawer;
@@ -921,8 +358,8 @@ class PathMeshEditor {
 
   intersectsControl(mousePosition, position) {
     const drawer = this.drawer;
-    const areaRadius = ((drawer.currentViewport.bottom - drawer.currentViewport.top) / drawer.canvas.clientWidth) * 25;
-    // console.log("intersects radius:", areaRadius, drawer._viewportLocation)
+    const areaRadius = ((drawer.currentViewport.bottom - drawer.currentViewport.top)
+      / drawer.canvas.clientWidth) * 25;
     return mousePosition.x > position.x - areaRadius && mousePosition.x < position.x + areaRadius
       && mousePosition.y > position.y - areaRadius && mousePosition.y < position.y + areaRadius;
   }
@@ -949,7 +386,8 @@ class PathMeshEditor {
       this.control = this.getIntersectingControl(this.drawer.mousePointToImagePoint(e.position));
       if (this.control == null) {
         // check if clicked on edge
-        // Intersects no control, which means that if it intersects the item, we should add a new node
+        // Intersects no control, which means that if it intersects the item,
+        // we should add a new node
         if (this.annotation instanceof PolygonAnnotation) {
           // it only makes sense to edit polygons; in the future we could change items to polygon
           if (this.annotation.intersects(e.position)) {
@@ -994,15 +432,10 @@ class PathMeshEditor {
         }
         this.drawer.update();
       }
-    } else if (func === 'click') {
-
     }
   }
 
   keyboardEvent(func, e) {
-    const drawer = this.drawer;
-
-    console.log(func, e);
     switch (func) {
       case 'keyUp':
         if (e.keyCode === 27) {
@@ -1018,7 +451,7 @@ class PathMeshEditor {
 
   checkPathCreation(position) {
     const { points } = this.annotation.geometry;
-    for (let i = 1; i < points.length; i++) {
+    for (let i = 1; i < points.length; i += 1) {
       const point1 = points[i - 1];
       const point2 = points[i];
       const left = Math.min(point1.x, point2.x) - 10;
@@ -1122,18 +555,6 @@ class PathMeshEditor {
       }));
     }
   }
-
-  // create_mode(mode) {
-  //   if (mode === 'eraser') {
-  //     this.mode = PathMeshEraser.init(this);
-  //   } else if (mode === 'mover') {
-  //     this.mode = PathMeshMover.init(this);
-  //   } else if (mode === 'creator') {
-  //     this.mode = PathMeshCreator.init(this);
-  //   } else if (mode === 'free') {
-  //     this.mode = PathMeshFreeEditor.init(this);
-  //   }
-  // },
 }
 
 /* the conversion from pixel to shape may be done with a search algorithm.
@@ -1294,8 +715,10 @@ class Annotation {
   }
 
   updateViewport() {
-    const topLeft = this.drawer.imagePointToCanvasPoint(this.imageLocation.left, this.imageLocation.top);
-    const bottomRight = this.drawer.imagePointToCanvasPoint(this.imageLocation.right, this.imageLocation.bottom);
+    const topLeft = this.drawer
+      .imagePointToCanvasPoint(this.imageLocation.left, this.imageLocation.top);
+    const bottomRight = this.drawer
+      .imagePointToCanvasPoint(this.imageLocation.right, this.imageLocation.bottom);
     this.currentViewport.left = topLeft.x;
     this.currentViewport.top = topLeft.y;
     this.currentViewport.bottom = bottomRight.y;
@@ -1424,18 +847,6 @@ class RectAnnotationTool {
           this.info('save', 'cancel');
           this.dragging = true;
         } else {
-          // We will assure point1 < point2
-
-          //   ['x', 'y'].forEach((dim) => {
-          //
-          //   }
-          //     .bind(this);
-          // )
-          //   ;
-          // report the drawing is over
-          // drawer.callback.onFinishNewDrawing(this.geometry);
-          // drawer.currently_drawing = null;
-          // drawer.stateRestorer.cancel();
           this.info('start');
         }
         this.drawer.refresh();
@@ -1448,6 +859,8 @@ class RectAnnotationTool {
         break;
       case 'release':
         this.dragging = false;
+        break;
+      default:
         break;
     }
   }
@@ -1488,6 +901,8 @@ class RectAnnotationTool {
           // todo drawer.stateRestorer.cancel();
           this.info('start');
         }
+        break;
+      default:
         break;
     }
   }
@@ -1702,36 +1117,17 @@ class AnnotationDrawer {
             }
           });
         }
-        // if (this.isPanningMode) return; // no interactions on panning mode
-        //
-        // if (this.currentTool != null) {
-        //   this.currentTool.mouseEvent('click', e);
-        // }
-        // this.elementsOnScreen.forEach((element) => {
-        //   if (element.isHovering) {
-        //     this.callback.onClick(element);
-        //   }
-        // });
       },
       dblClickHandler: (e) => {
         // no interactions on panning mode or tool
         if (this.isToolUsageEnabled()) {
           this.currentTool.mouseEvent('dblClick', e);
         }
-        // if (this.isPanningMode || !this.isCurrentlyHoveringAnnotation) return;
-        // if (this.currentTool != null) {
-        //   this.currentTool.mouseEvent('dblClick', e);
-        // }
       },
       moveHandler: (e) => {
         if (this.isToolUsageEnabled()) {
           if (this.currentTool.mouseEvent('move', e)) return;
         }
-        // if (this.isPanningMode) return; // no interactions on panning mode
-        // if (this.isCurrentlyHoveringAnnotation) {
-        //   // Tool interaction is enabled:
-        //   if (this.currentTool != null && this.currentTool.mouseEvent('move', e)) return;
-        // }
 
         // When not drawing, we will check for collision with the mouse pointer for interactivity
         let hovering = 0;
@@ -1885,20 +1281,12 @@ class AnnotationDrawer {
     }
   }
 
-  //   concludeEdit() {
-  //     // Disable the editing tool and update view
-  //     console.log('concludeEdit:', this.currently_editing.geometry);
-  //     this.callback.onFinishedEditing(true, this.currently_editing.geometry);
-  //     this.currently_editing = null;
-  //     this.update();
-  //   },
-
   /**
    * Load the annotations and instantiate the drawers.
    * @param annotations the list of annotations to load
    */
   loadAnnotations(annotations) {
-    if (annotations == null) return;
+    if (annotations == null) return [];
     const instantiators = {
       rect: (annotation) => new RectAnnotation(this, annotation),
       circle: (annotation) => new CircleAnnotation(this, annotation),
@@ -1981,7 +1369,8 @@ class AnnotationDrawer {
 
   mousePointToImagePoint(mouseEvent) {
     const viewportPoint = this.viewer.viewport.pointFromPixel(mouseEvent);
-    const coordinates = this.viewer.viewport.viewportToImageCoordinates(viewportPoint.x, viewportPoint.y);
+    const coordinates = this.viewer.viewport
+      .viewportToImageCoordinates(viewportPoint.x, viewportPoint.y);
     return {
       x: coordinates.x,
       y: coordinates.y,
@@ -2085,346 +1474,3 @@ export {
   optimizePath,
   loadAnnotations,
 };
-
-//
-// export default {
-//   annotations: [],
-//
-//   current_label: null,
-//
-//   /**
-//    * When false, SliceDrawer doesn't allow any drawing
-//    */
-//   enabled: true,
-//
-//   /**
-//    * Elements currently being rendering are added to this list. This list is mostly used to check
-//    * mouse interaction with the elements.
-//    */
-//   elementsOnScreen: [],
-//
-//   stateRestorer: null,
-//
-//   /**
-//    * The current drawing tool
-//    */
-//   set tool(name) {
-//     this.new_tool = this.tools[name]();
-//     this.set_canvas_pan(true);
-//     this.viewer.canvas.focus();
-//   },
-//   get tool() {
-//     if (this.new_tool != null) {
-//       return this.new_tool.name;
-//     }
-//     return 'none';
-//   },
-//
-//   set editorMode(name) {
-//     this.currently_editing.create_mode(name);
-//     this.viewer.canvas.focus();
-//   },
-//   get editorMode() {
-//     return '';
-//   },
-//
-//   /**
-//    *
-//    */
-//   pixel_width: 0,
-//
-//   tools: {},
-//
-//   drawingStyle: {
-//     region_opacity: 0.3,
-//     line_weight: 1,
-//   },
-//
-//   /**
-//    * Elements can be filtered so it won't render.
-//    * Label => boolean
-//    */
-//   filtering: {},
-//
-//   /**
-//    * The element being currently edited.
-//    * We may be able to join two paths by checking if a given point intersects the other shape. Points from
-//    * both shapes that intersects another are added to a list for removal. Once we have a list, we remove the elements.
-//    * The new shape is created by joining the points from the two path in the index of the first removed element.
-//    * Arbitrary shapes (brush, rect) may be converted to path (by sampling and optimizing) before being joined.
-//    * The shapes may be joined after the drawing.
-//    */
-//   currently_editing: null,
-//
-//   new_tool: null,
-//
-//   /**
-//    * The polygon currently being draw
-//    */
-//   currently_drawing: null,
-//
-//   /**
-//    * Throttle behavior for improving performance when there are too many elements to draw
-//    */
-//   _lastUpdate: 0,
-//
-//   /**
-//    * Keeps track of the viewport in image pixels. This is used to notify when the
-//    * canvas is dirty and needs to be redraw.
-//    */
-//   _viewportLocation: {
-//     min: [],
-//     max: [],
-//   },
-//
-//   editElement(annotation) {
-//     this.currently_editing = PathMeshEditor.init(this, annotation, 'mover');
-//     this.update();
-//     // Finally, we save the first state as a restoration point for the user
-//     this.currently_editing.addRestorePoint('editing');
-//   },
-//
-//   concludeEdit() {
-//     // Disable the editing tool and update view
-//     console.log('concludeEdit:', this.currently_editing.geometry);
-//     this.callback.onFinishedEditing(true, this.currently_editing.geometry);
-//     this.currently_editing = null;
-//     this.update();
-//   },
-//
-//   cancelEdit() {
-//     this.currently_editing.cancel();
-//     this.currently_editing = null;
-//     this.update();
-//   },
-//
-//   resize() {
-//
-//   },
-//
-//   _mousePointToImagePoint(mouseEvent) {
-//     const viewportPoint = this.viewer.viewport.pointFromPixel(mouseEvent);
-//     const coordinates = this.viewer.viewport.viewportToImageCoordinates(viewportPoint.x, viewportPoint.y);
-//     return {
-//       x: coordinates.x,
-//       y: coordinates.y,
-//     };
-//   },
-//
-//   _imagePointToCanvasPoint(x, y) {
-//     const point = new OpenSeadragon.Point(x, y);
-//     return this.viewer.viewport.imageToViewerElementCoordinates(point);
-//   },
-//
-//   update() {
-//     // console.log("update called", this.annotations)
-//     if (this.ctx == null) return;
-//
-//     const { ctx } = this;
-//     if (this._lastUpdate > Date.now() - (this.elementsOnScreen.length / 5)) {
-//       return;
-//     }
-//     ctx.clearRect(0, 0, this.ctx.canvas.width, this.ctx.canvas.height);
-//     if (this.annotations == null) {
-//       return;
-//     }
-//
-//     const viewportMin = this._viewportLocation.min;
-//     const viewportMax = this._viewportLocation.max;
-//     this.elementsOnScreen = [];
-//     this.annotations.forEach((annotation) => {
-//       if (this.filtering[annotation.label.name] && annotation.geometry != null) {
-//         // We will only draw when the label of the element isn't filter out
-//         const firstPoint = annotation.geometry.points[0];
-//         if ((firstPoint.x > viewportMin.x && firstPoint.x < viewportMax.x)
-//           && (firstPoint.y > viewportMin.y && firstPoint.y < viewportMax.y)) {
-//           this._draw_annotation(annotation);
-//           this.elementsOnScreen.push(annotation);
-//         }
-//       }
-//     });
-//     if (this.currently_drawing != null) {
-//       this._draw_annotation(this.currently_drawing);
-//     }
-//
-//     // We are editing a element, let's draw the controls
-//     if (this.currently_editing != null) {
-//       this.currently_editing.draw(ctx);
-//     }
-//
-//     if (typeof this.new_tool.draw === 'function') {
-//       this.new_tool.draw(ctx);
-//     }
-//
-//     this._lastUpdate = Date.now();
-//   },
-//
-//   _draw_annotation(annotation) {
-//     switch (annotation.geometry.type) {
-//       case 'polygon':
-//         this._update_polygon(annotation);
-//         break;
-//       case 'rect':
-//         this._update_rect(annotation);
-//         break;
-//       case 'circle':
-//         this._update_circle(annotation);
-//         break;
-//       case 'brush':
-//         this._update_brush(annotation);
-//         break;
-//     }
-//   },
-//
-//   _gen_color(rgb) {
-//     return `${rgb[0]}, ${rgb[1]}, ${rgb[2]}`;
-//   },
-//
-//   _update_polygon(annotation, color) {
-//     const { ctx } = this;
-//     const { points } = annotation.geometry;
-//     const color_code = this._gen_color(color == null ? annotation.label.color : color);
-//     const path = this._update_path(points);
-//
-//     const startPoint = this._imagePointToCanvasPoint(points[0].x, points[0].y);
-//     path.lineTo(startPoint.x, startPoint.y);
-//     annotation.meta.path = path;
-//     ctx.fillStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.drawingStyle.region_opacity})`;
-//     ctx.strokeStyle = `rgb(${color_code})`;
-//     ctx.lineWidth = this.drawingStyle.line_weight;
-//     ctx.fill(path);
-//     ctx.stroke(path);
-//   },
-//
-//   _update_rect(annotation, color) {
-//     // console.log(rect_data)
-//     const { ctx } = this;
-//     const position = this._imagePointToCanvasPoint(annotation.geometry.points[0].x, annotation.geometry.points[0].y);
-//     const limits = this._imagePointToCanvasPoint(annotation.geometry.points[1].x, annotation.geometry.points[1].y);
-//     const color_code = this._gen_color(color == null ? annotation.label.color : color);
-//     ctx.beginPath();
-//     ctx.rect(position.x, position.y, limits.x - position.x, limits.y - position.y);
-//     annotation.meta._canvas_points = [position, limits];
-//     // console.log("_update_rect", position.x, position.y, position.x - limits.x, position.y - limits.y)
-//     ctx.fillStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.drawingStyle.region_opacity})`;
-//     ctx.strokeStyle = `rgb(${color_code})`;
-//     ctx.lineWidth = this.drawingStyle.line_weight;
-//     ctx.fill();
-//     ctx.stroke();
-//   },
-//
-//   _update_circle(annotation) {
-//     const { ctx } = this;
-//     const color_code = this._gen_color(annotation.label.color);
-//     ctx.beginPath();
-//     const position = this._imagePointToCanvasPoint(annotation.geometry.points[0].x, annotation.geometry.points[0].y);
-//     const radius = this._imagePointToCanvasPoint(annotation.geometry.points[1].x, annotation.geometry.points[1].y);
-//     const radiusX = Math.abs(position.x - radius.x);
-//     const radiusY = Math.abs(position.y - radius.y);
-//     annotation.meta._canvas_points = [
-//       {
-//         x: position.x - radiusX,
-//         y: position.y - radiusY,
-//       },
-//       {
-//         x: position.x + radiusX,
-//         y: position.y + radiusY,
-//       },
-//     ];
-//     ctx.ellipse(position.x, position.y, radiusX, radiusY, 0, 2 * Math.PI, 0, false);
-//     ctx.fillStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.drawingStyle.region_opacity})`;
-//     ctx.strokeStyle = `rgb(${color_code})`;
-//     ctx.lineWidth = this.drawingStyle.line_weight;
-//     ctx.fill();
-//     ctx.stroke();
-//   },
-//
-//   _update_path(points) {
-//     const path = new Path2D();
-//     const startPoint = this._imagePointToCanvasPoint(points[0].x, points[0].y);
-//     path.moveTo(startPoint.x, startPoint.y);
-//     points.forEach((point) => {
-//       const canvasPos = this._imagePointToCanvasPoint(point.x, point.y);
-//       path.lineTo(canvasPos.x, canvasPos.y);
-//     });
-//     // path.closePath()
-//     return path;
-//   },
-//
-//   _update_brush(annotation) {
-//     const { ctx } = this;
-//     const { points } = annotation.geometry;
-//     const color_code = this._gen_color(annotation.label.color);
-//     // console.log("lineWidth", lineWidth)
-//     ctx.lineWidth = this._imagePointToCanvasPoint(annotation.geometry.size, 0).x - this._imagePointToCanvasPoint(0, 0).x;
-//     ctx.lineCap = 'round';
-//     ctx.lineJoin = 'round';
-//     ctx.strokeStyle = `rgba(${color_code}, ${annotation.meta.is_hover ? '0.6' : this.drawingStyle.region_opacity})`;
-//
-//     const path = this._update_path(points);
-//
-//     annotation.meta.path = path;
-//     ctx.stroke(path);
-//   },
-//
-//   set_canvas_pan(enabled) {
-//     this.viewer.panHorizontal = enabled;
-//     this.viewer.panVertical = enabled;
-//   },
-//
-//   peep(annotation) {
-//     const { viewer } = this;
-//     let xmin = 10000000;
-//     let xmax = -1;
-//     let ymin = 10000000;
-//     let ymax = -1;
-//     annotation.geometry.points.forEach((coord) => {
-//       if (coord.x < xmin) xmin = coord.x;
-//       if (coord.x > xmax) xmax = coord.x;
-//       if (coord.y < ymin) ymin = coord.y;
-//       if (coord.y > ymax) ymax = coord.y;
-//     });
-//     const panTo = viewer.viewport.imageToViewportCoordinates((xmax + xmin) / 2, (ymax + ymin) / 2);
-//     console.log('panTo:', panTo, ' | ', xmin, xmax, ymin, ymax);
-//     viewer.viewport.panTo(panTo, false);
-//     const tiledImage = viewer.world.getItemAt(0);
-//     const yZoom = tiledImage.source.dimensions.y / (ymax - ymin);
-//     // const xZoom = viewer.viewport.getContainerSize().x / (xmax - xmin)
-//     const xZoom = tiledImage.source.dimensions.x / (xmax - xmin);
-//     const zoom = (yZoom < xZoom ? yZoom : xZoom);
-//     viewer.viewport.zoomTo(zoom - (zoom * 0.5), false);
-//     // console.log("targetZoom:", targetZoom, tiledImage.source.dimensions.x, "|", viewer.viewport.getContainerSize().x)
-//   },
-//
-//   /**
-//    * Instantiate a SliceDrawer for the OpenSeadragon viewer.
-//    * Object interaction events can be listened using the callback parameter by passing a object as such:
-//    * {
-//    *     onHover: (element) => {} // mouse over element
-//    *     onLeave: (element) => {} // mouse left the element
-//    *     onClick: (element) => {} // mouse click on a element
-//    *     newElementDrawn: (element) => {} // new element was drawn
-//    * }
-//    *
-//    * @param Viewer the OpenSeadragon viewer instance
-//    * @param callback a object containing the required callbacks
-//    */
-//   init(Viewer, callback) {
-//     // Drawing canvas creation
-//
-//     // Create references:
-//
-//     this.tools = {
-//       polygon: () => polygonTool.init(this),
-//       free: () => freeTool.init(this),
-//       rect: () => rectTool.init(this),
-//       circle: () => circleTool.init(this),
-//       brush: () => brushTool.init(this),
-//       ruler: () => rulerTool.init(this),
-//       none: () => nullTool.init(this),
-//     };
-//     this.tool = this.enabled ? 'polygon' : 'none';
-//
-//     this.resize(Viewer.canvas.width, Viewer.canvas.height);
-//   },
-// };

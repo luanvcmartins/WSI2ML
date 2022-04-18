@@ -179,71 +179,73 @@ export default {
     review_task: [],
     taskLabel: {
       0: 'Human annotation',
-      2: 'App annotation'
-    }
+      2: 'App annotation',
+    },
   }),
   methods: {
     loadUsers() {
       this.$get('user/list')
-          .then((resp) => {
-            this.users = resp;
-          })
-          .catch((err) => alert(err));
+        .then((resp) => {
+          this.users = resp;
+        })
+        .catch((err) => alert(err));
     },
 
     loadApps() {
       this.$get('app/list')
-          .then((resp) => {
-            this.apps = resp;
-          })
-          .catch((err) => alert(err));
+        .then((resp) => {
+          this.apps = resp;
+        })
+        .catch((err) => alert(err));
     },
 
     loadProjects() {
       this.$get('project/list')
-          .then((resp) => this.projects = resp)
-          .catch((err) => alert(err));
+        .then((resp) => this.projects = resp)
+        .catch((err) => alert(err));
     },
 
     loadReviewTasks(projectId) {
-      this.$get('project/tasks?project_id=' + projectId)
+      if (projectId != null) {
+        this.$get(`project/tasks?project_id=${projectId}`)
           .then((resp) => {
             this.reviewTaskList = resp;
           })
           .catch((err) => alert(err));
+      }
     },
 
     save() {
       if (this.task.id == null) {
         this.$post('task/new', this.task)
-            .then((resp) => {
-              this.task = resp;
-              this.$emit('input', resp);
-              this.$emit('done', 'task');
-            })
-            .catch((err) => {
-              alert(err);
-            });
+          .then((resp) => {
+            this.task = resp;
+            this.$emit('input', resp);
+            this.$emit('done', 'task');
+          })
+          .catch((err) => {
+            alert(err);
+          });
       } else {
         this.$post('task/edit', this.task)
-            .then((resp) => {
-              this.task = resp;
-              this.$emit('input', resp);
-              this.$emit('done', 'task');
-            })
-            .catch((err) => {
-              alert(err);
-            });
+          .then((resp) => {
+            this.task = resp;
+            this.$emit('input', resp);
+            this.$emit('done', 'task');
+          })
+          .catch((err) => {
+            alert(err);
+          });
       }
     },
     loadFiles(projectId) {
       this.$get(`task/files?project_id=${projectId}`)
-          .then((resp) => {
-            this.files = resp;
-          })
-          .catch(() => {
-            alert('Unable to locate the project\'s folder. Make sure the project is properly setup for the current environment.');
-          });
+        .then((resp) => {
+          this.files = resp;
+        })
+        .catch(() => {
+          alert('Unable to locate the project\'s folder. Make sure the project is properly setup for the current environment.');
+        });
     },
   },
   mounted() {

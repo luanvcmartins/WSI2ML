@@ -20,33 +20,25 @@
 </template>
 
 <script>
-import ExportTaskAnnotation from '../components/ExportTaskAnnotation';
+import ExportTaskAnnotation from '../components/ExportTaskAnnotation.vue';
 
 export default {
   name: 'Export',
   components: { ExportTaskAnnotation },
-  watch: {
-    selected_users: {
-      deep: true,
-      handler(new_selected_users) {
-        // new_selected_users.forEach(item => )
-      },
-    },
-  },
   data() {
     return {
       dialog: false,
       projects: [],
       selected_project: null,
-      selected_users: {},
-      selected_user_tasks: {},
-      exporting: {},
-      annotation_counts: {},
     };
   },
   methods: {
     load() {
-      this.$get('export/list').then((res) => this.projects = res).catch((err) => alert(err));
+      this.$get('export/list')
+        .then((res) => {
+          this.projects = res;
+        })
+        .catch((err) => alert(err));
     },
     showExporting(project) {
       this.selected_project = project;
@@ -60,8 +52,8 @@ export default {
 </script>
 
 <style scoped>
-  .slide-list {
-    height: 100px;
-    overflow-y: auto;
-  }
+.slide-list {
+  height: 100px;
+  overflow-y: auto;
+}
 </style>

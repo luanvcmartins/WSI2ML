@@ -1,7 +1,6 @@
 import Vue from 'vue';
 import Router from 'vue-router';
 import store from '@/store';
-import Home from './views/Home.vue';
 import Tasks from './views/Tasks.vue';
 import Session from './views/Session.vue';
 import Admin from './views/Admin.vue';
@@ -10,7 +9,7 @@ import AdminAppBar from './components/AdminAppBar.vue';
 
 Vue.use(Router);
 
-const new_router = new Router({
+const newRouter = new Router({
   routes: [
     {
       path: '/',
@@ -102,14 +101,9 @@ const new_router = new Router({
       name: 'login',
       component: () => import('./views/Login.vue'),
     },
-    {
-      path: '/about',
-      name: 'about',
-      component: () => import('./views/About.vue'),
-    },
   ],
 });
-new_router.beforeEach((to, from, next) => {
+newRouter.beforeEach((to, from, next) => {
   if (to.matched.some((record) => record.meta.auth)) {
     if (store.state.token == null) {
       next({
@@ -129,4 +123,4 @@ new_router.beforeEach((to, from, next) => {
     next();
   }
 });
-export default new_router;
+export default newRouter;

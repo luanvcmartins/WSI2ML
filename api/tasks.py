@@ -262,7 +262,7 @@ def app_tasks_list():
         task_id, project_id, task_name, task_created, _ = task
         app_tasks = db.session.execute("""SELECT user_tasks.id, user_tasks.completed, user_tasks.created, apps.* 
         FROM user_tasks, annotation_tasks, apps WHERE
-        user_tasks.annotation_task_id AND
+        user_tasks.annotation_task_id = annotation_tasks.id AND
         user_tasks.app_id = apps.id AND
         annotation_tasks.id = :task_id""", {"task_id": task_id})
         slides = db.session.execute("""

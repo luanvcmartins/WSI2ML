@@ -118,7 +118,7 @@
                   </v-icon>
                   <v-tooltip bottom>
                     <template v-slot:activator="{ on, attrs }">
-                      <v-icon small v-bind="attrs" v-on="on" @click> mdi-delete</v-icon>
+                      <v-icon small v-bind="attrs" v-on="on" @click>mdi-delete</v-icon>
                     </template>
                     <span>Not implemented</span>
                   </v-tooltip>
@@ -153,10 +153,10 @@
 
 <script>
 
-import UserEditor from '../components/UserEditor';
-import ProjectEditor from '../components/ProjectEditor';
-import TaskEditor from '../components/TaskEditor';
-import TaskBatch from '../components/TaskBatch';
+import UserEditor from '../components/UserEditor.vue';
+import ProjectEditor from '../components/ProjectEditor.vue';
+import TaskEditor from '../components/TaskEditor.vue';
+import TaskBatch from '../components/TaskBatch.vue';
 
 export default {
   name: 'Admin',
@@ -165,22 +165,6 @@ export default {
     TaskEditor,
     ProjectEditor,
     UserEditor,
-  },
-  watch: {
-    editing(new_value, old_value) {
-      // if (old_value != null && old_value.id == null) {
-      //     if (new_value != null && new_value.id != null && !this.is_editing) {
-      //         if (this.mode === "user")
-      //             this.users.push(new_value)
-      //         else if (this.mode === "project")
-      //             this.projects.push(new_value)
-      //         else if (this.mode === "task")
-      //             this.tasks.push(new_value)
-      //         this.drawer = false
-      //     }
-      // this.drawer = false
-      // }
-    },
   },
   computed: {
     user() {
@@ -307,15 +291,17 @@ export default {
         case 'task':
           this.loadTasks();
           break;
+        default:
+          break;
       }
     },
     openTask(task) {
       this.$post('session/create', task)
-          .then((resp) => {
-            this.$store.commit('set_session', resp);
-            this.$router.push(`/session/${resp.id}`);
-          })
-          .catch((err) => alert(err));
+        .then((resp) => {
+          this.$store.commit('set_session', resp);
+          this.$router.push(`/session/${resp.id}`);
+        })
+        .catch((err) => alert(err));
     },
     newUser() {
       this.editing = {
@@ -345,10 +331,10 @@ export default {
     removeUser(user) {
       if (confirm('Are sure you want to remove this user?')) {
         this.$get(`user/remove?user_id=${user.id}`)
-            .then((res) => {
-              this.loadUsers();
-            })
-            .catch((err) => alert(err));
+          .then(() => {
+            this.loadUsers();
+          })
+          .catch((err) => alert(err));
       }
     },
 
@@ -391,49 +377,49 @@ export default {
     removeTask(task) {
       if (confirm('Are you sure you want to remove this task? Annotations may be lost.')) {
         this.$post('task/remove', task)
-            .then((resp) => {
-              console.log(resp);
-              this.loadTasks();
-            })
-            .catch((err) => {
-              alert(err);
-            });
+          .then((resp) => {
+            console.log(resp);
+            this.loadTasks();
+          })
+          .catch((err) => {
+            alert(err);
+          });
       }
     },
 
     loadUsers() {
       if (this.user.manages_users) {
         this.$get('user/list')
-            .then((resp) => {
-              console.log(resp);
-              this.users = resp;
-            })
-            .catch((err) => {
-              alert(err);
-            });
+          .then((resp) => {
+            console.log(resp);
+            this.users = resp;
+          })
+          .catch((err) => {
+            alert(err);
+          });
       }
     },
 
     loadProjects() {
       if (this.user.manages_projects) {
         this.$get('project/list')
-            .then((resp) => {
-              console.log(resp);
-              this.projects = resp;
-            })
-            .catch((err) => {
-              alert(err);
-            });
+          .then((resp) => {
+            console.log(resp);
+            this.projects = resp;
+          })
+          .catch((err) => {
+            alert(err);
+          });
       }
     },
 
     loadTasks() {
       if (this.user.manages_tasks) {
         this.$get('task/management_list')
-            .then((resp) => {
-              this.tasks = resp;
-            })
-            .catch((err) => alert(err));
+          .then((resp) => {
+            this.tasks = resp;
+          })
+          .catch((err) => alert(err));
       }
     },
   },

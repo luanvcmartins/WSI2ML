@@ -19,8 +19,8 @@
         <template v-slot:extension>
           <v-tabs v-model="selected_tab">
             <v-tab>View</v-tab>
-            <v-tab v-if="annotations[current_slide.id] != null && annotations[current_slide.id].length > 0">Annotations
-              ({{ annotations[current_slide.id].length }})
+            <v-tab v-if="annotationTabVisible">
+              Annotations ({{ annotations[current_slide.id].length }})
             </v-tab>
           </v-tabs>
         </template>
@@ -87,7 +87,7 @@
                       </template>
                     </v-slider>
                     <v-switch
-                        style="width: 50%; margin:0px;"
+                        style="width: 50%; margin:0;"
                         hide-details
                         v-model="highlightOnTab" label="Highlight"/>
                   </div>
@@ -96,21 +96,22 @@
               <v-flex cols="12" sm="12" md="6" v-if="slides.length > 1">
                 <v-card>
                   <div class="pa-3 pb-0 text-h6 text--primary">Task slides</div>
-                  <div class="pl-3 pr-3 text-center font-weight-thin card-description">There is more than one slide
+                  <div class="pl-3 pr-3 text-center font-weight-thin card-description">
+                    There is more than one slide
                     associated with this task. Select the slide you want to work with below.
                   </div>
                   <div class="pl-3 pr-3 pb-3">
-                    <!--                    <v-radio-group hide-details v-model="current_slide">-->
-                    <!--                      <v-radio v-for="slide in slides" :label="slide.name" :value="slide"/>-->
-                    <!--                    </v-radio-group>-->
 
                     <v-list dense shaped class="slides-list">
                       <v-list-item-group v-model="current_slide" color="orange" mandatory>
-                        <v-list-item two-line v-for="slide in slides" :key="slide.id" :value="slide">
+                        <v-list-item
+                            two-line
+                            v-for="slide in slides" :key="slide.id"
+                            :value="slide">
 
                           <v-list-item-content>
-                            <v-list-item-title v-text="slide.name"></v-list-item-title>
-                            <v-list-item-subtitle v-text="slide.properties.comment"></v-list-item-subtitle>
+                            <v-list-item-title v-text="slide.name"/>
+                            <v-list-item-subtitle v-text="slide.properties.comment"/>
                           </v-list-item-content>
 
                           <v-list-item-action>
@@ -127,34 +128,39 @@
               <v-flex cols="12" sm="12" md="6">
                 <v-card>
                   <div class="pa-3 pb-0 text-h6 text--primary">Task status</div>
-                  <div class="pl-3 pr-3 text-center font-weight-thin card-description">Once you feel you are done with
+                  <div class="pl-3 pr-3 text-center font-weight-thin card-description">
+                    Once you feel you are done with
                     task you may mark it as completed.
                   </div>
                   <div class="pl-3 pr-3 pb-3">
-                    <v-switch v-model="session.completed" :disabled="!taskBelongsToUser" label="Task completed"/>
+                    <v-switch
+                        v-model="session.completed"
+                        :disabled="!taskBelongsToUser" label="Task completed"/>
                   </div>
                 </v-card>
               </v-flex>
               <v-flex cols="12" sm="12" md="6" v-if="task_type === 1">
                 <v-card>
                   <div class="pa-3 pb-0 text-h6 text--primary">Annotations to review</div>
-                  <div class="pl-3 pr-3 text-center font-weight-thin card-description">List of user's annotations for
-                    this task that must be reviewed. Select the user's annotations you want to review at this time.
+                  <div class="pl-3 pr-3 text-center font-weight-thin card-description">
+                    List of user's annotations for this task that must be reviewed.
+                    Select the user's annotations you want to review at this time.
                   </div>
                   <div class="pl-3 pr-3 pb-3">
                     <v-radio-group v-model="revisingUserTask">
                       <v-radio value="none" label="None"/>
-                      <v-radio v-for="item in revisions" :key="item.id" :value="item.id" :label="item.user"/>
+                      <v-radio
+                          v-for="item in revisions" :key="item.id"
+                          :value="item.id" :label="item.user"/>
                     </v-radio-group>
-                    <!--                    <v-switch v-for="item in revisions" :label="item.user" v-model="revision_enabled[item.id]"/>-->
                   </div>
                 </v-card>
               </v-flex>
               <v-flex cols="12" sm="12" md="6" v-if="annotationImportingEnabled">
                 <v-card>
                   <div class="pa-3 pb-0 text-h6 text--primary">Import annotations</div>
-                  <div class="pl-3 pr-3 text-center font-weight-thin card-description">Select a geojson file to import
-                    its annotations to the currently selected slide.
+                  <div class="pl-3 pr-3 text-center font-weight-thin card-description">
+                    Select a geojson file to import its annotations to the currently selected slide.
                   </div>
                   <div class="pl-3 pr-3 pb-3">
                     <input id="file-importer-input" type="file" style="display: none">
@@ -167,20 +173,30 @@
         </v-tab-item>
         <v-tab-item>
           <v-container fluid grid-list-md>
-            <v-layout row wrap>
-              <v-flex cols="12" sm="12" md="6" v-for="(region, idx) in annotations[current_slide.id]" :key="region.id">
-                <annotation-card
-                    v-model="annotations[current_slide.id][idx]" :key="idx"
-                    v-on:save-annotation="concludeEdit"
-                    v-on:edit-annotation="editRegion"
-                    v-on:cancel-edit="cancelEdit"
-                    v-on:annotation-feedback="annotationFeedback"
-                    v-on:import-annotation="onNewRegionDraw"
-                    v-on:dismiss-annotation="dismissAnnotation"
-                    v-on:annotation-peep="annotationPeep"
-                    v-on:annotation-update="annotationUpdate"/>
-              </v-flex>
+            <v-layout row wrap id="annotation-tab">
+              <v-virtual-scroll
+                  :height="annotationTabHeight"
+                  item-height="350"
+                  :bench="10"
+                  :items="annotations[current_slide.id].map((e, idex) => idex)"
+              >
+                <template v-slot:default="{ item }">
+                  <v-flex cols="12" sm="12" md="6">
+                    <annotation-card
+                        v-model="annotations[current_slide.id][item]"
+                        v-on:save-annotation="concludeEdit"
+                        v-on:edit-annotation="editRegion"
+                        v-on:cancel-edit="cancelEdit"
+                        v-on:annotation-feedback="annotationFeedback"
+                        v-on:import-annotation="onNewRegionDraw"
+                        v-on:dismiss-annotation="dismissAnnotation"
+                        v-on:annotation-peep="annotationPeep"
+                        v-on:annotation-update="annotationUpdate"/>
+                  </v-flex>
+                </template>
+              </v-virtual-scroll>
             </v-layout>
+
             <!--            <v-btn fab @click="stressTest"></v-btn>-->
           </v-container>
         </v-tab-item>
@@ -195,7 +211,10 @@
         <v-card-text>
           <div class="text-center font-weight-light">What is the correct label?</div>
           <v-chip-group v-model="editing.feedback.label_id" mandatory>
-            <v-chip filter :key="label.id" v-for="label in project_labels" :value="label.id">{{ label.name }}</v-chip>
+            <v-chip filter
+                    v-for="label in project_labels" :key="label.id"
+                    :value="label.id">{{ label.name }}
+            </v-chip>
           </v-chip-group>
         </v-card-text>
         <v-divider/>
@@ -209,24 +228,39 @@
 </template>
 
 <script>
-import SliceViewer from '../components/WSIViewer';
-import SideWindow from '../components/SideWindow';
-import AnnotationCard from '../components/AnnotationCard';
-import { optimizePath, loadAnnotations } from '@/SliceDrawer';
-import SessionClassBalance from '@/components/SessionClassBalance';
+/* eslint-disable no-param-reassign */
+import { optimizePath, loadAnnotations } from '../SliceDrawer';
+import SliceViewer from '../components/WSIViewer.vue';
+import SideWindow from '../components/SideWindow.vue';
+import AnnotationCard from '../components/AnnotationCard.vue';
+import SessionClassBalance from '../components/SessionClassBalance.vue';
 
 export default {
   name: 'Session',
   computed: {
     /**
      * Returns true if annotation importing is enabled.
-     * Importing is enabled when the task is human or app annotation (type 0 and 2, respectively), the task
-     * is not currently completed and the task belongs to the current user.
+     * Importing is enabled when the task is human or app annotation
+     * (type 0 and 2, respectively), the task is not currently completed
+     * and the task belongs to the current user.
      *
      * @returns {boolean} true if annotation importing is allowed
      */
     annotationImportingEnabled() {
-      return !this.completed && (this.session.type === 0 || this.session.type === 2) && this.taskBelongsToUser;
+      return !this.completed
+          && (this.session.type === 0 || this.session.type === 2)
+          && this.taskBelongsToUser;
+    },
+    annotationTabVisible() {
+      return this.annotations[this.current_slide.id] != null
+          && this.annotations[this.current_slide.id].length > 0;
+    },
+    annotationTabHeight() {
+      const element = document.getElementById('annotation-tab');
+      if (element != null) {
+        return element.clientHeight - 10;
+      }
+      return 900;
     },
     session_id() {
       return this.$route.params.session_id;
@@ -242,14 +276,13 @@ export default {
     },
     slides() {
       const { session } = this.$store.state;
-      console.log(session);
       return session.type !== 1 ? session.task.slides : session.task.task.slides;
     },
     revisions() {
       const revision = [];
       const revisionMeta = this.$store.state.session.task.revisions;
       const revisionData = this.$store.state.session.revision;
-      for (let i = 0; i < revisionMeta.length; i++) {
+      for (let i = 0; i < revisionMeta.length; i += 1) {
         revision.push({
           id: revisionMeta[i].id,
           user: revisionMeta[i].user != null ? revisionMeta[i].user.name : revisionMeta[i].app.name,
@@ -260,17 +293,17 @@ export default {
       return revision;
     },
     /**
-     * Checks if this task belongs to this user. Otherwise, this is currently only for visualization purposes.
+     * Checks if this task belongs to this user. Otherwise, this is
+     * currently only for visualization purposes.
      * @returns {boolean} true if the task belongs to the user
      */
-    taskBelongsToUser: function () {
+    taskBelongsToUser() {
       if (this.task_type === 2) {
         // This is an app annotation task, the task belongs to the user if the user owns the app:
         return this.session.app.owner.id === this.$store.state.user.id;
-      } else {
-        // This is a user-based task
-        return this.session.user.id === this.$store.state.user.id;
       }
+      // This is a user-based task
+      return this.session.user.id === this.$store.state.user.id;
     },
     task_type() {
       return this.$store.state.session.type;
@@ -292,26 +325,19 @@ export default {
     project_labels: {
       immediate: true,
       deep: true,
-      handler(new_labels) {
-        console.log('project_labels watcher', new_labels);
-        for (let i = 0; i < new_labels.length; i++) {
-          this.$set(this.labels_visible, new_labels[i].name, true);
+      handler(newLabels) {
+        for (let i = 0; i < newLabels.length; i += 1) {
+          this.$set(this.labels_visible, newLabels[i].name, true);
         }
-      },
-    },
-    labels_visible: {
-      deep: true,
-      handler(value) {
-        console.log('labels_visible watcher:', value);
       },
     },
 
     'session.completed': function (newValue) {
       this.$get(`task/completed?id=${this.session.id}&completed=${newValue}`)
-          .catch((err) => {
-            this.session.completed = !this.session.completed;
-            alert(err);
-          });
+        .catch((err) => {
+          this.session.completed = !this.session.completed;
+          alert(err);
+        });
     },
     revisingUserTask: {
       handler(newRevisionUserTask) {
@@ -339,9 +365,9 @@ export default {
       selected_tab: 0,
       labels_visible: {},
       drawingStyle: {
-        fillOpacity: 0.3,
-        lineWidth: 1,
-        hoverOpacity: 0.7
+        fillOpacity: 0.2,
+        lineWidth: 2,
+        hoverOpacity: 0.5,
       },
       line_weight: 1,
       revisingUserTask: 'none',
@@ -371,10 +397,10 @@ export default {
 
     saveFeedback(annotation) {
       this.$post(`session/${this.session_id}/annotation_feedback`, annotation.serialize())
-          .then((resp) => {
-            annotation.feedback.id = resp.feedback.id;
-          })
-          .catch((err) => alert(err));
+        .then((resp) => {
+          annotation.feedback.id = resp.feedback.id;
+        })
+        .catch((err) => alert(err));
     },
 
     onRegionHover(region) {
@@ -406,17 +432,17 @@ export default {
       annotation.slideId = this.current_slide.id;
       const self = this;
       this.$post(`session/${this.session_id}/add_region`, annotation.serialize())
-          .then((resp) => {
-            // Add the new region to the list
-            annotation.id = resp.id;
-            annotation.state = 'idle';
-            self.annotations[self.current_slide.id].push(annotation);
-            self.annotationUpdate();
-            this.$refs.classBalance.refresh();
-          })
-          .catch((err) => {
-            alert(`Error while saving region: ${err}`);
-          });
+        .then((resp) => {
+          // Add the new region to the list
+          annotation.id = resp.id;
+          annotation.state = 'idle';
+          self.annotations[self.current_slide.id].push(annotation);
+          self.annotationUpdate();
+          this.$refs.classBalance.refresh();
+        })
+        .catch((err) => {
+          alert(`Error while saving region: ${err}`);
+        });
     },
 
     /**
@@ -428,14 +454,13 @@ export default {
       if (this.task_type === 0) {
         this.editing = null;
         this.$post(`session/${this.session_id}/edit_region`, annotation.serialize())
-            .then((resp) => {
-              // Add the new region to the list
-              console.log(resp);
-              this.$refs.classBalance.refresh();
-            })
-            .catch((err) => {
-              alert(`Error while saving region: ${err}`);
-            });
+          .then(() => {
+            // Add the new region to the list
+            this.$refs.classBalance.refresh();
+          })
+          .catch((err) => {
+            alert(`Error while saving region: ${err}`);
+          });
       } else if (this.task_type === 1) {
         // Making sure to assign that this is a wrong-region type of feedback
         annotation.feedback.feedback = 2;
@@ -456,10 +481,10 @@ export default {
         // if element is null we will wait a few seconds before trying again (switching tabs)
         setTimeout(() => {
           document.getElementById(`region-${region.id}`)
-              .scrollIntoView({
-                behavior: 'smooth',
-                block: 'center',
-              });
+            .scrollIntoView({
+              behavior: 'smooth',
+              block: 'center',
+            });
         }, 250);
       } else {
         // element is already instantiated, we will jump to it:
@@ -486,12 +511,15 @@ export default {
           const slideId = this.current_slide.id;
           const annotations = json.features.map((feature, idx) => {
             const geo = feature.geometry;
-            return {
-              id: `import-${idx}`,
-              label: {
+            const label = feature.properties.label != null
+              ? feature.properties.label
+              : {
                 color: [0, 0, 0],
                 name: 'Imported annotation',
-              },
+              };
+            return {
+              id: `import-${idx}`,
+              label,
               geometry: {
                 type: 'polygon',
                 points: optimizePath(geo.coordinates[0].map((coord) => ({
@@ -503,7 +531,6 @@ export default {
               state: 'importing',
             };
           });
-          console.log('Annotations: ', annotations);
           const slideAnnotations = loadAnnotations({ 0: annotations })[0];
           this.annotations[slideId].push(...slideAnnotations);
           this.annotationUpdate();
@@ -517,7 +544,6 @@ export default {
      * @param region
      */
     editRegion(region) {
-      console.log('editRegion session');
       this.$refs.slice_viewer.editElement(region);
       this.editing = region;
     },
@@ -538,7 +564,6 @@ export default {
     },
 
     annotationFeedback(feedback, annotation) {
-      console.log(feedback, annotation);
       // this.editing = annotation;
       switch (feedback) {
         case 'correct':
@@ -556,19 +581,23 @@ export default {
         case 'wrong-region':
           this.concludeEdit(annotation);
           break;
+        default:
+          break;
       }
     },
 
     dismissAnnotation(annotation) {
       if (annotation.state === 'importing') {
-        this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id].filter((item) => item !== annotation);
+        this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id]
+          .filter((item) => item !== annotation);
       } else if (confirm('Are you sure you want to remove this annotation?')) {
         this.$post(`session/${this.session_id}/remove_annotation`, annotation.serialize())
-            .then((resp) => {
-              this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id].filter((item) => item.id !== annotation.id);
-              this.annotationUpdate();
-            })
-            .catch((err) => alert(err));
+          .then(() => {
+            this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id]
+              .filter((item) => item.id !== annotation.id);
+            this.annotationUpdate();
+          })
+          .catch((err) => alert(err));
       }
     },
   },
@@ -615,7 +644,6 @@ export default {
   display: flex;
   flex-wrap: wrap;
 }
-
 
 .break {
   flex-basis: 100%;

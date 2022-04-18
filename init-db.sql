@@ -34,7 +34,7 @@ CREATE TABLE label
     project_id  INTEGER,
     name        VARCHAR(60),
     label_color VARCHAR(12),
-    FOREIGN KEY (project_id) REFERENCES projects (id)
+    FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
 );
 
 
@@ -58,6 +58,16 @@ CREATE TABLE users
     UNIQUE (username)
 );
 
+CREATE TABLE apps (
+	id SERIAL NOT NULL,
+	name VARCHAR(60),
+	description VARCHAR(120),
+	owner_id INTEGER,
+	PRIMARY KEY (id),
+	FOREIGN KEY(owner_id) REFERENCES users (id) ON DELETE CASCADE
+);
+
+
 
 -- Table: annotation_tasks
 CREATE TABLE annotation_tasks
@@ -67,7 +77,7 @@ CREATE TABLE annotation_tasks
     name       VARCHAR(60),
     created    TIMESTAMP DEFAULT (CURRENT_TIMESTAMP),
     updated    TIMESTAMP,
-    FOREIGN KEY (project_id) REFERENCES projects (id)
+    FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE
 );
 
 
@@ -80,8 +90,8 @@ CREATE TABLE revision_tasks
     updated    TIMESTAMP,
     task_id    INTEGER,
     project_id INTEGER,
-    FOREIGN KEY (project_id) REFERENCES projects (id),
-    FOREIGN KEY (task_id) REFERENCES annotation_tasks (id)
+    FOREIGN KEY (project_id) REFERENCES projects (id) ON DELETE CASCADE,
+    FOREIGN KEY (task_id) REFERENCES annotation_tasks (id) ON DELETE CASCADE
 );
 
 
@@ -91,8 +101,8 @@ CREATE TABLE task_slides
     id       SERIAL PRIMARY KEY,
     task_id  INTEGER,
     slide_id VARCHAR(36),
-    FOREIGN KEY (slide_id) REFERENCES slides (id),
-    FOREIGN KEY (task_id) REFERENCES annotation_tasks (id)
+    FOREIGN KEY (slide_id) REFERENCES slides (id) ON DELETE CASCADE,
+    FOREIGN KEY (task_id) REFERENCES annotation_tasks (id) ON DELETE CASCADE
 );
 
 -- Table: user_tasks
@@ -102,15 +112,17 @@ CREATE TABLE user_tasks
     annotation_task_id INTEGER,
     revision_task_id   INTEGER,
     user_id            INTEGER,
+    app_id             INTEGER,
     type               INTEGER,
     completed          BOOLEAN,
     locked             BOOLEAN,
     created            TIMESTAMP DEFAULT (CURRENT_TIMESTAMP),
     updated            TIMESTAMP,
     PRIMARY KEY (id),
-    FOREIGN KEY (annotation_task_id) REFERENCES annotation_tasks (id),
-    FOREIGN KEY (revision_task_id) REFERENCES revision_tasks (id),
-    FOREIGN KEY (user_id) REFERENCES users (id)
+    FOREIGN KEY (annotation_task_id) REFERENCES annotation_tasks (id) ON DELETE CASCADE,
+    FOREIGN KEY (revision_task_id) REFERENCES revision_tasks (id) ON DELETE CASCADE,
+    FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE,
+    FOREIGN KEY (app_id) REFERENCES apps (id) ON DELETE CASCADE
 );
 
 
@@ -120,8 +132,8 @@ CREATE TABLE revision_task_items
     id           SERIAL PRIMARY KEY,
     task_id      INTEGER,
     user_task_id TEXT,
-    FOREIGN KEY (task_id) REFERENCES revision_tasks (id),
-    FOREIGN KEY (user_task_id) REFERENCES user_tasks (id)
+    FOREIGN KEY (task_id) REFERENCES revision_tasks (id) ON DELETE CASCADE,
+    FOREIGN KEY (user_task_id) REFERENCES user_tasks (id) ON DELETE CASCADE
 );
 
 -- Table: annotations
@@ -137,9 +149,9 @@ CREATE TABLE annotations
     created         TIMESTAMP DEFAULT (CURRENT_TIMESTAMP),
     updated         TIMESTAMP,
     data_json       TEXT,
-    FOREIGN KEY (label_id) REFERENCES label (id),
-    FOREIGN KEY (slide_id) REFERENCES slides (id),
-    FOREIGN KEY (user_task_id) REFERENCES user_tasks (id)
+    FOREIGN KEY (label_id) REFERENCES label (id) ON DELETE CASCADE,
+    FOREIGN KEY (slide_id) REFERENCES slides (id) ON DELETE CASCADE,
+    FOREIGN KEY (user_task_id) REFERENCES user_tasks (id) ON DELETE CASCADE
 );
 
 -- Table: annotations_revised

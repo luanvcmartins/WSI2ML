@@ -15,8 +15,10 @@
       <p class="text-h6 text--primary mt-2">
         {{ status.user.completed }} of {{ status.user.total }} user tasks completed.
       </p>
-      <v-progress-linear class="mb-2" :height="14" :value="(status.user.completed / status.user.total)*100"
-                         :readonly="true"/>
+      <v-progress-linear
+          class="mb-2" :height="14"
+          :value="(status.user.completed / status.user.total)*100"
+          :readonly="true"/>
       <p>The {{ status.general.total }} unique tasks were assigned to
         {{ status.individual.length }} users, for a total of
         {{ status.user.total }} individual user tasks.
@@ -37,17 +39,31 @@
         Annotation stats
       </p>
       <div class="link-container">
-        <a :class="`link ${stat === 'area' ? 'selected' : ''}`" @click="switchMode('area', 'area_perc')">Area (all)</a>
-        <a :class="`link ${stat === 'count' ? 'selected' : ''}`" @click="switchMode('count', 'count_perc')">Count
-          (all)</a>
-        <a :class="`link ${stat === 'desc' ? 'selected' : ''}`" @click="switchMode('desc', 'desc_perc')">Count
-          (comments)</a>
+        <a :class="`link ${stat === 'area' ? 'selected' : ''}`"
+           @click="switchMode('area', 'area_perc')">
+          Area (all)
+        </a>
+        <a :class="`link ${stat === 'count' ? 'selected' : ''}`"
+           @click="switchMode('count', 'count_perc')">
+          Count (all)
+        </a>
+        <a :class="`link ${stat === 'desc' ? 'selected' : ''}`"
+           @click="switchMode('desc', 'desc_perc')">
+          Count (comments)
+        </a>
         <a :class="`link ${stat === 'certain_area' ? 'selected' : ''}`"
-           @click="switchMode('certain_area', 'certain_area_perc')">Area (not including comments)</a>
+           @click="switchMode('certain_area', 'certain_area_perc')">
+          Area (not including comments)
+        </a>
       </div>
-      <div v-if="stats != null" v-for="item in Object.keys(stats)">
-        <span>{{ item }} ({{ stats[item][stat] }})</span>
-        <v-progress-linear :value="stats[item][statPerc]*100" :color="genColor(stats[item].color)" :readonly="true"/>
+      <div v-if="stats != null">
+        <div v-for="item in Object.keys(stats)" :key="item">
+          <span>{{ item }} ({{ stats[item][stat] }})</span>
+          <v-progress-linear
+              :value="stats[item][statPerc]*100"
+              :color="genColor(stats[item].color)"
+              :readonly="true"/>
+        </div>
       </div>
     </v-card-text>
   </v-card>
@@ -59,7 +75,7 @@ export default {
   data() {
     return {
       stat: 'count',
-      statPerc: 'count'
+      statPerc: 'count',
     };
   },
   methods: {
@@ -70,7 +86,7 @@ export default {
 
     genColor(rgb) {
       return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`;
-    }
+    },
   },
   props: ['status', 'stats'],
 };

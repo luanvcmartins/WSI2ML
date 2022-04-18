@@ -29,32 +29,42 @@
               :headers="annotation_headers"
               :items="tasks.annotations">
             <template v-slot:item.slides="{ item }">
-              {{item.slides.length}} slide(s) task
-<!--              <v-chip-group column show-arrows>-->
-<!--                <v-chip style="pointer-events: none;"-->
-<!--                        outlined :readonly="true"-->
-<!--                        v-for="slide in item.slides"-->
-<!--                        :key="slide.id">-->
-<!--                  {{ slide.name }}-->
-<!--                </v-chip>-->
-<!--              </v-chip-group>-->
+              {{ item.slides.length }} slide(s) task
+              <!--              <v-chip-group column show-arrows>-->
+              <!--                <v-chip style="pointer-events: none;"-->
+              <!--                        outlined :readonly="true"-->
+              <!--                        v-for="slide in item.slides"-->
+              <!--                        :key="slide.id">-->
+              <!--                  {{ slide.name }}-->
+              <!--                </v-chip>-->
+              <!--              </v-chip-group>-->
             </template>
             <template v-slot:item.assigned="{ item }">
               <v-chip-group active-class="primary--text" column show-arrows>
-                <v-chip style="pointer-events: none;" :readonly="true" v-for="user in item.assigned" dark
-                        :key="user.id">
+                <v-chip
+                    style="pointer-events: none;" :readonly="true"
+                    v-for="user in item.assigned" dark
+                    :key="user.id">
                   {{ user.name }}
                 </v-chip>
               </v-chip-group>
             </template>
             <template v-slot:item.completed="{ item }">
               <div style="display: inline;">
-                <v-simple-checkbox :ripple="false" style="display: inline-block;" :value="item.completed"/>
-                <v-chip style="display: inline-block;" outlined color="red" v-if="!item.completed">Remaining!</v-chip>
+                <v-simple-checkbox
+                    :ripple="false"
+                    style="display: inline-block;"
+                    :value="item.completed"/>
+                <v-chip style="display: inline-block;" outlined color="red" v-if="!item.completed">
+                  Remaining!
+                </v-chip>
               </div>
             </template>
             <template v-slot:item.actions="{ item }">
-              <v-btn text :color="item.completed ? 'primary' : 'orange accent-4'" @click="startTask(item)">Open image
+              <v-btn text
+                     :color="item.completed ? 'primary' : 'orange accent-4'"
+                     @click="startTask(item)">
+                Open image
               </v-btn>
             </template>
           </v-data-table>
@@ -69,15 +79,15 @@
               :headers="review_headers"
               :items="tasks.review">
             <template v-slot:item.slides="{ item }">
-              {{item.task.task.slides.length}} slide(s) task
-<!--              <v-chip-group column show-arrows>-->
-<!--                <v-chip style="pointer-events: none;"-->
-<!--                        outlined :readonly="true"-->
-<!--                        :key="slide.id"-->
-<!--                        v-for="slide in item.task.task.slides">-->
-<!--                  {{ slide.name }}-->
-<!--                </v-chip>-->
-<!--              </v-chip-group>-->
+              {{ item.task.task.slides.length }} slide(s) task
+              <!--              <v-chip-group column show-arrows>-->
+              <!--                <v-chip style="pointer-events: none;"-->
+              <!--                        outlined :readonly="true"-->
+              <!--                        :key="slide.id"-->
+              <!--                        v-for="slide in item.task.task.slides">-->
+              <!--                  {{ slide.name }}-->
+              <!--                </v-chip>-->
+              <!--              </v-chip-group>-->
             </template>
             <template v-slot:item.revisions="{ item }">
               <v-chip-group column show-arrows>
@@ -99,13 +109,25 @@
             </template>
             <template v-slot:item.completed="{ item }">
               <div style="display: inline;">
-                <v-simple-checkbox :ripple="false" style="display: inline-block;" :value="item.completed"/>
-                <v-chip style="display: inline-block;" outlined color="red" v-if="!item.completed">Remaining!</v-chip>
+                <v-simple-checkbox
+                    :ripple="false"
+                    style="display: inline-block;"
+                    :value="item.completed"/>
+                <v-chip
+                    style="display: inline-block;"
+                    outlined
+                    color="red"
+                    v-if="!item.completed">
+                  Remaining!
+                </v-chip>
               </div>
             </template>
             <template v-slot:item.actions="{ item }">
-              <v-btn text :color="item.completed ? 'primary' : 'orange accent-4'" @click="startTask(item)">Open
-                Revision
+              <v-btn
+                  text
+                  :color="item.completed ? 'primary' : 'orange accent-4'"
+                  @click="startTask(item)">
+                Open Revision
               </v-btn>
             </template>
           </v-data-table>
@@ -119,8 +141,8 @@
 </template>
 
 <script>
-import TaskStatusOverview from '../components/TaskStatusOverview';
-import Loading from '../components/LoadingContent';
+import TaskStatusOverview from '../components/TaskStatusOverview.vue';
+import Loading from '../components/LoadingContent.vue';
 
 export default {
   name: 'Tasks',
@@ -187,24 +209,24 @@ export default {
   methods: {
     startTask(task) {
       this.$post('session/create', task)
-          .then((resp) => {
-            this.$store.commit('set_session', resp);
-            this.$router.push(`/session/${resp.id}`);
-          })
-          .catch((err) => alert(err));
+        .then((resp) => {
+          this.$store.commit('set_session', resp);
+          this.$router.push(`/session/${resp.id}`);
+        })
+        .catch((err) => alert(err));
     },
 
     loadTasks() {
       this.loading = true;
       this.$get('task/list')
-          .then((resp) => {
-            this.tasks = resp;
-            this.loading = false;
-          })
-          .catch((err) => {
-            alert(err);
-            this.loading = false;
-          });
+        .then((resp) => {
+          this.tasks = resp;
+          this.loading = false;
+        })
+        .catch((err) => {
+          alert(err);
+          this.loading = false;
+        });
     },
   },
   mounted() {

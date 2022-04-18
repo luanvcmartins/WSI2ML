@@ -22,7 +22,6 @@
               </template>
             </v-toolbar>
 
-
             <v-card-text v-if="apps_tasks.projects.length > 0">
 
               <v-data-table
@@ -31,7 +30,6 @@
                   :items-per-page="10"
                   :expanded.sync="config.extended_tasks"
                   show-expand>
-
 
                 <template v-slot:item.slides="{ item }">
                   <v-chip-group column show-arrows>
@@ -110,7 +108,11 @@
           </v-card>
         </v-col>
       </v-row>
-      <v-navigation-drawer v-if="drawer" v-model="drawer" app temporary stateless right width="500px">
+      <v-navigation-drawer
+          v-if="drawer"
+          v-model="drawer"
+          app temporary stateless right
+          width="500px">
         <v-toolbar>
           <v-toolbar-title>
             <v-icon @click="drawer = false" large class="mr-1">mdi-close</v-icon>
@@ -141,10 +143,10 @@
 </template>
 
 <script>
-import LoadingContent from '@/components/LoadingContent';
-import AppEditor from '@/components/AppEditor';
-import TaskEditor from '@/components/TaskEditor';
-import AppTaskEditor from '@/components/AppTaskEditor';
+import LoadingContent from '@/components/LoadingContent.vue';
+import AppEditor from '@/components/AppEditor.vue';
+import TaskEditor from '@/components/TaskEditor.vue';
+import AppTaskEditor from '@/components/AppTaskEditor.vue';
 
 export default {
   name: 'Apps',
@@ -220,11 +222,11 @@ export default {
   methods: {
     openSession(task, appTask) {
       this.$post('session/create', appTask)
-          .then((resp) => {
-            this.$store.commit('set_session', resp);
-            this.$router.push(`/session/${resp.id}`);
-          })
-          .catch((err) => alert(err));
+        .then((resp) => {
+          this.$store.commit('set_session', resp);
+          this.$router.push(`/session/${resp.id}`);
+        })
+        .catch((err) => alert(err));
     },
     newApp() {
       this.mode = 'app';
@@ -251,32 +253,32 @@ export default {
     },
     newAppToken(app) {
       this.$post('app/token', app)
-          .then(res => {
-            this.config.dialog_token = res.token;
-            this.config.dialog = true;
-          })
-          .catch(err => alert(err));
+        .then((res) => {
+          this.config.dialog_token = res.token;
+          this.config.dialog = true;
+        })
+        .catch((err) => alert(err));
     },
     loadApps() {
       this.isLoading = true;
       this.$get('app/list')
-          .then((resp) => {
-            this.apps = resp;
-            this.isLoading = false;
-          })
-          .catch((err) => alert(err));
+        .then((resp) => {
+          this.apps = resp;
+          this.isLoading = false;
+        })
+        .catch((err) => alert(err));
     },
     loadTasks() {
       this.isLoading = true;
       this.$get('task/app_task_list')
-          .then((resp) => {
-            this.apps_tasks = resp;
-            if (resp.projects.length > 0) {
-              this.config.project_id = resp.projects[0].id;
-            }
-            this.isLoading = false;
-          })
-          .catch((err) => alert(err));
+        .then((resp) => {
+          this.apps_tasks = resp;
+          if (resp.projects.length > 0) {
+            this.config.project_id = resp.projects[0].id;
+          }
+          this.isLoading = false;
+        })
+        .catch((err) => alert(err));
     },
     done() {
       this.current = null;

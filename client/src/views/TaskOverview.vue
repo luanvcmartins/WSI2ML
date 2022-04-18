@@ -2,7 +2,10 @@
   <loading :is-loading="progress ==null">
     <v-container v-if="progress != null">
       <v-expansion-panels multiple>
-        <v-expansion-panel v-for="project in progress" :key="project.id" @change="panelChanged(project.id)">
+        <v-expansion-panel
+            v-for="project in progress"
+            :key="project.id"
+            @change="panelChanged(project.id)">
           <v-expansion-panel-header>
             <v-toolbar-title class="title">{{ project.name }}</v-toolbar-title>
           </v-expansion-panel-header>
@@ -16,20 +19,22 @@
 </template>
 
 <script>
-import Loading from '../components/LoadingContent';
-import ProjectStatus from '../components/ProjectStatus';
+import Loading from '../components/LoadingContent.vue';
+import ProjectStatus from '../components/ProjectStatus.vue';
 
 export default {
   name: 'TaskOverview',
   data: () => ({
     progress: null,
-    stats: {}
+    stats: {},
   }),
   methods: {
     loadOverview() {
       this.$get('project/progress')
-          .then((res) => this.progress = res)
-          .catch((err) => alert(err));
+        .then((res) => {
+          this.progress = res;
+        })
+        .catch((err) => alert(err));
     },
 
     panelChanged(projectId) {
@@ -40,18 +45,18 @@ export default {
 
     loadAnnotationStats(projectId) {
       this.$get(`project/${projectId}/annotation_stats`)
-          .then(res => {
-            this.$set(this.stats, projectId, res);
-          })
-          .catch(err => alert(err));
-    }
+        .then((res) => {
+          this.$set(this.stats, projectId, res);
+        })
+        .catch((err) => alert(err));
+    },
   },
   mounted() {
     this.loadOverview();
   },
   components: {
     ProjectStatus,
-    Loading
+    Loading,
   },
 };
 </script>

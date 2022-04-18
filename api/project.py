@@ -28,7 +28,7 @@ def new():
         db.session.add(label_obj)
     db.session.commit()
 
-    return jsonify(project.to_json())
+    return jsonify(project.to_dict())
 
 
 @project_api.route("edit", methods=["POST"])

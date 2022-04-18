@@ -233,16 +233,6 @@ export default {
         // }
       },
     },
-    // selectedTool(tool) {
-    //   if (this.annotationDrawer != null) {
-    //     if (tool === 'polygon') {
-    //       this.annotationDrawer.tool = PolygonAnnotationTool;
-    //     } else if (tool === 'rect') {
-    //       this.annotationDrawer.tool = RectAnnotationTool;
-    //     }
-    //
-    //   }
-    // },
     zoom(newZoom) {
       const { viewer } = this;
       if (viewer != null && !this.no_model_action) {
@@ -388,6 +378,7 @@ export default {
       this.annotationDrawer.filtering = this.labelsVisibility;
       this.annotationDrawer.label = this.selectedLabel;
       this.annotationDrawer.pixelWidth = this.slideProperties.pixel_width;
+      this.annotationDrawer.style = this.drawingStyle;
       this.annotationDrawer.update();
       this.viewer.addHandler('zoom', (e) => {
         this.no_model_action = true; // don't let the zoom listener take action
