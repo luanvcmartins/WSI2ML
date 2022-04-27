@@ -33,6 +33,18 @@ import { Annotation } from '@/SliceDrawer';
 
 export default {
   name: 'AnnotationIdleCard',
+  watch: {
+    'value.label': {
+      immediate: true,
+      handler(newValue) {
+        this.selectedLabel = newValue;
+      },
+    },
+    selectedLabel(newValue) {
+      this.value.label = newValue;
+      this.updateRender();
+    },
+  },
   computed: {
     cardTitle() {
       if (this.value.title != null && this.value.title !== '') {
@@ -48,6 +60,11 @@ export default {
       }
       return labels;
     },
+  },
+  data() {
+    return {
+      selectedLabel: null,
+    };
   },
   methods: {
     genColor(color) {
