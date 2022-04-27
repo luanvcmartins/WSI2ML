@@ -188,6 +188,22 @@ def annotation_feedback(session_id):
     return jsonify(annotation)
 
 
+@session_api.route("<string:session_id>/<string:slide_id>/importing", methods=['POST'])
+def importing(session_id, slide_id):
+    slide_annotations = request.json
+    for slide_annotation in slide_annotations:
+        db.session.add(models.Annotation(
+            user_task_id=session_id,
+            title=slide_annotation['title'] if 'title' in slide_annotation else None,
+            data=slide_annotation['geometry'],
+            properties=slide_annotation['properties'] if 'properties' in slide_annotation else None,
+            label_id=slide_annotation['label']['id'],
+            slide_id=slide_id
+        ))
+    db.session.commit()
+    return jsonify({"count": len(slide_annotations)})
+
+
 @session_api.route("<string:session_id>/<string:slide_id>/class_balance", methods=['POST'])
 def class_balance(session_id, slide_id):
     if slide_id == 'all':

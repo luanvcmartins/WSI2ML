@@ -5,7 +5,7 @@
     <div class="drawing-tool-container">
 
       <div class="tool-item">
-        <div class="zoom-shortcuts" v-if="task_type === 0" >
+        <div class="zoom-shortcuts" v-if="task_type === 0">
           <v-menu top :close-on-click="true" offset-y>
             <template v-slot:activator="{ on, attrs }">
               <v-btn text v-bind="attrs" v-on="on">
@@ -60,58 +60,19 @@
                  :color="'ruler' === annotationDrawer.tool ? 'primary' : 'grey'">
             <v-icon>mdi-ruler</v-icon>
           </v-btn>
-
-          <!--          <v-btn text icon-->
-          <!--                 @click="annotationDrawer.tool = 'free'"-->
-          <!--                 :color="'free' === annotationDrawer.tool ? 'primary' : 'grey'">-->
-          <!--            <v-icon>mdi-lead-pencil</v-icon>-->
-          <!--          </v-btn>-->
-
-          <!--          <v-btn text icon-->
-          <!--                 @click="selectedTool = 'brush'"-->
-          <!--                 :color="'brush' === selectedTool ? 'primary' : 'grey'">-->
-          <!--            <v-icon>mdi-brush</v-icon>-->
-          <!--          </v-btn>-->
-
         </div>
-
-        <!--        <div v-if="editing.element != null" class="zoom-shortcuts">-->
-
-        <!--          <v-btn text icon-->
-        <!--                 @click="editing.mode = 'mover'"-->
-        <!--                 :color="'mover' === editing.mode ? 'primary' : 'grey'">-->
-        <!--            <v-icon>mdi-vector-polyline-edit</v-icon>-->
-        <!--          </v-btn>-->
-        <!--          <v-btn text icon-->
-        <!--                 @click="editing.mode = 'eraser'"-->
-        <!--                 :color="'eraser' === editing.mode ? 'primary' : 'grey'">-->
-        <!--            <v-icon>mdi-vector-polyline-minus</v-icon>-->
-        <!--          </v-btn>-->
-        <!--          <v-btn text icon-->
-        <!--                 @click="editing.mode = 'creator'"-->
-        <!--                 :color="'creator' === editing.mode ? 'primary' : 'grey'">-->
-        <!--            <v-icon>mdi-vector-polyline-plus</v-icon>-->
-        <!--          </v-btn>-->
-        <!--          <v-btn text icon-->
-        <!--                 @click="editing.mode = 'free'"-->
-        <!--                 :color="'free' === editing.mode ? 'primary' : 'grey'">-->
-        <!--            <v-icon>mdi-lead-pencil</v-icon>-->
-        <!--          </v-btn>-->
-        <!--        </div>-->
-        <!--      </div>-->
-
       </div>
-      <div v-if="state_restorer.showing" class="tool-item">
+      <div v-if="stateRestorer.showing" class="tool-item">
         <v-slider step="1" dense hide-details
-                  v-model="state_restorer.undo" :max="state_restorer.max_undo"
+                  v-model="stateRestorer.undo" :max="stateRestorer.max_undo"
                   label="Undo"/>
       </div>
 
-      <div class="tool-item" v-if="info.length > 0">
-        <p class="instruction-item" v-for="instruction in info" :key="instruction">
-          {{ instruction }}
-        </p>
-      </div>
+      <!--      <div class="tool-item" v-if="info.length > 0">-->
+      <!--        <p class="instruction-item" v-for="instruction in info" :key="instruction">-->
+      <!--          {{ instruction }}-->
+      <!--        </p>-->
+      <!--      </div>-->
     </div>
     <div class="toolbox navigation-toolbox">
       <v-slider hide-details thumb-label dense v-model="zoom" :max="40" min="0.5" step="0">
@@ -168,7 +129,7 @@ export default {
       element: null,
       mode: 'mover',
     },
-    state_restorer: {
+    stateRestorer: {
       showing: false,
       undo: 0,
       max_undo: 0,
@@ -250,12 +211,11 @@ export default {
         }
       },
     },
-    'editing.mode': function (value) {
-      // SliceDrawer.editorMode = value;
-    },
-    'state_restorer.undo': function (value) {
+    'stateRestorer.undo': function (value) {
       if (!this.no_model_action) {
-        // SliceDrawer.stateRestorer.restoreToPoint(value);
+        if (this.annotationDrawer.currentTool != null) {
+          this.annotationDrawer.currentTool.stateRestorer.restoreToPoint(value);
+        }
       }
       this.no_model_action = false;
     },
@@ -279,8 +239,6 @@ export default {
       this.annotationDrawer.editAnnotation(annotation);
     },
     concludeEdit() {
-      // this.editing.element = element
-      // this.no_model_action = true
       this.annotationDrawer.concludeEdit();
     },
     cancelEdit() {
@@ -324,8 +282,6 @@ export default {
         },
         onHover: (element) => {
           delegateCallback(this.drawEvents.onHover, element);
-          // if (this.drawEvents != null && this.drawEvents.onHover != null)
-          //     this.drawEvents.onHover(element)
         },
         onLeave: (element) => {
           delegateCallback(this.drawEvents.onLeave, element);
@@ -334,13 +290,14 @@ export default {
           delegateCallback(this.drawEvents.onClick, element);
         },
         onStateRestorerEvent: (stateRestorer) => {
+          console.log('onStateRestorerEvent', stateRestorer);
           this.no_model_action = true;
           if (stateRestorer != null) {
-            this.state_restorer.showing = true;
-            this.state_restorer.max_undo = stateRestorer.states.length - 1;
-            this.state_restorer.undo = stateRestorer.current_state_point;
+            this.stateRestorer.showing = true;
+            this.stateRestorer.max_undo = stateRestorer.states.length - 1;
+            this.stateRestorer.undo = stateRestorer.currentStatePoint;
           } else {
-            this.state_restorer.showing = false;
+            this.stateRestorer.showing = false;
           }
           delegateCallback(this.drawEvents.onStateRestorerEvent, stateRestorer);
         },
@@ -432,7 +389,7 @@ export default {
   position: absolute;
   left: 16px;
   bottom: 16px;
-  height: 500px;
+  height: auto;
   display: flex;
   flex-direction: column-reverse;
 }

@@ -45,8 +45,8 @@ export default {
       immediate: true,
       handler(newValue) {
         this.task = _.cloneDeep(newValue);
-      }
-    }
+      },
+    },
   },
   data() {
     return {
@@ -54,7 +54,7 @@ export default {
       app: null,
       apps: [],
       annotate: 0,
-      annotations: {}
+      annotations: {},
     };
   },
   methods: {
@@ -70,9 +70,9 @@ export default {
         const json = JSON.parse(readerEvent.target.result);
         annotations[slideId] = json.features.map((feature, idx) => {
           const geo = feature.geometry;
-          const properties = feature.properties;
+          const { properties } = feature;
           return {
-            label_id: properties.label_id,
+            label_id: properties.label.id,
             title: properties.title,
             geometry: {
               type: 'polygon',
@@ -81,7 +81,8 @@ export default {
                 y: coord[1],
               }))),
             },
-            slide_id: slideId
+            label: properties.label,
+            slide_id: slideId,
           };
         });
       };
@@ -90,29 +91,29 @@ export default {
 
     loadApps() {
       this.$get('app/list')
-          .then((resp) => {
-            this.apps = resp;
-          })
-          .catch((err) => alert(err));
+        .then((resp) => {
+          this.apps = resp;
+        })
+        .catch((err) => alert(err));
     },
     save() {
       const appRequest = {
-        'annotation_id': this.value.id,
-        'app_id': this.app.id,
-        'annotations': this.annotations
+        annotation_id: this.value.id,
+        app_id: this.app.id,
+        annotations: this.annotations,
       };
 
       this.$post('task/new_app_task', appRequest)
-          .then((resp) => {
-            this.$emit('done');
-          })
-          .catch(err => alert(err));
-    }
+        .then((resp) => {
+          this.$emit('done');
+        })
+        .catch((err) => alert(err));
+    },
   },
   mounted() {
     this.loadApps();
   },
-  props: ['value']
+  props: ['value'],
 };
 </script>
 

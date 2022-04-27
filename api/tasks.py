@@ -372,7 +372,7 @@ def new_app_task():
                     title=slide_annotation['title'] if 'title' in slide_annotation else None,
                     data=slide_annotation['geometry'],
                     properties=slide_annotation['properties'] if 'properties' in slide_annotation else None,
-                    label_id=slide_annotation['label_id'],
+                    label_id=slide_annotation['label']['id'],
                     slide_id=slide_id
                 ))
         app_task.completed = True

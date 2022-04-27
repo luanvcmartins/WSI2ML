@@ -49,6 +49,12 @@
                         v-model="labels_visible[label.name]"
                         :label="label.name"
                         :color="genColor(label.color)"/>
+                    <v-switch
+                        class="mt-0"
+                        hide-details dense
+                        label="Show importing"
+                        v-model="drawingStyle.showImporting"
+                    />
                   </div>
                   <v-divider></v-divider>
                   <div class="flex-container">
@@ -162,7 +168,11 @@
                   <div class="pl-3 pr-3 text-center font-weight-thin card-description">
                     Select a geojson file to import its annotations to the currently selected slide.
                   </div>
-                  <div class="pl-3 pr-3 pb-3">
+                  <div v-if="confirmingImportAnnotations" class="pl-3 pr-3 pb-3">
+                    <v-btn @click="dismissAll" text>Cancel</v-btn>
+                    <v-btn @click="importAll" text>Import all</v-btn>
+                  </div>
+                  <div v-else class="pl-3 pr-3 pb-3">
                     <input id="file-importer-input" type="file" style="display: none">
                     <v-btn @click="importAnnotations" block text>Select file</v-btn>
                   </div>
@@ -171,30 +181,31 @@
             </v-layout>
           </v-container>
         </v-tab-item>
-        <v-tab-item>
+        <v-tab-item v-if="annotations[current_slide.id] != null">
           <v-container fluid grid-list-md>
             <v-layout row wrap id="annotation-tab">
-              <v-virtual-scroll
-                  :height="annotationTabHeight"
-                  item-height="350"
-                  :bench="10"
-                  :items="annotations[current_slide.id].map((e, idex) => idex)"
-              >
-                <template v-slot:default="{ item }">
-                  <v-flex cols="12" sm="12" md="6">
-                    <annotation-card
-                        v-model="annotations[current_slide.id][item]"
-                        v-on:save-annotation="concludeEdit"
-                        v-on:edit-annotation="editRegion"
-                        v-on:cancel-edit="cancelEdit"
-                        v-on:annotation-feedback="annotationFeedback"
-                        v-on:import-annotation="onNewRegionDraw"
-                        v-on:dismiss-annotation="dismissAnnotation"
-                        v-on:annotation-peep="annotationPeep"
-                        v-on:annotation-update="annotationUpdate"/>
-                  </v-flex>
-                </template>
-              </v-virtual-scroll>
+              <v-flex cols="12" sm="12" md="6"
+                      v-for="idx in annotationsLister.pageMax"
+                      :key="idx">
+                <annotation-card
+                    v-model="annotations[current_slide.id][annotationsListStart + idx]"
+                    v-on:save-annotation="concludeEdit"
+                    v-on:edit-annotation="editRegion"
+                    v-on:cancel-edit="cancelEdit"
+                    v-on:annotation-feedback="annotationFeedback"
+                    v-on:import-annotation="onNewRegionDraw"
+                    v-on:dismiss-annotation="dismissAnnotation"
+                    v-on:annotation-peep="annotationPeep"
+                    v-on:annotation-update="annotationUpdate"/>
+              </v-flex>
+              <v-flex>
+                <v-pagination
+                    v-model="annotationsLister.page"
+                    :length="annotationsLister.totalPages+1"
+                    circle
+                    :total-visible="4"
+                ></v-pagination>
+              </v-flex>
             </v-layout>
 
             <!--            <v-btn fab @click="stressTest"></v-btn>-->
@@ -203,33 +214,12 @@
       </v-tabs-items>
 
     </side-window>
-    <v-dialog v-if="feedback_dialog" v-model="feedback_dialog" width="500">
-      <v-card>
-        <v-card-title class="text-h5 grey lighten-2">
-          Annotation label feedback
-        </v-card-title>
-        <v-card-text>
-          <div class="text-center font-weight-light">What is the correct label?</div>
-          <v-chip-group v-model="editing.feedback.label_id" mandatory>
-            <v-chip filter
-                    v-for="label in project_labels" :key="label.id"
-                    :value="label.id">{{ label.name }}
-            </v-chip>
-          </v-chip-group>
-        </v-card-text>
-        <v-divider/>
-        <v-card-actions>
-          <v-spacer/>
-          <v-btn text @click="relabelScreenContinue">Continue</v-btn>
-        </v-card-actions>
-      </v-card>
-    </v-dialog>
   </v-container>
 </template>
 
 <script>
 /* eslint-disable no-param-reassign */
-import { optimizePath, loadAnnotations } from '../SliceDrawer';
+import { loadAnnotations, optimizePath } from '../SliceDrawer';
 import SliceViewer from '../components/WSIViewer.vue';
 import SideWindow from '../components/SideWindow.vue';
 import AnnotationCard from '../components/AnnotationCard.vue';
@@ -254,13 +244,6 @@ export default {
     annotationTabVisible() {
       return this.annotations[this.current_slide.id] != null
           && this.annotations[this.current_slide.id].length > 0;
-    },
-    annotationTabHeight() {
-      const element = document.getElementById('annotation-tab');
-      if (element != null) {
-        return element.clientHeight - 10;
-      }
-      return 900;
     },
     session_id() {
       return this.$route.params.session_id;
@@ -308,6 +291,9 @@ export default {
     task_type() {
       return this.$store.state.session.type;
     },
+    annotationsListStart() {
+      return (this.annotationsLister.page - 1) * this.annotationsLister.max;
+    },
   },
   watch: {
     session: {
@@ -316,6 +302,7 @@ export default {
         if (session.task.type === 0 || session.task.type === 2) {
           this.annotations = loadAnnotations(session.labelled);
           this.current_slide = session.task.slides[0];
+          this.calculatePagination();
         } else if (session.task.type === 1) {
           this.annotations = {};
           this.current_slide = session.task.task.slides[0];
@@ -332,6 +319,12 @@ export default {
       },
     },
 
+    'annotationsLister.page': function (newPage) {
+      const totalAnnotation = this.annotations[this.current_slide.id].length;
+      const remaining = totalAnnotation - ((newPage - 1) * this.annotationsLister.max);
+      this.annotationsLister.pageMax = Math.min(this.annotationsLister.max, remaining);
+    },
+
     'session.completed': function (newValue) {
       this.$get(`task/completed?id=${this.session.id}&completed=${newValue}`)
         .catch((err) => {
@@ -344,17 +337,22 @@ export default {
         if (newRevisionUserTask !== 'none') {
           const userTaskAnnotations = this.$store.state.session.revision[newRevisionUserTask];
           this.annotations = loadAnnotations(userTaskAnnotations);
+          this.calculatePagination();
         } else {
           const annotations = {};
           this.slides.forEach((item) => {
             annotations[item.id] = [];
           });
           this.annotations = annotations;
+          this.calculatePagination();
         }
         this.$nextTick(() => {
           this.annotationUpdate();
         });
       },
+    },
+    current_slide() {
+      this.calculatePagination();
     },
   },
   data() {
@@ -364,15 +362,22 @@ export default {
       annotations: {},
       selected_tab: 0,
       labels_visible: {},
+      annotationsLister: {
+        page: 1,
+        totalPages: 1,
+        pageMax: 10,
+        max: 10,
+      },
       drawingStyle: {
         fillOpacity: 0.2,
         lineWidth: 2,
         hoverOpacity: 0.5,
+        showImporting: true,
       },
       line_weight: 1,
       revisingUserTask: 'none',
-      feedback_dialog: false,
       highlightOnTab: false,
+      confirmingImportAnnotations: false,
       draw_events: {
         onHover: self.onRegionHover,
         onLeave: self.onRegionLeave,
@@ -386,12 +391,14 @@ export default {
       alert(slide.properties.comment);
     },
 
-    relabelScreenContinue() {
-      if (this.editing.feedback.feedback !== 2) {
-        this.saveFeedback();
+    calculatePagination() {
+      if (this.current_slide.id in this.annotations) {
+        const totalAnnotation = this.annotations[this.current_slide.id].length;
+        this.annotationsLister.totalPages = Math.floor(totalAnnotation / this.annotationsLister.max);
+        this.annotationsLister.page = 1;
       } else {
-        this.feedback_dialog = false;
-        this.editRegion(this.editing);
+        this.annotationsLister.totalPages = 0;
+        this.annotationsLister.page = 0;
       }
     },
 
@@ -436,6 +443,7 @@ export default {
           // Add the new region to the list
           annotation.id = resp.id;
           annotation.state = 'idle';
+          annotation.updateImageLocation();
           self.annotations[self.current_slide.id].push(annotation);
           self.annotationUpdate();
           this.$refs.classBalance.refresh();
@@ -475,30 +483,49 @@ export default {
      * @param short
      */
     regionClicked(region, short = false) {
-      const element = document.getElementById(`region-${region.id}`);
       this.selected_tab = 1;
-      if (element == null) {
-        // if element is null we will wait a few seconds before trying again (switching tabs)
-        setTimeout(() => {
-          document.getElementById(`region-${region.id}`)
-            .scrollIntoView({
-              behavior: 'smooth',
-              block: 'center',
-            });
-        }, 250);
-      } else {
-        // element is already instantiated, we will jump to it:
-        element.scrollIntoView({
-          behavior: 'smooth',
-          block: 'center',
+      const pageChanged = this.navigateAnnotationPage(region);
+      if (pageChanged && this.attempted === 0) {
+        this.attempted = 1;
+        this.$nextTick(() => {
+          this.regionClicked(region, short);
         });
-        element.classList.add('highlighted');
-        if (short) element.classList.add('short');
-        setTimeout(() => {
-          element.classList.remove('highlighted');
-          element.classList.remove('short');
-        }, short ? 250 : 3000);
+      } else {
+        this.attempted = 0;
+        const element = document.getElementById(`region-${region.id}`);
+        if (element == null) {
+          // if element is null we will wait a few seconds before trying again (switching tabs)
+          setTimeout(() => {
+            document.getElementById(`region-${region.id}`)
+              .scrollIntoView({
+                behavior: 'smooth',
+                block: 'center',
+              });
+          }, 250);
+        } else {
+          // element is already instantiated, we will jump to it:
+          element.scrollIntoView({
+            behavior: 'smooth',
+            block: 'center',
+          });
+          element.classList.add('highlighted');
+          if (short) element.classList.add('short');
+          setTimeout(() => {
+            element.classList.remove('highlighted');
+            element.classList.remove('short');
+          }, short ? 250 : 3000);
+        }
       }
+    },
+
+    navigateAnnotationPage(annotation) {
+      const idx = this.annotations[this.current_slide.id].indexOf(annotation);
+      const newPage = Math.ceil(idx / this.annotationsLister.max);
+      if (newPage !== this.annotationsLister.page) {
+        this.annotationsLister.page = newPage;
+        return true;
+      }
+      return false;
     },
 
     importAnnotations() {
@@ -531,14 +558,35 @@ export default {
               state: 'importing',
             };
           });
+          this.confirmingImportAnnotations = true;
           const slideAnnotations = loadAnnotations({ 0: annotations })[0];
           this.annotations[slideId].push(...slideAnnotations);
+          this.calculatePagination();
           this.annotationUpdate();
         };
       };
       input.click();
     },
 
+    importAll() {
+      const toImport = this.annotations[this.current_slide.id]
+        .filter(
+          (annotation) => annotation.state === 'importing'
+                  && annotation.label.id != null,
+        )
+        .map((annotation) => annotation.serialize());
+      this.$post(`session/${this.session_id}/${this.current_slide.id}/importing`, toImport)
+        .then((res) => {
+          alert(res);
+        })
+        .catch((err) => alert(err));
+    },
+
+    dismissAll() {
+      this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id]
+        .filter((annotation) => annotation.state !== 'importing');
+      this.confirmingImportAnnotations = false;
+    },
     /**
      *
      * @param region
@@ -596,6 +644,7 @@ export default {
             this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id]
               .filter((item) => item.id !== annotation.id);
             this.annotationUpdate();
+            this.calculatePagination();
           })
           .catch((err) => alert(err));
       }

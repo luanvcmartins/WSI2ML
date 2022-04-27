@@ -241,6 +241,7 @@ class PolygonAnnotationTool {
     this.drawer = drawer;
     this.newAnnotation = null;
     this.dragging = false;
+
     drawer.setPanningEnabled(false);
     this.info('start', 'pan');
   }
@@ -267,6 +268,7 @@ class PolygonAnnotationTool {
 
   destroy() {
     this.drawer.setPanningEnabled(true);
+    this.stateRestorer.cancel();
     this.newAnnotation = null;
   }
 
@@ -288,14 +290,17 @@ class PolygonAnnotationTool {
             },
             label,
           });
+          this.stateRestorer = new StateRestorer(this.drawer, this.newAnnotation);
         } else {
           this.newAnnotation.geometry.points.push(imagePosition);
+          this.stateRestorer.addRestorePoint('Added point');
         }
         this.drawer.refresh();
         break;
       case 'move':
         if (this.dragging && this.newAnnotation != null) {
           this.newAnnotation.geometry.points.push(imagePosition);
+          this.stateRestorer.addRestorePoint('Added point');
           this.drawer.refresh();
         }
         break;
@@ -315,6 +320,7 @@ class PolygonAnnotationTool {
         if (this.newAnnotation != null) {
           this.newAnnotation.state = 'idle';
           this.newAnnotation.geometry.points = optimizePath(this.newAnnotation.geometry.points);
+          this.newAnnotation.update();
           this.drawer.callback.onFinishNewDrawing(this.newAnnotation);
           this.newAnnotation = null;
           this.drawer.update();
@@ -323,6 +329,7 @@ class PolygonAnnotationTool {
         // User pressed ESC
         this.newAnnotation = null;
         this.drawer.refresh();
+        this.stateRestorer.cancel();
       }
     }
   }
@@ -375,7 +382,6 @@ class PathMeshEditor {
   }
 
   mouseEvent(func, e) {
-    // todo all at once
     if (this.annotation == null) return;
     const points = this.annotation.state === 'feedback-editing'
       ? this.annotation.feedback.geometry : this.annotation.geometry.points;
@@ -560,51 +566,46 @@ class PathMeshEditor {
 /* the conversion from pixel to shape may be done with a search algorithm.
 The points are the pixels which were unable to find add one of its side to the search */
 
-const StateRestorer = {
-  instance: null,
-  geometry: null,
-  states: [],
-  current_state_point: 0,
+class StateRestorer {
+  constructor(instance, annotation) {
+    this.instance = instance;
+    this.annotation = annotation;
+    this.states = [];
+    this.currentStatePoint = 0;
+    this.instance.callback.onStateRestorerEvent(this);
+  }
 
   addRestorePoint(event) {
-    if (this.states.length > 0 && this.current_state_point !== this.states.length - 1) {
+    if (this.states.length > 0 && this.currentStatePoint !== this.states.length - 1) {
       // We are overriding the past, we will clear the states
-      this.states.splice(this.current_state_point, this.states.length - this.current_state_point);
-      console.log('clearing future:', this.states.length);
+      this.states.splice(this.currentStatePoint, this.states.length - this.currentStatePoint);
     }
     this.states.push({
       type: event,
-      points: this.geometry.points.map((item) => // todo not all elements have points
-        ({
-          x: item.x,
-          y: item.y,
-        })),
+      points: this.annotation.geometry.points.map((item) => ({
+        x: item.x,
+        y: item.y,
+      })),
     });
-    this.current_state_point = this.states.length - 1;
+    this.currentStatePoint = this.states.length - 1;
     this.instance.callback.onStateRestorerEvent(this);
     // todo report state changed
-  },
+  }
 
   restoreToPoint(value) {
     console.log('restoreToPoint', value);
-    this.geometry.points = this.states[value].points;
+    this.annotation.geometry.points = this.states[value].points;
     this.instance.update();
-    this.current_state_point = value;
+    this.currentStatePoint = value;
     this.instance.callback.onStateRestorerEvent(this);
-  },
+  }
+
   cancel() {
     this.instance.stateRestorer = null;
     this.states = null;
     this.instance.callback.onStateRestorerEvent(null);
-  },
-  init(instance, geometry) {
-    this.instance = instance;
-    this.geometry = geometry;
-    this.states = [];
-    instance.callback.onStateRestorerEvent(this);
-    return this;
-  },
-};
+  }
+}
 
 class Annotation {
   constructor(drawer, annotation) {
@@ -966,7 +967,11 @@ class CircleAnnotation extends Annotation {
 class PolygonAnnotation extends Annotation {
   constructor(drawer, annotation) {
     super(drawer, annotation);
-    annotation.geometry.points.forEach((point) => {
+    this.updateImageLocation();
+  }
+
+  updateImageLocation() {
+    this.geometry.points.forEach((point) => {
       if (this.imageLocation.left > point.x) {
         this.imageLocation.left = point.x;
       }
@@ -1415,7 +1420,8 @@ class AnnotationDrawer {
         annotation.updateViewport(); // for collision checks
         if (annotation.shouldBeVisible(self.currentViewport)) {
           // Annotation would be visible on the screen, does the user want to see it?
-          if (self.filtering[annotation.label.name] || annotation.state === 'importing') {
+          if (self.filtering[annotation.label.name]
+            || (annotation.state === 'importing' && self.style.showImporting)) {
             // This annotation must be drawn:
             annotation.update();
             annotation.draw();
