@@ -55,10 +55,12 @@
                 <template v-slot:expanded-item="{ headers, item }">
                   <td :colspan="headers.length">
                     <v-row>
-                      <v-chip-group>
-                        <v-chip v-for="app_task in item.app_tasks" :key="app_task.user_task_id"
-                                :color="!app_task.completed ? 'orange' : 'gray'"
-                                @click="openSession(item, app_task)">
+                      <v-chip-group column>
+                        <v-chip
+                            v-for="app_task in item.app_tasks" :key="app_task.user_task_id"
+                            :color="!app_task.completed ? 'orange' : 'gray'"
+                            @click="openSession(item, app_task)"
+                        >
                           <v-icon left>
                             mdi-play
                           </v-icon>
@@ -74,8 +76,6 @@
             <v-card-text v-else>
               No task registered yet.
             </v-card-text>
-            <v-card-actions>
-            </v-card-actions>
           </v-card>
         </v-col>
       </v-row>

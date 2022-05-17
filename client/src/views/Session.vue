@@ -41,6 +41,7 @@
                 <v-card>
                   <v-card-title>Annotation visibility</v-card-title>
                   <div class="pl-3 pr-3 pb-3" style="max-height: 200px; overflow-y: auto">
+
                     <v-switch
                         class="mt-0"
                         hide-details dense
@@ -55,6 +56,18 @@
                         label="Show importing"
                         v-model="drawingStyle.showImporting"
                     />
+                  </div>
+                  <div style="text-align: center;">
+                    <a href="javascript:void(0)"
+                       class="link-btn"
+                       @click="labelAnnotationsVisibility(true)">
+                      Select all
+                    </a> |
+                    <a href="javascript:void(0)"
+                       class="link-btn"
+                       @click="labelAnnotationsVisibility(false)">
+                      Unselect all
+                    </a>
                   </div>
                   <v-divider></v-divider>
                   <div class="flex-container">
@@ -99,12 +112,11 @@
                   </div>
                 </v-card>
               </v-flex>
-              <v-flex cols="12" sm="12" md="6" v-if="slides.length > 1">
+              <v-flex cols="12" sm="12" md="6">
                 <v-card>
                   <div class="pa-3 pb-0 text-h6 text--primary">Task slides</div>
                   <div class="pl-3 pr-3 text-center font-weight-thin card-description">
-                    There is more than one slide
-                    associated with this task. Select the slide you want to work with below.
+                    Select the slide you want to work with below.
                   </div>
                   <div class="pl-3 pr-3 pb-3">
 
@@ -120,11 +132,11 @@
                             <v-list-item-subtitle v-text="slide.properties.comment"/>
                           </v-list-item-content>
 
-                          <v-list-item-action>
-                            <v-btn @click.stop="slideInfo(slide)" icon>
-                              <v-icon dark>mdi-information-outline</v-icon>
-                            </v-btn>
-                          </v-list-item-action>
+<!--                          <v-list-item-action>-->
+<!--                            <v-btn @click.stop="slideInfo(slide)" icon>-->
+<!--                              <v-icon dark>mdi-information-outline</v-icon>-->
+<!--                            </v-btn>-->
+<!--                          </v-list-item-action>-->
                         </v-list-item>
                       </v-list-item-group>
                     </v-list>
@@ -387,8 +399,10 @@ export default {
     };
   },
   methods: {
-    slideInfo(slide) {
-      alert(slide.properties.comment);
+    labelAnnotationsVisibility(target) {
+      this.project_labels.forEach((label) => {
+        this.labels_visible[label.name] = target;
+      });
     },
 
     calculatePagination() {
@@ -447,6 +461,7 @@ export default {
           self.annotations[self.current_slide.id].push(annotation);
           self.annotationUpdate();
           this.$refs.classBalance.refresh();
+          this.calculatePagination();
         })
         .catch((err) => {
           alert(`Error while saving region: ${err}`);
@@ -465,6 +480,7 @@ export default {
           .then(() => {
             // Add the new region to the list
             this.$refs.classBalance.refresh();
+            this.calculatePagination();
           })
           .catch((err) => {
             alert(`Error while saving region: ${err}`);
@@ -473,6 +489,7 @@ export default {
         // Making sure to assign that this is a wrong-region type of feedback
         annotation.feedback.feedback = 2;
         this.saveFeedback(annotation);
+        this.calculatePagination();
       }
     },
 
@@ -544,9 +561,12 @@ export default {
                 color: [0, 0, 0],
                 name: 'Imported annotation',
               };
+            const description = feature.properties.description != null
+              ? feature.properties.description : null;
             return {
               id: `import-${idx}`,
               label,
+              description,
               geometry: {
                 type: 'polygon',
                 points: optimizePath(geo.coordinates[0].map((coord) => ({
@@ -701,5 +721,11 @@ export default {
 
 .card-description {
   font-size: 12px;
+}
+
+.link-btn {
+  font-size: 12px;
+  margin-left: 4px;
+  margin-right: 4px;
 }
 </style>

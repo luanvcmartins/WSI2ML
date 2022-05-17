@@ -38,6 +38,7 @@
     <!--    </v-card-text>-->
     <v-divider/>
     <v-card-actions>
+      <v-btn icon @click="peep"><v-icon>mdi-eye</v-icon></v-btn>
       <v-spacer/>
       <div v-if="updatingLabel">
         <v-btn text @click="cancelEdit">Cancel</v-btn>
@@ -166,6 +167,9 @@ export default {
     },
     dismissAnnotation() {
       this.$emit('dismiss-annotation', this.value);
+    },
+    peep() {
+      this.$emit('peep', this.value);
     },
 
     feedbackWrongLabel() {

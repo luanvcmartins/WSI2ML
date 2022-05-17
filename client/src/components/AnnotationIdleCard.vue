@@ -9,6 +9,7 @@
     </v-card-text>
     <v-divider/>
     <v-card-actions>
+      <v-btn icon @click="peep"><v-icon>mdi-eye</v-icon></v-btn>
       <v-spacer/>
       <v-btn text @click="dismissAnnotation">Remove</v-btn>
       <v-btn text @click="editRegion(value)">Edit</v-btn>
@@ -41,6 +42,9 @@ export default {
     dismissAnnotation() {
       this.updating_label = false;
       this.$emit('dismiss-annotation', this.value);
+    },
+    peep() {
+      this.$emit('peep', this.value);
     },
   },
   props: { value: { type: Annotation } },

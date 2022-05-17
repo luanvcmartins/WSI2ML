@@ -20,117 +20,148 @@
           </v-col>
         </v-row>
       </v-scale-transition>
-      <v-row v-if="tasks.annotations != null && tasks.annotations.length > 0">
-        <v-subheader class="text-h4 mt-2">Segmentation and annotation tasks</v-subheader>
-      </v-row>
-      <v-row v-if="tasks.annotations != null && tasks.annotations.length > 0">
+      <v-row>
         <v-col>
-          <v-data-table
-              :headers="annotation_headers"
-              :items="tasks.annotations">
-            <template v-slot:item.slides="{ item }">
-              {{ item.slides.length }} slide(s) task
-              <!--              <v-chip-group column show-arrows>-->
-              <!--                <v-chip style="pointer-events: none;"-->
-              <!--                        outlined :readonly="true"-->
-              <!--                        v-for="slide in item.slides"-->
-              <!--                        :key="slide.id">-->
-              <!--                  {{ slide.name }}-->
-              <!--                </v-chip>-->
-              <!--              </v-chip-group>-->
-            </template>
-            <template v-slot:item.assigned="{ item }">
-              <v-chip-group active-class="primary--text" column show-arrows>
-                <v-chip
-                    style="pointer-events: none;" :readonly="true"
-                    v-for="user in item.assigned" dark
-                    :key="user.id">
-                  {{ user.name }}
-                </v-chip>
-              </v-chip-group>
-            </template>
-            <template v-slot:item.completed="{ item }">
-              <div style="display: inline;">
-                <v-simple-checkbox
-                    :ripple="false"
-                    style="display: inline-block;"
-                    :value="item.completed"/>
-                <v-chip style="display: inline-block;" outlined color="red" v-if="!item.completed">
-                  Remaining!
-                </v-chip>
-              </div>
-            </template>
-            <template v-slot:item.actions="{ item }">
-              <v-btn text
-                     :color="item.completed ? 'primary' : 'orange accent-4'"
-                     @click="startTask(item)">
-                Open image
-              </v-btn>
-            </template>
-          </v-data-table>
+          <v-card v-if="tasks.annotations != null && tasks.annotations.length > 0" outlined>
+            <v-card-title>
+              <span class="text-h4 grey--text text--darken-2">
+                Segmentation and annotation tasks
+              </span>
+            </v-card-title>
+            <v-row>
+              <v-col>
+                <v-data-table
+                    :headers="annotation_headers"
+                    :items="tasks.annotations"
+                    :search="annotationTaskFilter"
+                    :custom-filter="annotationTaskFiltering">
+
+                  <template v-slot:top>
+                    <v-row>
+                      <v-col md="10">
+                        <v-text-field
+                            v-model="annotationTaskFilter"
+                            label="Search for slide's name"
+                            class="mx-4"
+                        ></v-text-field>
+                      </v-col>
+                      <v-col md="2">
+                        <v-checkbox label="Show slide's filename" v-model="showFileNames"/>
+                      </v-col>
+                    </v-row>
+                  </template>
+
+                  <template v-slot:item.slides="{ item }">
+                    <div v-if="!showFileNames">{{ item.slides.length }} slide(s) task</div>
+                    <v-chip-group v-else column show-arrows>
+                      <v-chip style="pointer-events: none;"
+                              outlined :readonly="true"
+                              v-for="slide in item.slides"
+                              :key="slide.id">
+                        {{ slide.name }}
+                      </v-chip>
+                    </v-chip-group>
+                  </template>
+                  <template v-slot:item.assigned="{ item }">
+                    <v-chip-group active-class="primary--text" column show-arrows>
+                      <v-chip
+                          style="pointer-events: none;" :readonly="true"
+                          v-for="user in item.assigned" dark
+                          :key="user.id">
+                        {{ user.name }}
+                      </v-chip>
+                    </v-chip-group>
+                  </template>
+                  <template v-slot:item.completed="{ item }">
+                    <div style="display: inline;">
+                      <v-simple-checkbox
+                          :ripple="false"
+                          style="display: inline-block;"
+                          :value="item.completed"/>
+                      <v-chip style="display: inline-block;" outlined color="red" v-if="!item.completed">
+                        Remaining!
+                      </v-chip>
+                    </div>
+                  </template>
+                  <template v-slot:item.actions="{ item }">
+                    <v-btn text
+                           :color="item.completed ? 'primary' : 'orange accent-4'"
+                           @click="startTask(item)">
+                      Open image
+                    </v-btn>
+                  </template>
+                </v-data-table>
+              </v-col>
+            </v-row>
+          </v-card>
         </v-col>
       </v-row>
-      <v-row v-if="tasks.review != null && tasks.review.length > 0">
-        <v-subheader class="text-h4 mt-2">Annotation revision tasks</v-subheader>
-      </v-row>
+
       <v-row v-if="tasks.review != null && tasks.review.length > 0">
         <v-col>
-          <v-data-table
-              :headers="review_headers"
-              :items="tasks.review">
-            <template v-slot:item.slides="{ item }">
-              {{ item.task.task.slides.length }} slide(s) task
-              <!--              <v-chip-group column show-arrows>-->
-              <!--                <v-chip style="pointer-events: none;"-->
-              <!--                        outlined :readonly="true"-->
-              <!--                        :key="slide.id"-->
-              <!--                        v-for="slide in item.task.task.slides">-->
-              <!--                  {{ slide.name }}-->
-              <!--                </v-chip>-->
-              <!--              </v-chip-group>-->
-            </template>
-            <template v-slot:item.revisions="{ item }">
-              <v-chip-group column show-arrows>
-                <v-chip style="pointer-events: none;"
-                        outlined :readonly="true"
-                        :key="revision.id"
-                        v-for="revision in item.revisions">
-                  {{ revision.user != null ? revision.user.name : revision.app.name }}
-                </v-chip>
-              </v-chip-group>
-            </template>
-            <template v-slot:item.assigned="{ item }">
-              <v-chip-group active-class="primary--text" column show-arrows>
-                <v-chip style="pointer-events: none;" :readonly="true" v-for="user in item.assigned" dark
-                        :key="user.id">
-                  {{ user.name }}
-                </v-chip>
-              </v-chip-group>
-            </template>
-            <template v-slot:item.completed="{ item }">
-              <div style="display: inline;">
-                <v-simple-checkbox
-                    :ripple="false"
-                    style="display: inline-block;"
-                    :value="item.completed"/>
-                <v-chip
-                    style="display: inline-block;"
-                    outlined
-                    color="red"
-                    v-if="!item.completed">
-                  Remaining!
-                </v-chip>
-              </div>
-            </template>
-            <template v-slot:item.actions="{ item }">
-              <v-btn
-                  text
-                  :color="item.completed ? 'primary' : 'orange accent-4'"
-                  @click="startTask(item)">
-                Open Revision
-              </v-btn>
-            </template>
-          </v-data-table>
+          <v-card outlined>
+            <v-card-title>
+              <span class="text-h4 grey--text text--darken-2">
+                Annotation revision tasks
+              </span>
+            </v-card-title>
+            <v-data-table
+                :headers="review_headers"
+                :items="tasks.review">
+              <template v-slot:item.slides="{ item }">
+                <div v-if="!showFileNames">{{ item.task.task.slides.length }} slide(s) task</div>
+                <v-chip-group v-else column show-arrows>
+                  <v-chip style="pointer-events: none;"
+                          outlined :readonly="true"
+                          :key="slide.id"
+                          v-for="slide in item.task.task.slides">
+                    {{ slide.name }}
+                  </v-chip>
+                </v-chip-group>
+              </template>
+              <template v-slot:item.revisions="{ item }">
+                <v-chip-group column show-arrows>
+                  <v-chip style="pointer-events: none;"
+                          outlined :readonly="true"
+                          :key="revision.id"
+                          v-for="revision in item.revisions">
+                    {{ revision.user != null ? revision.user.name : revision.app.name }}
+                  </v-chip>
+                </v-chip-group>
+              </template>
+              <template v-slot:item.assigned="{ item }">
+                <v-chip-group active-class="primary--text" column show-arrows>
+                  <v-chip style="pointer-events: none;" :readonly="true" v-for="user in item.assigned" dark
+                          :key="user.id">
+                    {{ user.name }}
+                  </v-chip>
+                </v-chip-group>
+              </template>
+              <template v-slot:item.completed="{ item }">
+                <div style="display: inline;">
+                  <v-simple-checkbox
+                      :ripple="false"
+                      style="display: inline-block;"
+                      :value="item.completed"/>
+                  <v-chip
+                      style="display: inline-block;"
+                      outlined
+                      color="red"
+                      v-if="!item.completed">
+                    Remaining!
+                  </v-chip>
+                </div>
+              </template>
+              <template v-slot:item.actions="{ item }">
+                <v-btn
+                    text
+                    :color="item.completed ? 'primary' : 'orange accent-4'"
+                    @click="startTask(item)">
+                  Open Revision
+                </v-btn>
+              </template>
+            </v-data-table>
+          </v-card>
         </v-col>
       </v-row>
     </v-container>
@@ -153,6 +184,8 @@ export default {
   data: () => ({
     loading: true,
     tasks: null,
+    showFileNames: true,
+    annotationTaskFilter: '',
     task_types: [
       'Annotate images',
       'Review annotations',
@@ -227,6 +260,11 @@ export default {
           alert(err);
           this.loading = false;
         });
+    },
+
+    annotationTaskFiltering(value, search) {
+      return value != null && search != null && Array.isArray(value)
+          && value.some((slideName) => slideName.name.includes(search));
     },
   },
   mounted() {

@@ -71,9 +71,11 @@ export default {
         annotations[slideId] = json.features.map((feature, idx) => {
           const geo = feature.geometry;
           const { properties } = feature;
+
           return {
             label_id: properties.label.id,
             title: properties.title,
+            description: properties.description,
             geometry: {
               type: 'polygon',
               points: optimizePath(geo.coordinates[0].map((coord) => ({

@@ -8,7 +8,7 @@
       <v-text-field v-model="value.description" label="Description"/>
       <v-chip-group v-model="selectedLabel" mandatory column>
         <v-chip :color="genColor(label.color)" outlined
-                v-for="label in projectLabels" filter :value="label"
+                v-for="label in projectLabels" filter :value="label.id"
                 :key="label.id">
           {{ label.name }}
         </v-chip>
@@ -16,6 +16,7 @@
     </v-card-text>
     <v-divider/>
     <v-card-actions>
+      <v-btn icon @click="peep"><v-icon>mdi-eye</v-icon></v-btn>
       <v-spacer/>
       <v-btn text @click="cancelEdit">Cancel</v-btn>
       <v-btn text @click="saveRegion">Save</v-btn>
@@ -31,12 +32,12 @@ export default {
   watch: {
     'value.label': {
       immediate: true,
-      handler(newValue) {
-        this.selectedLabel = newValue;
+      handler(newLabel) {
+        this.selectedLabel = newLabel.id;
       },
     },
-    selectedLabel(newValue) {
-      this.value.label = newValue;
+    selectedLabel(newLabelId) {
+      this.value.label = this.projectLabels[newLabelId];
       this.updateRender();
     },
   },
@@ -80,6 +81,9 @@ export default {
 
     updateRender() {
       this.$emit('annotation-update');
+    },
+    peep() {
+      this.$emit('peep', this.value);
     },
   },
   mounted() {

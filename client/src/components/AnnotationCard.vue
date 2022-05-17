@@ -1,25 +1,29 @@
 <template>
-  <v-card v-if="value != null" @click="peep" :id="`region-${value.id}`" min-width="200" outlined>
+  <v-card v-if="value != null" :id="`region-${value.id}`" min-width="200" outlined>
     <AnnotationIdleCard
         v-if="value.state === 'idle'"
         v-model="value"
+        v-on:peep="peep"
         v-on:edit-annotation="editRegion"
         v-on:dismiss-annotation="dismissAnnotation"/>
     <AnnotationEditingCard
         v-else-if="value.state === 'editing'"
         v-model="value"
+        v-on:peep="peep"
         v-on:cancel-edit="cancelEdit"
         v-on:annotation-update="updateRender"
         v-on:save-annotation="saveAnnotation"/>
     <AnnotationImportingCard
         v-else-if="value.state === 'importing'"
         v-model="value"
+        v-on:peep="peep"
         v-on:dismiss-annotation="dismissAnnotation"
         v-on:annotation-update="updateRender"
         v-on:import-annotation="importAnnotation"/>
     <AnnotationFeedbackCard
         v-else-if="value.state === 'feedback'|| value.state === 'feedback-editing'"
         v-model="value"
+        v-on:peep="peep"
         v-on:annotation-update="updateRender"
         v-on:annotation-feedback="annotationFeedback"/>
   </v-card>

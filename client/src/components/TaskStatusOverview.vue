@@ -1,11 +1,11 @@
 <template>
-  <v-card class="mx-auto">
+  <v-card class="mx-auto" >
     <v-card-text>
       <div>
         <slot></slot>
       </div>
       <div v-if="status.next != null && !taskCompleted">
-        <p class="text-h4 text--primary">
+        <p class="text-h5 text--primary">
           {{ status.total - status.done }} remaining! You completed
           {{ status.done }} of {{ status.total }}.
         </p>
@@ -13,11 +13,7 @@
           <v-progress-linear readonly :value="progress"/>
         </p>
         <div v-if="!taskCompleted">
-          <p>{{ status.next.project.name }}</p>
-          <div class="text--primary">
-            Up next:<br>
-            {{ status.next.name }}
-          </div>
+          {{ status.next.project.name }}
         </div>
         <div class="text--primary" v-else>You have completed all the slides. You can continue to review them.
         </div>

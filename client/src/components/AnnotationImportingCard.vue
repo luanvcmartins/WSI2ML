@@ -11,9 +11,9 @@
     <v-card-text @click.stop>
       <v-text-field v-model="value.description" label="Description"/>
 
-      <v-chip-group v-model="value.label" mandatory column @change="annotationUpdate">
+      <v-chip-group v-model="selectedLabel" mandatory column @change="annotationUpdate">
         <v-chip :color="genColor(label.color)" outlined
-                v-for="label in projectLabels" filter :value="label"
+                v-for="label in projectLabels" filter :value="label.id"
                 :key="label.id">
           {{ label.name }}
         </v-chip>
@@ -21,6 +21,7 @@
     </v-card-text>
     <v-divider/>
     <v-card-actions>
+      <v-btn icon @click="peep"><v-icon>mdi-eye</v-icon></v-btn>
       <v-spacer/>
       <v-btn text @click.prevent="dismissAnnotation">Dismiss</v-btn>
       <v-btn text @click.prevent="importAnnotation">Import</v-btn>
@@ -37,12 +38,12 @@ export default {
     'value.label': {
       immediate: true,
       handler(newValue) {
-        this.selectedLabel = newValue;
+        this.selectedLabel = newValue.id;
       },
     },
-    selectedLabel(newValue) {
-      this.value.label = newValue;
-      this.updateRender();
+    selectedLabel(newLabelId) {
+      this.value.label = this.projectLabels[newLabelId];
+      this.annotationUpdate();
     },
   },
   computed: {
@@ -81,6 +82,9 @@ export default {
       this.$nextTick(() => {
         this.$emit('annotation-update');
       });
+    },
+    peep() {
+      this.$emit('peep', this.value);
     },
   },
   props: { value: { type: Annotation } },
