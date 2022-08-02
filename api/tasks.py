@@ -384,7 +384,6 @@ def new_app_task():
 def remove():
     task = request.json
     if task['type'] == 0 or task['type'] == 2:
-        # honestly I don't know how to force SQLAlchemy to delete cascade
         user_tasks = db.session.query(models.UserTask).filter(models.UserTask.annotation_task_id == task['id']).all()
         for user_task in user_tasks:
             db.session.query(models.Annotation).filter(models.Annotation.user_task_id == user_task.id).delete()

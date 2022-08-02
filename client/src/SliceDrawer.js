@@ -54,6 +54,90 @@ function optimizePath(points) {
   return points;
 }
 
+class EventManager {
+  constructor() {
+    this.instance = null;
+    this.delegate = {};
+  }
+
+  static getInstance() {
+    if (EventManager.instance == null) {
+      EventManager.instance = new EventManager();
+    }
+    return EventManager.instance;
+  }
+
+  register(refName, events) {
+    console.log(events);
+    Object.entries(events)
+      .forEach(([eventName, callback]) => {
+        console.log(eventName, callback);
+        if (!(eventName in this.delegate)) {
+          this.delegate[eventName] = {};
+        }
+        this.delegate[eventName][refName] = callback;
+      });
+  }
+
+  unregister(name) {
+    Object.entries(this.delegate)
+      .forEach((eventName, registeredCallbacks) => {
+        if (name in registeredCallbacks) {
+          delete registeredCallbacks[name];
+        }
+      });
+  }
+
+  annotationHover(annotation) {
+    this.notify('annotationHover', annotation);
+  }
+
+  annotationLeave(annotation) {
+    this.notify('annotationLeave', annotation);
+  }
+
+  annotationClicked(annotation) {
+    this.notify('annotationClicked', annotation);
+  }
+
+  viewportChanged(viewport) {
+    this.notify('viewportChanged', viewport);
+  }
+
+  createNewAnnotation(annotation) {
+    this.notify('newAnnotation', annotation);
+  }
+
+  savingNewAnnotation(annotation) {
+    this.notify('savingNewAnnotation', annotation);
+  }
+
+  savingAnnotationEdit(annotation) {
+    this.notify('savingAnnotationEdit', annotation);
+  }
+
+  stateRestorerEvent(stateRestorer) {
+    this.notify('stateRestorerEvent', stateRestorer);
+  }
+
+  peepAnnotation(annotation) {
+    this.notify('peepAnnotation', annotation);
+  }
+
+  editAnnotation(annotation) {
+    this.notify('editAnnotation', annotation);
+  }
+
+  notify(event, args) {
+    if (event in this.delegate) {
+      Object.values(this.delegate[event])
+        .forEach((callback) => {
+          callback(args);
+        });
+    }
+  }
+}
+
 class CircleAnnotationTool {
   constructor(drawer) {
     this.name = 'circle';
@@ -1052,6 +1136,7 @@ class AnnotationDrawer {
     Viewer.canvas.appendChild(canvas);
 
     // Defining references that will be used throughout this library
+    this.events = EventManager.getInstance();
     this.viewer = Viewer;
     this.canvas = canvas;
     this.callback = callback;
@@ -1077,6 +1162,13 @@ class AnnotationDrawer {
       left: 0,
       right: 0,
     };
+
+    this.events.register('drawer', {
+      editAnnotation: (annotation) => {
+        console.log('Drawer received request for editing');
+        this.editAnnotation(annotation);
+      },
+    });
 
     // Defining function that keeps track of screen updates:
     this.viewer.addHandler('update-viewport', _.throttle(this.updateViewport.bind(this)));
@@ -1119,6 +1211,7 @@ class AnnotationDrawer {
           this.elementsOnScreen.forEach((element) => {
             if (element.isHovering) {
               this.callback.onClick(element);
+              this.events.annotationClicked(element);
             }
           });
         }
@@ -1477,6 +1570,7 @@ export {
   RectAnnotationTool,
   PolygonAnnotationTool,
   Annotation,
+  EventManager,
   optimizePath,
   loadAnnotations,
 };

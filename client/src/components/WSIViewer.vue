@@ -236,7 +236,7 @@ export default {
     editElement(annotation) {
       // this.editing.element = element;
       this.no_model_action = true;
-      this.annotationDrawer.editAnnotation(annotation);
+      // this.annotationDrawer.editAnnotation(annotation);
     },
     concludeEdit() {
       this.annotationDrawer.concludeEdit();

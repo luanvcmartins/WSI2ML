@@ -25,7 +25,8 @@
                   <v-btn rounded outlined
                          v-bind="attrs"
                          v-on="on"
-                         class="ma-1">
+                         class="ma-1"
+                         :disabled="processing">
                     Select annotations by...
                   </v-btn>
 
@@ -48,7 +49,8 @@
                   <v-btn rounded outlined
                          v-bind="attrs"
                          v-on="on"
-                         class="ma-1">
+                         class="ma-1"
+                         :disabled="processing">
                     Filter revisions by...
                   </v-btn>
 
@@ -74,8 +76,9 @@
             </div>
             <div class="mt-1 mb-2">
               <p>
-                <v-btn :disabled="total_annotations === 0" rounded
-                       @click="exportAnnotations" outlined x-large>
+                <v-btn :disabled="total_annotations === 0 || processing" rounded
+                       @click="exportAnnotations" outlined x-large
+                       :loading="processing">
                   Export annotations
                 </v-btn>
               </p>
@@ -191,6 +194,7 @@ export default {
       dialog: false,
       only_revised: false,
       annotated_selected: {},
+      processing: false,
     };
   },
   computed: {
@@ -222,7 +226,6 @@ export default {
           task.annotated.forEach((annotator) => {
             if (annotator.reviews != null) {
               annotator.reviews.forEach((reviewer) => {
-                console.log('Reviewer:', reviewer.revision_by_name);
                 if (!(reviewer.revision_by_name in reviewers)) {
                   reviewers[reviewer.revision_by_name] = [];
                 }
@@ -293,17 +296,38 @@ export default {
       this.count();
     },
     exportAnnotations() {
-      this.$post(`export/by_task?only_revised=${this.only_revised}`, this.exporting, { responseType: 'blob' })
+      this.processing = true;
+      this.$post(`export/by_task?only_revised=${this.only_revised}`, this.exporting)
         .then((res) => {
-          const url = window.URL.createObjectURL(new Blob([res]));
-          const link = document.createElement('a');
-          link.href = url;
-          link.setAttribute('download', `${this.project.name}.zip`);
-          document.body.appendChild(link);
-          link.click();
-          document.body.removeChild(link);
+          const taskId = res.task_id;
+          console.log(res);
+          this.currentStatusChecker = setInterval(() => {
+            this.checkFileReady(taskId);
+          }, 3000);
         })
         .catch((err) => alert(err));
+    },
+    checkFileReady(taskId) {
+      this.$get(`export/by_task/${taskId}`)
+        .then((resStatus) => {
+          if (resStatus.status === 'done') {
+            this.$get(`/export/download/${taskId}`, { responseType: 'blob' })
+              .then((resFile) => {
+                this.processing = false;
+                clearInterval(this.currentStatusChecker);
+                this.download(resFile);
+              });
+          }
+        });
+    },
+    download(res) {
+      const url = window.URL.createObjectURL(new Blob([res]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${this.project.name}.zip`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     },
     count() {
       setTimeout(() => {

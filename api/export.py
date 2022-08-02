@@ -1,13 +1,16 @@
+import uuid
 from io import BytesIO
-
 import models
 import json
 import zipfile
 import math
-from flask import Blueprint, jsonify, request, current_app, Response
+from flask import Blueprint, jsonify, request, current_app, Response, url_for
 from app import db
+import threading
 
 export_api = Blueprint("export_api", __name__)
+
+temporary_streams = {}
 
 
 @export_api.route("list")
@@ -127,6 +130,45 @@ def review_by_task():
 
 
 def create_polygon(annotation):
+    if annotation['geometry']["type"] == "rect":
+        # casting rect annotation to expected Polygon format
+        point1, point2 = annotation['geometry']['points']
+        annotation_points = [[point1['x'], point1['y']],
+                             [point2['x'], point1['y']],
+                             [point2['x'], point2['y']],
+                             [point1['x'], point2['y']],
+                             [point1['x'], point1['y']]]
+    elif annotation['geometry']["type"] == "circle":
+        # casting circle annotations to polygons
+        point1, point2 = annotation['geometry']['points']
+        width, height = point1['x'] - point2['x'], point1['y'] - point2['y']
+        radius = height / 2
+        sample = lambda t: [radius * math.cos(t) + point1['x'], radius * math.sin(t) + point1['y']]
+        sample_points = int(20 + (2 * radius))
+        rate = 2 * math.pi / sample_points
+        annotation_points = [sample(rate * (t % sample_points)) for t in range(sample_points + 1)]
+    else:
+        # converting Poygons annotations to the expected format
+        annotation_points = [[x['x'], x['y']] for x in annotation['geometry']['points']]
+        annotation_points.append([annotation['geometry']['points'][0]['x'], annotation['geometry']['points'][0]['y']])
+
+    return {
+        "type": "Feature",
+        "geometry": {
+            "type": "Polygon",
+            "coordinates": [annotation_points]
+        },
+        "properties": {
+            "name": annotation['title'],
+            "description": annotation['description'],
+            # "slide": annotation.slide.to_dict(),
+            "label_id": annotation['label']['id'],
+            "label": annotation['label']
+        }
+    }
+
+
+def create_polygon2(annotation):
     if annotation.data["type"] == "rect":
         # casting rect annotation to expected Polygon format
         point1, point2 = annotation.data['points']
@@ -205,10 +247,66 @@ def filter_annotations(user_task_filters, annotations):
 def export_task():
     exp_annotation = request.json
     only_revised = request.args['only_revised'] == 'true'
-    geojson = {}
+    uts_annotations, allowed_annotations = {}, {}
     for user_task_id, user_task_filters in exp_annotation.items():
         filtering_annotations = len(user_task_filters) > 0 or only_revised
-        ut_annotations = models.Annotation.query.filter(models.Annotation.user_task_id == user_task_id).all()
+        ut_annotations = [x.to_dict() for x in models.Annotation.query.filter(
+            models.Annotation.user_task_id == user_task_id).all()]
+        uts_annotations[user_task_id] = ut_annotations
+        allowed_annotations[user_task_id] = filter_annotations(user_task_filters,
+                                                               set(x.id for x in
+                                                                   ut_annotations)) if filtering_annotations else None
+
+    content = zip(list(uts_annotations.values()), list(allowed_annotations.values()))
+    task_id = str(uuid.uuid4())
+    thread = threading.Thread(target=generate_geojson,
+                              args=(content, only_revised, task_id))
+    thread.start()
+
+    return jsonify({'task_id': task_id})
+
+
+def generate_geojson(content, filtering_annotations, task_id):
+    geojson = {}
+    current_idx = 0
+    for ut_annotations, allowed_annotations in content:
+        for ut_annotation in ut_annotations:
+            if ut_annotation['slide_id'] not in geojson:
+                geojson[ut_annotation['slide_id']] = []
+            if filtering_annotations:
+                if ut_annotation['id'] in allowed_annotations:
+                    if allowed_annotations[ut_annotation['id']] is None:
+                        geojson[ut_annotation['slide_id']].append(create_polygon(ut_annotation))
+                    else:
+                        geojson[ut_annotation['slide_id']].append({
+                            **create_polygon(ut_annotation),
+                            "label_id": allowed_annotations[ut_annotation['label']['id']]
+                        })
+            else:
+                geojson[ut_annotation['slide_id']].append(create_polygon(ut_annotation))
+            current_idx += 1
+
+    zip_stream = BytesIO()
+    with zipfile.ZipFile(zip_stream, 'w') as zf:
+        for slide, slide_geojson in geojson.items():
+            final_geojson = {
+                "type": "FeatureCollection",
+                "features": slide_geojson
+            }
+            file_data = zipfile.ZipInfo(f"{slide.replace('.svs', '')}.geojson")
+            file_data.compress_type = zipfile.ZIP_DEFLATED
+            zf.writestr(file_data, json.dumps(final_geojson, indent=2))
+    zip_stream.seek(0)
+    temporary_streams[task_id] = zip_stream
+
+
+def generate_geojson2(exp_annotation, only_revised, filtering_annotations, task_id, uts_annotations):
+    geojson = {}
+    current_idx = 0
+    total = len(exp_annotation)
+    for user_task_id, user_task_filters in exp_annotation.items():
+        filtering_annotations = len(user_task_filters) > 0 or only_revised
+        ut_annotations = uts_annotations[user_task_id]
         allowed_annotations = filter_annotations(user_task_filters,
                                                  set(x.id for x in ut_annotations)) if filtering_annotations else None
 
@@ -226,6 +324,7 @@ def export_task():
                         })
             else:
                 geojson[ut_annotation.slide.name].append(create_polygon(ut_annotation))
+            current_idx += 1
 
     zip_stream = BytesIO()
     with zipfile.ZipFile(zip_stream, 'w') as zf:
@@ -238,27 +337,28 @@ def export_task():
             file_data.compress_type = zipfile.ZIP_DEFLATED
             zf.writestr(file_data, json.dumps(final_geojson, indent=2))
     zip_stream.seek(0)
-
-    return Response(zip_stream,
-                    mimetype='application/json',
-                    headers={'Content-Disposition': 'attachment;filename=annotations.zip'})
+    temporary_streams[task_id] = zip_stream
+    return {'total': 1, 'current': 1, 'result': task_id}
 
 
-"""
-        ut_annotations = models.Annotation.query.filter(models.Annotation.user_task_id == user_task_id).all()
-        for ut_annotation in ut_annotations:
-            if filtering_annotations:
-                if ut_annotation.id in allowed_annotations:
-                    if allowed_annotations[ut_annotation.id] is None:
-                        geojson.append(create_polygon(ut_annotation))
-                    else:
-                        geojson.append({
-                            **create_polygon(ut_annotation),
-                            "label_id": allowed_annotations[ut_annotation.id]
-                        })
-            else:
-                geojson.append(create_polygon(ut_annotation))
-"""
+@export_api.route("by_task/<task_id>", methods=['GET'])
+def by_task_status(task_id):
+    if task_id in temporary_streams:
+        return jsonify({"status": "done", "task_id": task_id})
+    else:
+        return jsonify({"status": "pending"})
+
+
+@export_api.route("/download/<temp_stream_id>", methods=["GET"])
+def download(temp_stream_id):
+    if temp_stream_id not in temporary_streams:
+        return jsonify({"msg": "File not found"}), 500
+    else:
+        zip_stream = temporary_streams[temp_stream_id]
+        del temporary_streams[temp_stream_id]
+        return Response(zip_stream,
+                        mimetype='application/json',
+                        headers={'Content-Disposition': 'attachment;filename=annotations.zip'})
 
 
 @export_api.route("count", methods=['POST'])

@@ -7,9 +7,14 @@
     <v-card-text v-if="value.description != null">
       {{ value.description }}
     </v-card-text>
+    <v-card-text v-else>
+      <a href="javascript:void(0)" @click="editProperties">Edit properties</a>
+    </v-card-text>
     <v-divider/>
     <v-card-actions>
-      <v-btn icon @click="peep"><v-icon>mdi-eye</v-icon></v-btn>
+      <v-btn icon @click="peep">
+        <v-icon>mdi-eye</v-icon>
+      </v-btn>
       <v-spacer/>
       <v-btn text @click="dismissAnnotation">Remove</v-btn>
       <v-btn text @click="editRegion(value)">Edit</v-btn>
@@ -18,7 +23,7 @@
 </template>
 
 <script>
-import { Annotation } from '@/SliceDrawer';
+import { Annotation, EventManager } from '@/SliceDrawer';
 
 export default {
   name: 'AnnotationIdleCard',
@@ -35,16 +40,23 @@ export default {
     },
   },
   methods: {
-    editRegion(region) {
+    editRegion(annotation) {
       this.updating_label = true;
-      this.$emit('edit-annotation', region);
+      // this.$emit('edit-annotation', region);
+      EventManager.getInstance()
+        .editAnnotation(annotation);
     },
     dismissAnnotation() {
       this.updating_label = false;
       this.$emit('dismiss-annotation', this.value);
     },
     peep() {
-      this.$emit('peep', this.value);
+      // this.$emit('peep', this.value);
+      EventManager.getInstance()
+        .peepAnnotation(this.value);
+    },
+    editProperties() {
+
     },
   },
   props: { value: { type: Annotation } },

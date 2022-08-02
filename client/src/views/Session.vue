@@ -132,11 +132,11 @@
                             <v-list-item-subtitle v-text="slide.properties.comment"/>
                           </v-list-item-content>
 
-<!--                          <v-list-item-action>-->
-<!--                            <v-btn @click.stop="slideInfo(slide)" icon>-->
-<!--                              <v-icon dark>mdi-information-outline</v-icon>-->
-<!--                            </v-btn>-->
-<!--                          </v-list-item-action>-->
+                          <!--                          <v-list-item-action>-->
+                          <!--                            <v-btn @click.stop="slideInfo(slide)" icon>-->
+                          <!--                              <v-icon dark>mdi-information-outline</v-icon>-->
+                          <!--                            </v-btn>-->
+                          <!--                          </v-list-item-action>-->
                         </v-list-item>
                       </v-list-item-group>
                     </v-list>
@@ -231,7 +231,7 @@
 
 <script>
 /* eslint-disable no-param-reassign */
-import { loadAnnotations, optimizePath } from '../SliceDrawer';
+import { loadAnnotations, optimizePath, EventManager } from '../SliceDrawer';
 import SliceViewer from '../components/WSIViewer.vue';
 import SideWindow from '../components/SideWindow.vue';
 import AnnotationCard from '../components/AnnotationCard.vue';
@@ -408,8 +408,11 @@ export default {
     calculatePagination() {
       if (this.current_slide.id in this.annotations) {
         const totalAnnotation = this.annotations[this.current_slide.id].length;
-        this.annotationsLister.totalPages = Math.floor(totalAnnotation / this.annotationsLister.max);
-        this.annotationsLister.page = 1;
+        this.annotationsLister.totalPages = Math.floor(totalAnnotation
+            / this.annotationsLister.max);
+        if (this.annotationsLister.page !== 1) {
+          this.annotationsLister.page = 1;
+        }
       } else {
         this.annotationsLister.totalPages = 0;
         this.annotationsLister.page = 0;
@@ -480,7 +483,7 @@ export default {
           .then(() => {
             // Add the new region to the list
             this.$refs.classBalance.refresh();
-            this.calculatePagination();
+            // this.calculatePagination();
           })
           .catch((err) => {
             alert(`Error while saving region: ${err}`);
@@ -494,7 +497,7 @@ export default {
     },
 
     /**
-     * User clicked on a region. We will highlighted it in the list
+     * User clicked on a region. We will highlight it in the list
      *
      * @param region
      * @param short
@@ -612,8 +615,8 @@ export default {
      * @param region
      */
     editRegion(region) {
-      this.$refs.slice_viewer.editElement(region);
-      this.editing = region;
+      // this.$refs.slice_viewer.editElement(region);
+      // this.editing = region;
     },
     concludeEdit(region) {
       this.$refs.slice_viewer.concludeEdit(region);
@@ -624,7 +627,7 @@ export default {
     },
 
     annotationPeep(annotation) {
-      this.$refs.slice_viewer.peepAnnotation(annotation);
+      // this.$refs.slice_viewer.peepAnnotation(annotation);
     },
 
     annotationUpdate() {
@@ -669,6 +672,25 @@ export default {
           .catch((err) => alert(err));
       }
     },
+  },
+  mounted() {
+    EventManager.getInstance()
+      .register('session', {
+        annotationClicked: (annotation) => {
+        },
+        peepAnnotation: (annotation) => {
+          console.log('Receive event for peeping annotation', annotation);
+          this.$refs.slice_viewer.peepAnnotation(annotation);
+        },
+        editAnnotation: (annotation) => {
+          console.log('Received event for editing annotation', annotation);
+          // this.$refs.slice_viewer.editElement(annotation);
+          this.editing = annotation;
+        },
+      });
+    // EventManager.getInstance()
+    //  .annotationClicked(null);
+    // console.log();
   },
   components: {
     SessionClassBalance,
