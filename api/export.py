@@ -10,7 +10,7 @@ import threading
 
 export_api = Blueprint("export_api", __name__)
 
-temporary_streams = {}
+export_tasks = {}
 
 
 @export_api.route("list")
@@ -268,7 +268,12 @@ def export_task():
 
 def generate_geojson(content, filtering_annotations, task_id):
     geojson = {}
-    current_idx = 0
+    content = list(content)
+    export_tasks[task_id] = {
+        "status": "pending",
+        "count": 0,
+        "total": len(content)
+    }
     for ut_annotations, allowed_annotations in content:
         for ut_annotation in ut_annotations:
             if ut_annotation['slide_id'] not in geojson:
@@ -284,7 +289,7 @@ def generate_geojson(content, filtering_annotations, task_id):
                         })
             else:
                 geojson[ut_annotation['slide_id']].append(create_polygon(ut_annotation))
-            current_idx += 1
+        export_tasks[task_id]["count"] += 1
 
     zip_stream = BytesIO()
     with zipfile.ZipFile(zip_stream, 'w') as zf:
@@ -297,7 +302,8 @@ def generate_geojson(content, filtering_annotations, task_id):
             file_data.compress_type = zipfile.ZIP_DEFLATED
             zf.writestr(file_data, json.dumps(final_geojson, indent=2))
     zip_stream.seek(0)
-    temporary_streams[task_id] = zip_stream
+    export_tasks[task_id]["status"] = "done"
+    export_tasks[task_id]["stream"] = zip_stream
 
 
 def generate_geojson2(exp_annotation, only_revised, filtering_annotations, task_id, uts_annotations):
@@ -337,25 +343,27 @@ def generate_geojson2(exp_annotation, only_revised, filtering_annotations, task_
             file_data.compress_type = zipfile.ZIP_DEFLATED
             zf.writestr(file_data, json.dumps(final_geojson, indent=2))
     zip_stream.seek(0)
-    temporary_streams[task_id] = zip_stream
+    export_tasks[task_id] = zip_stream
     return {'total': 1, 'current': 1, 'result': task_id}
 
 
 @export_api.route("by_task/<task_id>", methods=['GET'])
 def by_task_status(task_id):
-    if task_id in temporary_streams:
+    if task_id not in export_tasks:
+        return jsonify({"msg": "Task not found"}), 500
+    task = export_tasks[task_id]
+    if task['status'] == "done":
         return jsonify({"status": "done", "task_id": task_id})
-    else:
-        return jsonify({"status": "pending"})
+    return jsonify(task)
 
 
-@export_api.route("/download/<temp_stream_id>", methods=["GET"])
-def download(temp_stream_id):
-    if temp_stream_id not in temporary_streams:
+@export_api.route("/download/<task_id>", methods=["GET"])
+def download(task_id):
+    if task_id not in export_tasks:
         return jsonify({"msg": "File not found"}), 500
     else:
-        zip_stream = temporary_streams[temp_stream_id]
-        del temporary_streams[temp_stream_id]
+        zip_stream = export_tasks[task_id]["stream"]
+        del export_tasks[task_id]
         return Response(zip_stream,
                         mimetype='application/json',
                         headers={'Content-Disposition': 'attachment;filename=annotations.zip'})

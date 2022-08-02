@@ -26,7 +26,7 @@
                          v-bind="attrs"
                          v-on="on"
                          class="ma-1"
-                         :disabled="processing">
+                         :disabled="loading">
                     Select annotations by...
                   </v-btn>
 
@@ -50,7 +50,7 @@
                          v-bind="attrs"
                          v-on="on"
                          class="ma-1"
-                         :disabled="processing">
+                         :disabled="loading">
                     Filter revisions by...
                   </v-btn>
 
@@ -73,12 +73,16 @@
             </p>
             <div class="ma-1 grey--text text--lighten-1">
               Exporting {{ total_annotations }} annotations.
+              <span v-if="loading && progress.total > 0" class="progress-text">
+                    {{ progress.count }} / {{ progress.total }}
+                    ({{ (progress.count / progress.total) * 100 }}%)</span>
             </div>
             <div class="mt-1 mb-2">
               <p>
-                <v-btn :disabled="total_annotations === 0 || processing" rounded
+
+                <v-btn :disabled="total_annotations === 0 || loading" rounded
                        @click="exportAnnotations" outlined x-large
-                       :loading="processing">
+                       :loading="loading">
                   Export annotations
                 </v-btn>
               </p>
@@ -194,7 +198,11 @@ export default {
       dialog: false,
       only_revised: false,
       annotated_selected: {},
-      processing: false,
+      loading: false,
+      progress: {
+        count: 0,
+        total: 0,
+      },
     };
   },
   computed: {
@@ -296,14 +304,13 @@ export default {
       this.count();
     },
     exportAnnotations() {
-      this.processing = true;
+      this.loading = true;
       this.$post(`export/by_task?only_revised=${this.only_revised}`, this.exporting)
         .then((res) => {
           const taskId = res.task_id;
-          console.log(res);
           this.currentStatusChecker = setInterval(() => {
             this.checkFileReady(taskId);
-          }, 3000);
+          }, 1000);
         })
         .catch((err) => alert(err));
     },
@@ -313,11 +320,19 @@ export default {
           if (resStatus.status === 'done') {
             this.$get(`/export/download/${taskId}`, { responseType: 'blob' })
               .then((resFile) => {
-                this.processing = false;
+                this.loading = false;
                 clearInterval(this.currentStatusChecker);
                 this.download(resFile);
               });
+          } else {
+            this.progress.count = resStatus.count;
+            this.progress.total = resStatus.total;
           }
+        })
+        .catch(() => {
+          this.loading = false;
+          clearInterval(this.currentStatusChecker);
+          alert('Failed to export file, please try again');
         });
     },
     download(res) {
@@ -347,5 +362,10 @@ export default {
 .expansion-panel-revision {
   border: darkgrey 1px dotted;
   background-color: whitesmoke;
+}
+
+.progress-text {
+  font-weight: 700;
+  margin-left: 16px;
 }
 </style>
