@@ -4,7 +4,7 @@ import models
 import json
 import zipfile
 import math
-from flask import Blueprint, jsonify, request, current_app, Response, url_for
+from flask import Blueprint, jsonify, request, current_app, Response, url_for, stream_with_context, send_file
 from app import db
 import threading
 
@@ -168,45 +168,6 @@ def create_polygon(annotation):
     }
 
 
-def create_polygon2(annotation):
-    if annotation.data["type"] == "rect":
-        # casting rect annotation to expected Polygon format
-        point1, point2 = annotation.data['points']
-        annotation_points = [[point1['x'], point1['y']],
-                             [point2['x'], point1['y']],
-                             [point2['x'], point2['y']],
-                             [point1['x'], point2['y']],
-                             [point1['x'], point1['y']]]
-    elif annotation.data["type"] == "circle":
-        # casting circle annotations to polygons
-        point1, point2 = annotation.data['points']
-        width, height = point1['x'] - point2['x'], point1['y'] - point2['y']
-        radius = height / 2
-        sample = lambda t: [radius * math.cos(t) + point1['x'], radius * math.sin(t) + point1['y']]
-        sample_points = int(20 + (2 * radius))
-        rate = 2 * math.pi / sample_points
-        annotation_points = [sample(rate * (t % sample_points)) for t in range(sample_points + 1)]
-    else:
-        # converting Poygons annotations to the expected format
-        annotation_points = [[x['x'], x['y']] for x in annotation.data['points']]
-        annotation_points.append([annotation.data['points'][0]['x'], annotation.data['points'][0]['y']])
-
-    return {
-        "type": "Feature",
-        "geometry": {
-            "type": "Polygon",
-            "coordinates": [annotation_points]
-        },
-        "properties": {
-            "name": annotation.title,
-            "description": annotation.description,
-            "slide": annotation.slide.to_dict(),
-            "label_id": annotation.label_id,
-            "label": annotation.label.to_dict()
-        }
-    }
-
-
 def filter_annotations(user_task_filters, annotations):
     annotations_remarks, allowed_annotations = {}, {}
     if len(user_task_filters) > 0:
@@ -310,47 +271,6 @@ def generate_geojson(content, filtering_annotations, task_id):
     export_tasks[task_id]["stream"] = zip_stream
 
 
-def generate_geojson2(exp_annotation, only_revised, filtering_annotations, task_id, uts_annotations):
-    geojson = {}
-    current_idx = 0
-    total = len(exp_annotation)
-    for user_task_id, user_task_filters in exp_annotation.items():
-        filtering_annotations = len(user_task_filters) > 0 or only_revised
-        ut_annotations = uts_annotations[user_task_id]
-        allowed_annotations = filter_annotations(user_task_filters,
-                                                 set(x.id for x in ut_annotations)) if filtering_annotations else None
-
-        for ut_annotation in ut_annotations:
-            if ut_annotation.slide.name not in geojson:
-                geojson[ut_annotation.slide.name] = []
-            if filtering_annotations:
-                if ut_annotation.id in allowed_annotations:
-                    if allowed_annotations[ut_annotation.id] is None:
-                        geojson[ut_annotation.slide.name].append(create_polygon(ut_annotation))
-                    else:
-                        geojson[ut_annotation.slide.name].append({
-                            **create_polygon(ut_annotation),
-                            "label_id": allowed_annotations[ut_annotation.id]
-                        })
-            else:
-                geojson[ut_annotation.slide.name].append(create_polygon(ut_annotation))
-            current_idx += 1
-
-    zip_stream = BytesIO()
-    with zipfile.ZipFile(zip_stream, 'w') as zf:
-        for slide, slide_geojson in geojson.items():
-            final_geojson = {
-                "type": "FeatureCollection",
-                "features": slide_geojson
-            }
-            file_data = zipfile.ZipInfo(f"{slide.replace('.svs', '')}.geojson")
-            file_data.compress_type = zipfile.ZIP_DEFLATED
-            zf.writestr(file_data, json.dumps(final_geojson, indent=2))
-    zip_stream.seek(0)
-    export_tasks[task_id] = zip_stream
-    return {'total': 1, 'current': 1, 'result': task_id}
-
-
 @export_api.route("by_task/<task_id>", methods=['GET'])
 def by_task_status(task_id):
     if task_id not in export_tasks:
@@ -368,9 +288,9 @@ def download(task_id):
     else:
         zip_stream = export_tasks[task_id]["stream"]
         del export_tasks[task_id]
-        return Response(zip_stream,
-                        mimetype='application/json',
-                        headers={'Content-Disposition': 'attachment;filename=annotations.zip'})
+        return send_file(
+            zip_stream,
+            mimetype='application/zip, application/octet-stream, application/x-zip-compressed, multipart/x-zip')
 
 
 @export_api.route("count", methods=['POST'])

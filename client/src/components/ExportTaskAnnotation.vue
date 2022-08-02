@@ -75,11 +75,10 @@
               Exporting {{ total_annotations }} annotations.
               <span v-if="loading && progress.total > 0" class="progress-text">
                     {{ progress.count }} / {{ progress.total }}
-                    ({{ (progress.count / progress.total) * 100 }}%)</span>
+                    ({{ progress_percent }}%)</span>
             </div>
             <div class="mt-1 mb-2">
               <p>
-
                 <v-btn :disabled="total_annotations === 0 || loading" rounded
                        @click="exportAnnotations" outlined x-large
                        :loading="loading">
@@ -248,6 +247,12 @@ export default {
       }
       return reviewers;
     },
+    progress_percent() {
+      if (this.progress.total > 0) {
+        return ((this.progress.count / this.progress.total) * 100).toFixed(2);
+      }
+      return 0;
+    },
   },
   methods: {
     close() {
@@ -305,6 +310,8 @@ export default {
     },
     exportAnnotations() {
       this.loading = true;
+      this.progress.count = 0;
+      this.progress.total = 0;
       this.$post(`export/by_task?only_revised=${this.only_revised}`, this.exporting)
         .then((res) => {
           const taskId = res.task_id;
