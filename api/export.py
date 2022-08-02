@@ -291,6 +291,9 @@ def generate_geojson(content, filtering_annotations, task_id):
                 geojson[ut_annotation['slide_id']].append(create_polygon(ut_annotation))
         export_tasks[task_id]["count"] += 1
 
+    export_tasks[task_id]["count"] = 0
+    export_tasks[task_id]["total"] = len(geojson)
+
     zip_stream = BytesIO()
     with zipfile.ZipFile(zip_stream, 'w') as zf:
         for slide, slide_geojson in geojson.items():
@@ -301,6 +304,7 @@ def generate_geojson(content, filtering_annotations, task_id):
             file_data = zipfile.ZipInfo(f"{slide.replace('.svs', '')}.geojson")
             file_data.compress_type = zipfile.ZIP_DEFLATED
             zf.writestr(file_data, json.dumps(final_geojson, indent=2))
+            export_tasks[task_id]["count"] += 1
     zip_stream.seek(0)
     export_tasks[task_id]["status"] = "done"
     export_tasks[task_id]["stream"] = zip_stream

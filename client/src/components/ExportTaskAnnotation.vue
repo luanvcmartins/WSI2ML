@@ -318,10 +318,10 @@ export default {
       this.$get(`export/by_task/${taskId}`)
         .then((resStatus) => {
           if (resStatus.status === 'done') {
+            clearInterval(this.currentStatusChecker);
             this.$get(`/export/download/${taskId}`, { responseType: 'blob' })
               .then((resFile) => {
                 this.loading = false;
-                clearInterval(this.currentStatusChecker);
                 this.download(resFile);
               });
           } else {
