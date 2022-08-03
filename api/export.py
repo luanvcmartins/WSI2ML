@@ -31,8 +31,9 @@ def list_task():
             WHERE user_tasks.user_id = users.id AND annotation_tasks.id = user_tasks.annotation_task_id
             AND annotations.user_task_id = user_tasks.id
             AND user_tasks.annotation_task_id = :task_id
+            AND user_tasks.completed == :completed 
             GROUP BY user_tasks.id, users.name,annotation_tasks.name""",
-            {"task_id": task.id}).all()
+            {"task_id": task.id, "completed": True}).all()
         export_tasks.append({
             "id": task.id,
             "name": task.name,
@@ -211,7 +212,7 @@ def export_task():
     uts_annotations, allowed_annotations = {}, {}
     for user_task_id, user_task_filters in exp_annotation.items():
         filtering_annotations = len(user_task_filters) > 0 or only_revised
-        ut_annotations = [x.to_dict() for x in models.Annotation.query.filter(
+        ut_annotations = [x.to_dict(with_slide=True) for x in models.Annotation.query.filter(
             models.Annotation.user_task_id == user_task_id).all()]
         uts_annotations[user_task_id] = ut_annotations
         allowed_annotations[user_task_id] = filter_annotations(user_task_filters,
@@ -237,19 +238,19 @@ def generate_geojson(content, filtering_annotations, task_id):
     }
     for ut_annotations, allowed_annotations in content:
         for ut_annotation in ut_annotations:
-            if ut_annotation['slide_id'] not in geojson:
-                geojson[ut_annotation['slide_id']] = []
+            if ut_annotation['slide']['name'] not in geojson:
+                geojson[ut_annotation['slide']['name']] = []
             if filtering_annotations:
                 if ut_annotation['id'] in allowed_annotations:
                     if allowed_annotations[ut_annotation['id']] is None:
-                        geojson[ut_annotation['slide_id']].append(create_polygon(ut_annotation))
+                        geojson[ut_annotation['slide']['name']].append(create_polygon(ut_annotation))
                     else:
-                        geojson[ut_annotation['slide_id']].append({
+                        geojson[ut_annotation['slide']['name']].append({
                             **create_polygon(ut_annotation),
                             "label_id": allowed_annotations[ut_annotation['label']['id']]
                         })
             else:
-                geojson[ut_annotation['slide_id']].append(create_polygon(ut_annotation))
+                geojson[ut_annotation['slide']['name']].append(create_polygon(ut_annotation))
         export_tasks[task_id]["count"] += 1
 
     export_tasks[task_id]["count"] = 0

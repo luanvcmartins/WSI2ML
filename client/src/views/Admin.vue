@@ -57,7 +57,7 @@
                 </template>
                 <template v-slot:item.actions="{ item }">
                   <v-icon small class="mr-2" @click="editTask(item)">mdi-pencil</v-icon>
-                  <v-icon small @click="removeTask(item)">mdi-delete</v-icon>
+                  <v-icon small @click="removeTask(item)" :disabled="item.completed">mdi-delete</v-icon>
                 </template>
               </v-data-table>
               <v-card-actions>

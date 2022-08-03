@@ -5,6 +5,21 @@
     <v-textarea label="Project description" v-model="project.description"/>
     <v-text-field label="Files location" v-model="project.folder" :error-messages="path_errors" @input="check_path"/>
     <v-data-table :headers="header" :items="project.labels" :items-per-page="5">
+       <template v-slot:item.name="props">
+        <v-edit-dialog
+          :return-value.sync="props.item.name"
+        >
+          {{ props.item.name }}
+          <template v-slot:input>
+            <v-text-field
+              v-model="props.item.name"
+              label="Edit"
+              single-line
+              counter
+            ></v-text-field>
+          </template>
+        </v-edit-dialog>
+      </template>
       <template v-slot:item.color="{ item, idx }">
         <v-menu v-model="color_menu[item.name]" offset-y :close-on-content-click="false">
           <template v-slot:activator="{ on, attrs }">

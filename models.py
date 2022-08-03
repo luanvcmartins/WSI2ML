@@ -299,7 +299,7 @@ class Annotation(db.Model):
     def properties(self, value):
         self.properties_json = json.dumps(value)
 
-    def to_dict(self, feedback=None, with_feedback=False):
+    def to_dict(self, feedback=None, with_feedback=False, with_slide=False):
         annotation = {
             "id": self.id,
             "title": self.title,
@@ -311,6 +311,8 @@ class Annotation(db.Model):
             "meta": {},
             "properties": self.properties
         }
+        if with_slide:
+            annotation["slide"] = self.slide.to_dict()
         if with_feedback:
             annotation['feedback'] = feedback.to_dict() if feedback is not None else \
                 {"label_id": self.label_id, "geometry": None, "feedback": None}
