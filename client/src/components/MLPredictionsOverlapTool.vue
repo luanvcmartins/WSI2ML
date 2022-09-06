@@ -5,6 +5,7 @@
       Overlay your annotations with ML-based predictions to improve your models.
     </div>
     <div class="pl-3 pr-3 pb-3" v-if="!usedBefore">
+      <input id="ml-file-importer-input" type="file" style="display: none">
       <v-btn block text @click="selectFile">Select .geojson file</v-btn>
     </div>
     <div class="pl-3 pr-3 pb-3" v-else>
@@ -69,7 +70,7 @@ export default {
     },
 
     selectFile() {
-      const input = document.getElementById('file-importer-input');
+      const input = document.getElementById('ml-file-importer-input');
       input.onchange = (e) => {
         const reader = new FileReader();
         reader.readAsText(e.target.files[0], 'UTF-8');

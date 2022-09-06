@@ -31,7 +31,7 @@
             <v-row>
               <v-col>
                 <v-data-table
-                    :headers="annotation_headers"
+                    :headers="annotationHeaders"
                     :items="tasks.annotations"
                     :search="annotationTaskFilter"
                     :custom-filter="annotationTaskFiltering">
@@ -58,8 +58,8 @@
                               filter
                               v-for="project in projects"
                               :key="project.id"
-
-                              :value="project.id">{{ project.name }}
+                              :value="project.name">
+                            {{ project.name }}
                           </v-chip>
                         </v-chip-group>
                       </v-col>
@@ -198,14 +198,53 @@ export default {
   },
   computed: {
     projects() {
-      console.log(this.tasks);
       if (this.tasks != null) {
-        return Array.from(new Set(this.tasks.annotations.map((task) => ({
-          name: task.project.name,
-          id: task.project.id,
-        }))));
+        const items = {};
+        for (const annotation in Object.values(this.tasks.annotations)) {
+          const { project } = this.tasks.annotations[annotation];
+          if (!(project.id in items)) {
+            items[project.id] = {
+              name: project.name,
+              id: project.id,
+            };
+          }
+        }
+        return Object.values(items);
       }
       return [];
+    },
+
+    annotationHeaders() {
+      return [
+        {
+          text: 'Slides',
+          align: 'start',
+          sortable: false,
+          value: 'slides',
+        },
+        {
+          text: 'Completed?',
+          value: 'completed',
+        },
+        // {text: 'Slides', value: 'slides'},
+        {
+          text: 'Project',
+          value: 'project.name',
+          filter: (value) => {
+            if (this.annotationProjectFilter == null
+                || this.annotationProjectFilter === 0) {
+              return true;
+            }
+
+            return value === this.annotationProjectFilter;
+          },
+        },
+        // {text: 'Users', value: 'assigned'},
+        {
+          text: 'Actions',
+          value: 'actions',
+        },
+      ];
     },
   },
   data: () => ({
@@ -217,34 +256,6 @@ export default {
     task_types: [
       'Annotate images',
       'Review annotations',
-    ],
-    annotation_headers: [
-      {
-        text: 'Slides',
-        align: 'start',
-        sortable: false,
-        value: 'slides',
-      },
-      {
-        text: 'Completed?',
-        value: 'completed',
-      },
-      // {text: 'Slides', value: 'slides'},
-      {
-        text: 'Project',
-        value: 'project.name',
-        filter(value) {
-          if (this.annotationProjectFilter == null
-              || this.annotationProjectFilter === 0) return true;
-
-          return value === this.annotationProjectFilter.id;
-        },
-      },
-      // {text: 'Users', value: 'assigned'},
-      {
-        text: 'Actions',
-        value: 'actions',
-      },
     ],
     review_headers: [
       {
