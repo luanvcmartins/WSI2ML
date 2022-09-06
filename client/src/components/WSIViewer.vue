@@ -119,9 +119,6 @@ export default {
 
   data: () => ({
     selectedLabel: null,
-    labeled_regions: [],
-    // selectedTool: 'polygon',
-    editor_tool: '',
     zoom: 0,
     viewportLocation: null,
     annotationDrawer: null,
@@ -146,9 +143,8 @@ export default {
     value: {
       immediate: true,
       handler(newValue) {
-        this.labeled_regions = newValue;
         if (this.annotationDrawer != null) {
-          this.annotationDrawer.annotations = newValue;
+          this.annotationDrawer.annotationSet[0] = newValue;
           newValue.forEach((annotation) => {
             annotation.drawer = this.annotationDrawer;
           });
@@ -233,6 +229,26 @@ export default {
     },
   },
   methods: {
+    loadOverlayAnnotations(overlayAnnotations) {
+      console.log('loadOverlayAnnotations', overlayAnnotations);
+      if (this.annotationDrawer != null) {
+        if (this.annotationDrawer.annotationSet.length === 1) {
+          this.annotationDrawer.annotationSet.push({});
+        }
+        this.annotationDrawer.annotationSet[1] = overlayAnnotations;
+        overlayAnnotations.forEach((annotation) => {
+          annotation.drawer = this.annotationDrawer;
+        });
+        this.annotationDrawer.update();
+      }
+    },
+
+    clearOverlayAnnotations() {
+      console.log('clearOverlayAnnotations', 'WSIViewer');
+      this.annotationDrawer.annotationSet.splice(1, 1);
+      this.annotationDrawer.update();
+    },
+
     editElement(annotation) {
       // this.editing.element = element;
       this.no_model_action = true;
@@ -290,7 +306,7 @@ export default {
           delegateCallback(this.drawEvents.onClick, element);
         },
         onStateRestorerEvent: (stateRestorer) => {
-          console.log('onStateRestorerEvent', stateRestorer);
+          // console.log('onStateRestorerEvent', stateRestorer);
           this.no_model_action = true;
           if (stateRestorer != null) {
             this.stateRestorer.showing = true;
@@ -330,7 +346,7 @@ export default {
           annotation.drawer = self;
         });
       }
-      this.annotationDrawer.annotations = this.value;
+      this.annotationDrawer.annotationSet[0] = this.value;
       this.annotationDrawer.tool = 'pointer';
       this.annotationDrawer.filtering = this.labelsVisibility;
       this.annotationDrawer.label = this.selectedLabel;
@@ -353,7 +369,7 @@ export default {
     value: { type: Array },
     tileSources: { type: String },
     labelsVisibility: { type: Object },
-    drawingStyle: { type: Object },
+    drawingStyle: { type: Array },
     drawEvents: {},
     slideProperties: { type: Object },
   },

@@ -140,7 +140,7 @@ def new_batch():
             grouped_slides[idx] = [m_slide]
             idx += 1
 
-    # not that the slides has been created and grouped together, we will create the tasks
+    # now that the slides has been created and grouped together, we will create the tasks
     for user_group, (g_name, slides) in zip(cycle(users_group), grouped_slides.items()):
         # we will register the new task:
         task = models.AnnotationTask(

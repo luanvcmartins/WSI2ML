@@ -5,6 +5,7 @@ import json
 import zipfile
 import math
 from flask import Blueprint, jsonify, request, current_app, Response, url_for, stream_with_context, send_file
+from flask_jwt_extended import jwt_required, current_user
 from app import db
 import threading
 
@@ -31,7 +32,7 @@ def list_task():
             WHERE user_tasks.user_id = users.id AND annotation_tasks.id = user_tasks.annotation_task_id
             AND annotations.user_task_id = user_tasks.id
             AND user_tasks.annotation_task_id = :task_id
-            AND user_tasks.completed == :completed 
+            AND user_tasks.completed = :completed 
             GROUP BY user_tasks.id, users.name,annotation_tasks.name""",
             {"task_id": task.id, "completed": True}).all()
         export_tasks.append({
@@ -110,6 +111,7 @@ def reviews_slide():
 
 
 @export_api.route("review/by_task")
+@jwt_required()
 def review_by_task():
     user_task_id = request.args['user_task_id']
     revisions = db.session.execute("""
@@ -149,7 +151,7 @@ def create_polygon(annotation):
         rate = 2 * math.pi / sample_points
         annotation_points = [sample(rate * (t % sample_points)) for t in range(sample_points + 1)]
     else:
-        # converting Poygons annotations to the expected format
+        # converting Polygons annotations to the expected format
         annotation_points = [[x['x'], x['y']] for x in annotation['geometry']['points']]
         annotation_points.append([annotation['geometry']['points'][0]['x'], annotation['geometry']['points'][0]['y']])
 
@@ -206,7 +208,10 @@ def filter_annotations(user_task_filters, annotations):
 
 
 @export_api.route("by_task", methods=["POST"])
+@jwt_required()
 def export_task():
+    if not current_user.can_export:
+        return jsonify({"msg": "Not allowed"}), 401
     exp_annotation = request.json
     only_revised = request.args['only_revised'] == 'true'
     uts_annotations, allowed_annotations = {}, {}
@@ -273,7 +278,10 @@ def generate_geojson(content, filtering_annotations, task_id):
 
 
 @export_api.route("by_task/<task_id>", methods=['GET'])
+@jwt_required()
 def by_task_status(task_id):
+    if not current_user.can_export:
+        return jsonify({"msg": "Not allowed"}), 401
     if task_id not in export_tasks:
         return jsonify({"msg": "Task not found"}), 500
     task = export_tasks[task_id]
@@ -283,7 +291,10 @@ def by_task_status(task_id):
 
 
 @export_api.route("/download/<task_id>", methods=["GET"])
+@jwt_required()
 def download(task_id):
+    if not current_user.can_export:
+        return jsonify({"msg": "Not allowed"}), 401
     if task_id not in export_tasks:
         return jsonify({"msg": "File not found"}), 500
     else:
@@ -295,7 +306,10 @@ def download(task_id):
 
 
 @export_api.route("count", methods=['POST'])
+@jwt_required()
 def count():
+    if not current_user.can_export:
+        return jsonify({"msg": "Not allowed"}), 401
     exp_annotation = request.json
     only_revised = request.args['only_revised'] == 'true'
     counting = {}

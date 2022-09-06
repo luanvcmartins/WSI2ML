@@ -5,11 +5,11 @@
         :drawer="!session.completed && task_type === 0 && taskBelongsToUser"
         :tile-sources="tile_sources"
         :labels="project_labels"
-        :labels-visibility="labels_visible"
+        :labels-visibility="labelsVisible"
         :drawing-style="drawingStyle"
         :draw-events="draw_events"
-        :slide-properties="current_slide.properties"
-        v-model="annotations[current_slide.id]"
+        :slide-properties="currentSlide.properties"
+        v-model="annotations[currentSlide.id]"
         v-on:region-clicked="regionClicked"
         v-on:new-draw="onNewRegionDraw"
         v-on:edit-draw="onEditRegionDraw"/>
@@ -17,16 +17,16 @@
       <v-toolbar dense fixed color="grey lighten-4">
         <v-toolbar-title>{{ task_type === 0 ? 'Annotation task' : 'Review task' }}</v-toolbar-title>
         <template v-slot:extension>
-          <v-tabs v-model="selected_tab">
+          <v-tabs v-model="selectedTab">
             <v-tab>View</v-tab>
             <v-tab v-if="annotationTabVisible">
-              Annotations ({{ annotations[current_slide.id].length }})
+              Annotations ({{ annotations[currentSlide.id].length }})
             </v-tab>
           </v-tabs>
         </template>
       </v-toolbar>
 
-      <v-tabs-items v-model="selected_tab">
+      <v-tabs-items v-model="selectedTab">
         <v-tab-item>
           <!-- Controls tab -->
           <v-container fluid grid-list-md>
@@ -35,7 +35,7 @@
                 <session-class-balance
                     ref="classBalance"
                     :session-id="session_id"
-                    :slide-id="current_slide.id"/>
+                    :slide-id="currentSlide.id"/>
               </v-flex>
               <v-flex cols="12" sm="12" md="6">
                 <v-card>
@@ -47,14 +47,14 @@
                         hide-details dense
                         v-for="label in project_labels"
                         :key="label.id"
-                        v-model="labels_visible[label.name]"
+                        v-model="labelsVisible[label.name]"
                         :label="label.name"
                         :color="genColor(label.color)"/>
                     <v-switch
                         class="mt-0"
                         hide-details dense
                         label="Show importing"
-                        v-model="drawingStyle.showImporting"
+                        v-model="drawingStyle[0].showImporting"
                     />
                   </div>
                   <div style="text-align: center;">
@@ -74,7 +74,7 @@
                     <v-slider hide-details class="pl-2 pr-2"
                               style="width: 50%"
                               prepend-icon="mdi-circle-opacity"
-                              v-model="drawingStyle.fillOpacity"
+                              v-model="drawingStyle[0].fillOpacity"
                               step="0"
                               thumb-label
                               min="0.0" max="1">
@@ -85,7 +85,7 @@
                     <v-slider hide-details class="pl-2 pr-2"
                               style="width: 50%"
                               prepend-icon="mdi-gesture-tap"
-                              v-model="drawingStyle.hoverOpacity"
+                              v-model="drawingStyle[0].hoverOpacity"
                               step="0"
                               thumb-label
                               min="0.0" max="1">
@@ -97,7 +97,7 @@
                     <v-slider hide-details class="pl-2 pr-2"
                               style="width: 50%"
                               prepend-icon="mdi-format-line-weight"
-                              v-model="drawingStyle.lineWidth"
+                              v-model="drawingStyle[0].lineWidth"
                               step="1"
                               thumb-label
                               min="1" max="10">
@@ -121,7 +121,7 @@
                   <div class="pl-3 pr-3 pb-3">
 
                     <v-list dense shaped class="slides-list">
-                      <v-list-item-group v-model="current_slide" color="orange" mandatory>
+                      <v-list-item-group v-model="currentSlide" color="orange" mandatory>
                         <v-list-item
                             two-line
                             v-for="slide in slides" :key="slide.id"
@@ -131,12 +131,6 @@
                             <v-list-item-title v-text="slide.name"/>
                             <v-list-item-subtitle v-text="slide.properties.comment"/>
                           </v-list-item-content>
-
-                          <!--                          <v-list-item-action>-->
-                          <!--                            <v-btn @click.stop="slideInfo(slide)" icon>-->
-                          <!--                              <v-icon dark>mdi-information-outline</v-icon>-->
-                          <!--                            </v-btn>-->
-                          <!--                          </v-list-item-action>-->
                         </v-list-item>
                       </v-list-item-group>
                     </v-list>
@@ -190,17 +184,24 @@
                   </div>
                 </v-card>
               </v-flex>
+              <v-flex cols="12" sm="12" md="6">
+                <MLPredictionsOverlapTool
+                    :current-slide="currentSlide"
+                    v-on:clear-overlay="onClearOverlayAnnotations"
+                    v-on:annotations="onOverlayAnnotations"
+                    v-on:style-changed="onOverlayStyleChanged"/>
+              </v-flex>
             </v-layout>
           </v-container>
         </v-tab-item>
-        <v-tab-item v-if="annotations[current_slide.id] != null">
+        <v-tab-item v-if="annotations[currentSlide.id] != null">
           <v-container fluid grid-list-md>
             <v-layout row wrap id="annotation-tab">
               <v-flex cols="12" sm="12" md="6"
                       v-for="idx in annotationsLister.pageMax"
                       :key="idx">
                 <annotation-card
-                    v-model="annotations[current_slide.id][annotationsListStart + idx]"
+                    v-model="annotations[currentSlide.id][annotationsListStart + idx]"
                     v-on:save-annotation="concludeEdit"
                     v-on:edit-annotation="editRegion"
                     v-on:cancel-edit="cancelEdit"
@@ -236,6 +237,7 @@ import SliceViewer from '../components/WSIViewer.vue';
 import SideWindow from '../components/SideWindow.vue';
 import AnnotationCard from '../components/AnnotationCard.vue';
 import SessionClassBalance from '../components/SessionClassBalance.vue';
+import MLPredictionsOverlapTool from '@/components/MLPredictionsOverlapTool';
 
 export default {
   name: 'Session',
@@ -254,14 +256,14 @@ export default {
           && this.taskBelongsToUser;
     },
     annotationTabVisible() {
-      return this.annotations[this.current_slide.id] != null
-          && this.annotations[this.current_slide.id].length > 0;
+      return this.annotations[this.currentSlide.id] != null
+          && this.annotations[this.currentSlide.id].length > 0;
     },
     session_id() {
       return this.$route.params.session_id;
     },
     tile_sources() {
-      return `${process.env.VUE_APP_BASE_URL}session/${this.session_id}/${this.current_slide.id}.dzi`;
+      return `${process.env.VUE_APP_BASE_URL}session/${this.session_id}/${this.currentSlide.id}.dzi`;
     },
     project_labels() {
       return this.$store.state.session.task.project.labels;
@@ -313,11 +315,11 @@ export default {
       handler(session) {
         if (session.task.type === 0 || session.task.type === 2) {
           this.annotations = loadAnnotations(session.labelled);
-          this.current_slide = session.task.slides[0];
+          this.currentSlide = session.task.slides[0];
           this.calculatePagination();
         } else if (session.task.type === 1) {
           this.annotations = {};
-          this.current_slide = session.task.task.slides[0];
+          this.currentSlide = session.task.task.slides[0];
         }
       },
     },
@@ -326,13 +328,13 @@ export default {
       deep: true,
       handler(newLabels) {
         for (let i = 0; i < newLabels.length; i += 1) {
-          this.$set(this.labels_visible, newLabels[i].name, true);
+          this.$set(this.labelsVisible, newLabels[i].name, true);
         }
       },
     },
 
     'annotationsLister.page': function (newPage) {
-      const totalAnnotation = this.annotations[this.current_slide.id].length;
+      const totalAnnotation = this.annotations[this.currentSlide.id].length;
       const remaining = totalAnnotation - ((newPage - 1) * this.annotationsLister.max);
       this.annotationsLister.pageMax = Math.min(this.annotationsLister.max, remaining);
     },
@@ -363,30 +365,32 @@ export default {
         });
       },
     },
-    current_slide() {
+    currentSlide() {
       this.calculatePagination();
     },
   },
   data() {
     const self = this;
     return {
-      current_slide: null,
+      currentSlide: null,
       annotations: {},
-      selected_tab: 0,
-      labels_visible: {},
+      selectedTab: 0,
+      labelsVisible: {},
       annotationsLister: {
         page: 1,
         totalPages: 1,
         pageMax: 10,
         max: 10,
       },
-      drawingStyle: {
+      drawingStyle: [{
         fillOpacity: 0.2,
         lineWidth: 2,
         hoverOpacity: 0.5,
         showImporting: true,
-      },
-      line_weight: 1,
+      }, {
+        fillOpacity: 0.2,
+        lineWidth: 2,
+      }],
       revisingUserTask: 'none',
       highlightOnTab: false,
       confirmingImportAnnotations: false,
@@ -399,15 +403,28 @@ export default {
     };
   },
   methods: {
+    onOverlayAnnotations(newAnnotations) {
+      this.$refs.slice_viewer.loadOverlayAnnotations(newAnnotations);
+    },
+
+    onClearOverlayAnnotations() {
+      console.log('onClearOverlayAnnotations', 'Session');
+      this.$refs.slice_viewer.clearOverlayAnnotations();
+    },
+
+    onOverlayStyleChanged(style) {
+      this.drawingStyle[1] = style;
+    },
+
     labelAnnotationsVisibility(target) {
       this.project_labels.forEach((label) => {
-        this.labels_visible[label.name] = target;
+        this.labelsVisible[label.name] = target;
       });
     },
 
     calculatePagination() {
-      if (this.current_slide.id in this.annotations) {
-        const totalAnnotation = this.annotations[this.current_slide.id].length;
+      if (this.currentSlide.id in this.annotations) {
+        const totalAnnotation = this.annotations[this.currentSlide.id].length;
         this.annotationsLister.totalPages = Math.floor(totalAnnotation
             / this.annotationsLister.max);
         if (this.annotationsLister.page !== 1) {
@@ -431,7 +448,7 @@ export default {
       if (this.highlightOnTab) {
         const element = document.getElementById(`region-${region.id}`);
         if (element == null) return;
-        this.selected_tab = 1;
+        this.selectedTab = 1;
         element.scrollIntoView({
           behavior: 'smooth',
           block: 'center',
@@ -453,7 +470,7 @@ export default {
     // eslint-disable-next-line no-param-reassign
     onNewRegionDraw(annotation) {
       annotation.id = null; // making sure to reset the id
-      annotation.slideId = this.current_slide.id;
+      annotation.slideId = this.currentSlide.id;
       const self = this;
       this.$post(`session/${this.session_id}/add_region`, annotation.serialize())
         .then((resp) => {
@@ -461,7 +478,7 @@ export default {
           annotation.id = resp.id;
           annotation.state = 'idle';
           annotation.updateImageLocation();
-          self.annotations[self.current_slide.id].push(annotation);
+          self.annotations[self.currentSlide.id].push(annotation);
           self.annotationUpdate();
           this.$refs.classBalance.refresh();
           this.calculatePagination();
@@ -503,7 +520,7 @@ export default {
      * @param short
      */
     regionClicked(region, short = false) {
-      this.selected_tab = 1;
+      this.selectedTab = 1;
       const pageChanged = this.navigateAnnotationPage(region);
       if (pageChanged && this.attempted === 0) {
         this.attempted = 1;
@@ -539,7 +556,7 @@ export default {
     },
 
     navigateAnnotationPage(annotation) {
-      const idx = this.annotations[this.current_slide.id].indexOf(annotation);
+      const idx = this.annotations[this.currentSlide.id].indexOf(annotation);
       const newPage = Math.ceil(idx / this.annotationsLister.max);
       if (newPage !== this.annotationsLister.page) {
         this.annotationsLister.page = newPage;
@@ -555,7 +572,7 @@ export default {
         reader.readAsText(e.target.files[0], 'UTF-8');
         reader.onload = (readerEvent) => {
           const json = JSON.parse(readerEvent.target.result);
-          const slideId = this.current_slide.id;
+          const slideId = this.currentSlide.id;
           const annotations = json.features.map((feature, idx) => {
             const geo = feature.geometry;
             const label = feature.properties.label != null
@@ -592,13 +609,13 @@ export default {
     },
 
     importAll() {
-      const toImport = this.annotations[this.current_slide.id]
+      const toImport = this.annotations[this.currentSlide.id]
         .filter(
           (annotation) => annotation.state === 'importing'
                   && annotation.label.id != null,
         )
         .map((annotation) => annotation.serialize());
-      this.$post(`session/${this.session_id}/${this.current_slide.id}/importing`, toImport)
+      this.$post(`session/${this.session_id}/${this.currentSlide.id}/importing`, toImport)
         .then((res) => {
           alert(res);
         })
@@ -606,7 +623,7 @@ export default {
     },
 
     dismissAll() {
-      this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id]
+      this.annotations[this.currentSlide.id] = this.annotations[this.currentSlide.id]
         .filter((annotation) => annotation.state !== 'importing');
       this.confirmingImportAnnotations = false;
     },
@@ -659,12 +676,12 @@ export default {
 
     dismissAnnotation(annotation) {
       if (annotation.state === 'importing') {
-        this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id]
+        this.annotations[this.currentSlide.id] = this.annotations[this.currentSlide.id]
           .filter((item) => item !== annotation);
       } else if (confirm('Are you sure you want to remove this annotation?')) {
         this.$post(`session/${this.session_id}/remove_annotation`, annotation.serialize())
           .then(() => {
-            this.annotations[this.current_slide.id] = this.annotations[this.current_slide.id]
+            this.annotations[this.currentSlide.id] = this.annotations[this.currentSlide.id]
               .filter((item) => item.id !== annotation.id);
             this.annotationUpdate();
             this.calculatePagination();
@@ -693,6 +710,7 @@ export default {
     // console.log();
   },
   components: {
+    MLPredictionsOverlapTool,
     SessionClassBalance,
     AnnotationCard,
     SideWindow,

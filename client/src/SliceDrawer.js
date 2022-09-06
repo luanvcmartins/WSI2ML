@@ -526,16 +526,14 @@ class PathMeshEditor {
   }
 
   keyboardEvent(func, e) {
-    switch (func) {
-      case 'keyUp':
-        if (e.keyCode === 27) {
-          // User pressed ESC. The edition is cancelled and the shape must be restored
-          this.cancel();
-        } else if (e.keyCode === 13) {
-          // Notify the editing has ended with changes
-          this.conclude();
-        }
-        break;
+    if (func === 'keyUp') {
+      if (e.keyCode === 27) {
+        // User pressed ESC. The edition is cancelled and the shape must be restored
+        this.cancel();
+      } else if (e.keyCode === 13) {
+        // Notify the editing has ended with changes
+        this.conclude();
+      }
     }
   }
 
@@ -647,9 +645,6 @@ class PathMeshEditor {
   }
 }
 
-/* the conversion from pixel to shape may be done with a search algorithm.
-The points are the pixels which were unable to find add one of its side to the search */
-
 class StateRestorer {
   constructor(instance, annotation) {
     this.instance = instance;
@@ -673,11 +668,9 @@ class StateRestorer {
     });
     this.currentStatePoint = this.states.length - 1;
     this.instance.callback.onStateRestorerEvent(this);
-    // todo report state changed
   }
 
   restoreToPoint(value) {
-    console.log('restoreToPoint', value);
     this.annotation.geometry.points = this.states[value].points;
     this.instance.update();
     this.currentStatePoint = value;
@@ -704,6 +697,7 @@ class Annotation {
     this.description = annotation.description == null ? null : annotation.description;
     this.properties = annotation.properties == null ? null : annotation.properties;
     this.currentlyImporting = false;
+    this.layer = annotation.layer == null ? 0 : annotation.layer;
     this.feedback = null;
     this.drawFeedback = false;
 
@@ -738,6 +732,7 @@ class Annotation {
   /**
    * Checks if the user should be able to see this elements from its viewport AND
    * it isn't filtered out.
+   *
    * @param userViewport the user's viewport
    * @returns {boolean} true if this element should be visible
    */
@@ -747,7 +742,7 @@ class Annotation {
       || this.imageLocation.left > userViewport.right
       || this.imageLocation.top > userViewport.bottom;
     const { filtering } = this.drawer;
-    const notFilteredOut = filtering[this.label.name] || this.state === 'importing';
+    const notFilteredOut = filtering[this.label.name] || this.state === 'importing' || this.state === 'overlay';
     return !offScreen && notFilteredOut;
   }
 
@@ -788,7 +783,7 @@ class Annotation {
   // }
 
   getColor() {
-    const { style } = this.drawer;
+    const style = this.drawer.style[this.layer];
     const { color } = this.label;
     return {
       color: `${color[0]},${color[1]},${color[2]}`,
@@ -811,6 +806,7 @@ class Annotation {
   }
 
   draw() {
+    throw Error('Failed to implement Annotation.draw()');
   }
 }
 
@@ -840,7 +836,7 @@ class RectAnnotation extends Annotation {
       opacity,
     } = super.getColor();
     const ctx = this.drawer.ctx;
-    const style = this.drawer.style;
+    const style = this.drawer.style[this.layer];
     const imageToCanvas = this.drawer.imagePointToCanvasPoint.bind(this.drawer);
     const points = !this.drawFeedback ? this.geometry.points : this.feedback.geometry;
     // shaping:
@@ -1025,7 +1021,7 @@ class CircleAnnotation extends Annotation {
       color,
       opacity,
     } = super.getColor();
-    const { style } = this.drawer;
+    const style = this.drawer.style[this.layer];
     const { points } = this.geometry;
 
     const position = this.drawer.imagePointToCanvasPoint(points[0].x, points[0].y);
@@ -1089,11 +1085,12 @@ class PolygonAnnotation extends Annotation {
   }
 
   draw() {
+    const style = this.drawer.style[this.layer];
+
     const {
       color,
       opacity,
     } = super.getColor();
-    const { style } = this.drawer;
 
     if (this.id == null) {
       this.update();
@@ -1113,7 +1110,21 @@ class PolygonAnnotation extends Annotation {
     } else if (this.state === 'idle') {
       this.drawer.ctx.setLineDash([]);
       this.drawer.ctx.lineWidth = style.lineWidth;
+    } else if (this.state === 'overlay') {
+      if (this.isHovering) {
+        this.drawer.ctx.font = '40px Arial';
+        this.drawer.ctx.fillStyle = `rgba(${color}, 1)`;
+        const textMetrics = this.drawer.ctx.measureText(this.label.name);
+        this.drawer.ctx.fillText(
+          this.label.name,
+          this.drawer.canvas.width / 2 - textMetrics.width / 2,
+          50,
+        );
+
+        this.drawer.ctx.fillStyle = `rgba(${color}, 0)`;
+      }
     }
+
     this.drawer.ctx.fillStyle = `rgba(${color}, ${opacity})`;
     this.drawer.ctx.strokeStyle = `rgb(${color})`;
     this.drawer.ctx.lineWidth = style.lineWidth;
@@ -1141,7 +1152,7 @@ class AnnotationDrawer {
     this.canvas = canvas;
     this.callback = callback;
     this.ctx = canvas.getContext('2d');
-    this.annotations = [];
+    this.annotationSet = [[]];
     this.currentlyDrawing = null;
     // this.currentlyEditing = null;
     this.currentLabel = null;
@@ -1153,9 +1164,7 @@ class AnnotationDrawer {
     this.isCurrentlyHoveringAnnotation = false;
     this.pixelWidth = 0;
     this.isDrawingEnabled = true;
-    this.style = {
-      fillOpacity: 0.6,
-    };
+    this.style = [{ fillOpacity: 0.6 }, { fillOpacity: 0.6 }];
     this.currentViewport = {
       top: 0,
       bottom: 0,
@@ -1171,7 +1180,7 @@ class AnnotationDrawer {
     });
 
     // Defining function that keeps track of screen updates:
-    this.viewer.addHandler('update-viewport', _.throttle(this.updateViewport.bind(this)));
+    this.viewer.addHandler('update-viewport', _.throttle(this.updateViewport.bind(this), 50));
 
     // Setting resize events to handle the annotation canvas size:
     this.viewer.addHandler('resize', () => {
@@ -1209,7 +1218,7 @@ class AnnotationDrawer {
           this.currentTool.mouseEvent('click', e);
         } else {
           this.elementsOnScreen.forEach((element) => {
-            if (element.isHovering) {
+            if (element.state !== 'overlay' && element.isHovering) {
               this.callback.onClick(element);
               this.events.annotationClicked(element);
             }
@@ -1233,18 +1242,21 @@ class AnnotationDrawer {
         let updateRequired = false;
         this.elementsOnScreen.forEach((annotation) => {
           const intersects = annotation.intersects(e.position);
-          const statusUpdateRequired = annotation.isHovering !== intersects;
-          updateRequired = updateRequired
-            || (intersects && statusUpdateRequired)
-            || statusUpdateRequired;
 
-          // Handling element interaction listeners:
-          if (statusUpdateRequired) {
-            if (intersects) {
-              callback.onHover(annotation);
-              hovering += 1;
-            } else {
-              callback.onLeave(annotation);
+          if (annotation.state !== 'overlay') {
+            const statusUpdateRequired = annotation.isHovering !== intersects;
+            updateRequired = updateRequired
+              || (intersects && statusUpdateRequired)
+              || statusUpdateRequired;
+
+            // Handling element interaction listeners:
+            if (statusUpdateRequired) {
+              if (intersects) {
+                callback.onHover(annotation);
+                hovering += 1;
+              } else {
+                callback.onLeave(annotation);
+              }
             }
           }
 
@@ -1390,12 +1402,12 @@ class AnnotationDrawer {
       circle: (annotation) => new CircleAnnotation(this, annotation),
       polygon: (annotation) => new PolygonAnnotation(this, annotation),
     };
-    this.annotations = annotations.map((annotation) => {
+    this.annotationSet[0] = annotations.map((annotation) => {
       const { type } = annotation.geometry;
       return instantiators[type](annotation);
     });
     this.update();
-    return this.annotations;
+    return this.annotationSet[0];
   }
 
   /**
@@ -1414,7 +1426,7 @@ class AnnotationDrawer {
         // if current tool is the PathMeshEditor (for editing), we want to bypass hovering locks
         return true;
       }
-      // Tool interaction is only allowed when not hovering a annotation
+      // Tool interaction is only allowed when not hovering an annotation
       return !this.isCurrentlyHoveringAnnotation;
     }
 
@@ -1480,6 +1492,11 @@ class AnnotationDrawer {
     return this.viewer.viewport.imageToViewerElementCoordinates(point);
   }
 
+  /**
+   * Navigates to the annotation position.
+   *
+   * @param annotation The annotation to navigate to.
+   */
   peep(annotation) {
     const viewer = this.viewer;
     const imageLocation = annotation.imageLocation;
@@ -1507,20 +1524,24 @@ class AnnotationDrawer {
 
     const self = this;
     self.elementsOnScreen = [];
-    if (this.annotations != null) {
-      this.annotations.forEach((annotation) => {
+    if (this.annotationSet != null) {
+      // console.log('updating');
+      this.annotationSet.forEach((annotations) => {
         // Checking if annotation should be visible
-        annotation.updateViewport(); // for collision checks
-        if (annotation.shouldBeVisible(self.currentViewport)) {
-          // Annotation would be visible on the screen, does the user want to see it?
-          if (self.filtering[annotation.label.name]
-            || (annotation.state === 'importing' && self.style.showImporting)) {
-            // This annotation must be drawn:
-            annotation.update();
-            annotation.draw();
-            self.elementsOnScreen.push(annotation);
+        annotations.forEach((annotation) => {
+          annotation.updateViewport(); // for collision checks
+          if (annotation.shouldBeVisible(self.currentViewport)) {
+            // Annotation would be visible on the screen, does the user want to see it?
+            if (self.filtering[annotation.label.name]
+              || annotation.state === 'overlay'
+              || (annotation.state === 'importing' && self.style[0].showImporting)) {
+              // This annotation must be drawn:
+              annotation.update();
+              annotation.draw();
+              self.elementsOnScreen.push(annotation);
+            }
           }
-        }
+        });
       });
     }
     if (this.currentTool != null) {

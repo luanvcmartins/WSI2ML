@@ -95,7 +95,6 @@ def remove_label():
 def list_projects():
     return jsonify([x.to_dict() for x in models.Project.query.all()])
 
-
 def gen_progress_query():
     if db.engine.name == 'sqlite':
         count_filter = "COUNT(CASE WHEN completed=1 THEN 1 END)"

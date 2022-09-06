@@ -37,16 +37,31 @@
                     :custom-filter="annotationTaskFiltering">
 
                   <template v-slot:top>
-                    <v-row>
-                      <v-col md="10">
+                    <v-row class="ma-0 pa-0">
+                      <v-col md="10" class="ma-0 pa-0">
                         <v-text-field
                             v-model="annotationTaskFilter"
                             label="Search for slide's name"
                             class="mx-4"
                         ></v-text-field>
                       </v-col>
-                      <v-col md="2">
+                      <v-col md="2" class="ma-0 pa-0">
                         <v-checkbox label="Show slide's filename" v-model="showFileNames"/>
+                      </v-col>
+                    </v-row>
+                    <v-row v-if="projects != null" class="ma-0 pa-0">
+                      <v-col md="12" class="ma-0">
+                        <v-chip-group class="mr-2 ml-2" v-model="annotationProjectFilter">
+                          <v-chip filter :value="null" color="orange">All projects
+                          </v-chip>
+                          <v-chip
+                              filter
+                              v-for="project in projects"
+                              :key="project.id"
+
+                              :value="project.id">{{ project.name }}
+                          </v-chip>
+                        </v-chip-group>
                       </v-col>
                     </v-row>
                   </template>
@@ -181,11 +196,24 @@ export default {
     Loading,
     TaskStatusOverview,
   },
+  computed: {
+    projects() {
+      console.log(this.tasks);
+      if (this.tasks != null) {
+        return Array.from(new Set(this.tasks.annotations.map((task) => ({
+          name: task.project.name,
+          id: task.project.id,
+        }))));
+      }
+      return [];
+    },
+  },
   data: () => ({
     loading: true,
     tasks: null,
     showFileNames: true,
     annotationTaskFilter: '',
+    annotationProjectFilter: 0,
     task_types: [
       'Annotate images',
       'Review annotations',
@@ -205,6 +233,12 @@ export default {
       {
         text: 'Project',
         value: 'project.name',
+        filter(value) {
+          if (this.annotationProjectFilter == null
+              || this.annotationProjectFilter === 0) return true;
+
+          return value === this.annotationProjectFilter.id;
+        },
       },
       // {text: 'Users', value: 'assigned'},
       {
@@ -263,6 +297,7 @@ export default {
     },
 
     annotationTaskFiltering(value, search) {
+      // const projectFilter =
       return value != null && search != null && Array.isArray(value)
           && value.some((slideName) => slideName.name.includes(search));
     },
