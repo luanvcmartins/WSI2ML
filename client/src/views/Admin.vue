@@ -8,14 +8,60 @@
               <v-toolbar-title class="title">Tasks</v-toolbar-title>
             </v-expansion-panel-header>
             <v-expansion-panel-content>
-              <v-tabs v-model="task_type">
-                <v-tab>Annotations</v-tab>
-                <v-tab>Revisions</v-tab>
-              </v-tabs>
               <v-data-table
-                  :headers="config.task_headers[task_type]"
+                  :headers="tasksHeader"
                   :items="tasks[task_type]"
-                  :items-per-page="5">
+                  :items-per-page="5"
+                  :search="taskFilter.name"
+                  :custom-filter="annotationTaskFiltering">
+
+                <template v-slot:top>
+                  <v-row class="ma-0 pa-0">
+                    <v-col md="4" class="ma-0 pa-0">
+                      <v-text-field
+                          v-model="taskFilter.name"
+                          label="Search for slide's name"
+                          class="mx-4"
+                      ></v-text-field>
+                    </v-col>
+                    <v-col v-if="projects != null" md="8" class="ma-0">
+                      <v-chip-group class="mr-2 ml-2" v-model="taskFilter.project">
+                        <v-chip filter :value="null" color="orange">
+                          All projects
+                        </v-chip>
+                        <v-chip
+                            filter
+                            v-for="project in projects"
+                            :key="project.id"
+                            :value="project.name">
+                          {{ project.name }}
+                        </v-chip>
+                      </v-chip-group>
+                    </v-col>
+                  </v-row>
+                  <v-row class="mt-0">
+                    <v-col md="12" class="pt-0 pb-0">
+                      <v-chip-group class="mr-2 ml-2 mb-2" v-model="taskFilter.user">
+                        <v-chip filter :value="null" color="orange">
+                          Anyone
+                        </v-chip>
+                        <v-chip
+                            filter
+                            v-for="user in users"
+                            :key="user.id"
+                            :value="user.name">
+                          {{ user.name }}
+                        </v-chip>
+                      </v-chip-group>
+                    </v-col>
+                  </v-row>
+
+                  <v-tabs v-model="task_type">
+                    <v-tab>Annotations</v-tab>
+                    <v-tab>Revisions</v-tab>
+                  </v-tabs>
+                </template>
+
                 <template v-slot:item.slides="{ item }">
                   <v-chip-group column show-arrows>
                     <v-chip style="pointer-events: none;"
@@ -34,7 +80,7 @@
                     </v-chip>
                   </v-chip-group>
                 </template>
-                <template v-slot:item.usertasks="{ item }">
+                <template v-slot:item.user_tasks="{ item }">
                   <v-chip-group column show-arrows>
                     <v-chip :readonly="true"
                             v-for="task in item.user_tasks"
@@ -57,7 +103,9 @@
                 </template>
                 <template v-slot:item.actions="{ item }">
                   <v-icon small class="mr-2" @click="editTask(item)">mdi-pencil</v-icon>
-                  <v-icon small @click="removeTask(item)" :disabled="item.completed">mdi-delete</v-icon>
+                  <v-icon small @click="removeTask(item)" :disabled="item.completed">
+                    mdi-delete
+                  </v-icon>
                 </template>
               </v-data-table>
               <v-card-actions>
@@ -106,19 +154,28 @@
                   <v-chip-group show-arrows column>
                     <v-chip style="pointer-events: none;"
                             outlined
-                            :color="`rgb(${label.color[0]}, ${label.color[1]},${label.color[2]})`" :readonly="true"
+                            :color="`rgb(${label.color[0]}, ${label.color[1]},${label.color[2]})`"
+                            :readonly="true"
                             v-for="label in item.labels" dark>
                       {{ label.name }}
                     </v-chip>
                   </v-chip-group>
                 </template>
                 <template v-slot:item.actions="{ item }">
+                  <v-tooltip bottom>
+                    <template v-slot:activator="{ on, attrs }">
+                      <v-icon small class="mr-2"  v-bind="attrs" v-on="on" @click="showLabelData(item)">
+                        mdi-label
+                      </v-icon>
+                    </template>
+                    <span>Copy label data to clipboard</span>
+                  </v-tooltip>
                   <v-icon small class="mr-2" @click="editProject(item)">
                     mdi-pencil
                   </v-icon>
                   <v-tooltip bottom>
                     <template v-slot:activator="{ on, attrs }">
-                      <v-icon small v-bind="attrs" v-on="on" @click>mdi-delete</v-icon>
+                      <v-icon small v-bind="attrs" v-on="on">mdi-delete</v-icon>
                     </template>
                     <span>Not implemented</span>
                   </v-tooltip>
@@ -170,6 +227,57 @@ export default {
     user() {
       return this.$store.state.user;
     },
+    tasksHeader() {
+      return [
+        {
+          text: 'id',
+          align: 'start',
+          sortable: false,
+          value: 'id',
+        },
+        {
+          text: 'Slides',
+          value: 'slides',
+        },
+        {
+          text: 'Project',
+          value: 'project.name',
+          filter: (value) => {
+            if (this.taskFilter.project == null
+                || this.taskFilter.project === 0) {
+              return true;
+            }
+            return value === this.taskFilter.project;
+          },
+        },
+        {
+          text: 'Annotators',
+          value: 'user_tasks',
+          filter: (value) => {
+            if (this.taskFilter.user == null
+                || this.taskFilter.user === 0) {
+              return true;
+            }
+            // for (const userTask in Object.values(value)){
+            //   if (userTask)
+            // }
+            return value.reduce(
+              (acc, userTask) => {
+                if (userTask.user != null) {
+                  return acc || userTask.user.name === this.taskFilter.user;
+                }
+                return acc || false;
+              },
+              false,
+            );
+          },
+        },
+        {
+          text: 'Actions',
+          value: 'actions',
+        },
+      ];
+    },
   },
   data: () => ({
     drawer: false,
@@ -179,33 +287,14 @@ export default {
     users: [],
     projects: [],
     tasks: [],
+    taskFilter: {
+      name: '',
+      project: null,
+      user: null,
+    },
     task_type: 'annotations',
     config: {
       task_headers: {
-        0: [
-          {
-            text: 'id',
-            align: 'start',
-            sortable: false,
-            value: 'id',
-          },
-          {
-            text: 'Slides',
-            value: 'slides',
-          },
-          {
-            text: 'Project',
-            value: 'project.name',
-          },
-          {
-            text: 'Annotators',
-            value: 'usertasks',
-          },
-          {
-            text: 'Actions',
-            value: 'actions',
-          },
-        ],
         1: [
           {
             text: 'id',
@@ -356,6 +445,12 @@ export default {
       this.drawer = true;
     },
 
+    showLabelData(item) {
+      navigator.clipboard.writeText(
+        JSON.stringify(item.labels),
+      );
+    },
+
     newTask() {
       this.editing = {
         name: '',
@@ -421,6 +516,11 @@ export default {
           })
           .catch((err) => alert(err));
       }
+    },
+
+    annotationTaskFiltering(value, search) {
+      return value != null && search != null && Array.isArray(value)
+          && value.some((slideName) => slideName.name.includes(search));
     },
   },
   mounted() {

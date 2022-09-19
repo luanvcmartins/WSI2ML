@@ -2,6 +2,29 @@
   <!--  <div v-if="tasks != null">-->
   <loading :is-loading="loading">
     <v-container grid-list-sm v-if="tasks != null">
+      <v-row v-if="projects != null">
+        <v-col>
+          <v-card>
+            <v-row class="ma-0 pa-0">
+              <v-col sm="12">Project selection
+              </v-col>
+              <v-col md="12" class="ma-0 pa-0">
+                <v-chip-group class="mr-2 ml-2" v-model="annotationProjectFilter">
+                  <v-chip filter :value="null" color="orange">All projects
+                  </v-chip>
+                  <v-chip
+                      filter
+                      v-for="project in projects"
+                      :key="project.id"
+                      :value="project.name">
+                    {{ project.name }}
+                  </v-chip>
+                </v-chip-group>
+              </v-col>
+            </v-row>
+          </v-card>
+        </v-col>
+      </v-row>
       <v-scale-transition>
         <v-row v-if="tasks.annotation_status != null">
           <v-col md="6">
@@ -49,21 +72,7 @@
                         <v-checkbox label="Show slide's filename" v-model="showFileNames"/>
                       </v-col>
                     </v-row>
-                    <v-row v-if="projects != null" class="ma-0 pa-0">
-                      <v-col md="12" class="ma-0">
-                        <v-chip-group class="mr-2 ml-2" v-model="annotationProjectFilter">
-                          <v-chip filter :value="null" color="orange">All projects
-                          </v-chip>
-                          <v-chip
-                              filter
-                              v-for="project in projects"
-                              :key="project.id"
-                              :value="project.name">
-                            {{ project.name }}
-                          </v-chip>
-                        </v-chip-group>
-                      </v-col>
-                    </v-row>
+
                   </template>
 
                   <template v-slot:item.slides="{ item }">
@@ -246,6 +255,42 @@ export default {
         },
       ];
     },
+    review_headers() {
+      return [
+        {
+          text: 'Slides associated',
+          align: 'start',
+          sortable: false,
+          value: 'slides',
+        },
+        {
+          text: 'Annotations by to review',
+          align: 'start',
+          sortable: false,
+          value: 'revisions',
+        },
+        {
+          text: 'Completed?',
+          value: 'completed',
+        },
+        {
+          text: 'Project',
+          value: 'project.name',
+          filter: (value) => {
+            if (this.annotationProjectFilter == null
+                || this.annotationProjectFilter === 0) {
+              return true;
+            }
+
+            return value === this.annotationProjectFilter;
+          },
+        },
+        {
+          text: 'Actions',
+          value: 'actions',
+        },
+      ];
+    },
   },
   data: () => ({
     loading: true,
@@ -257,32 +302,7 @@ export default {
       'Annotate images',
       'Review annotations',
     ],
-    review_headers: [
-      {
-        text: 'Slides associated',
-        align: 'start',
-        sortable: false,
-        value: 'slides',
-      },
-      {
-        text: 'Annotations by to review',
-        align: 'start',
-        sortable: false,
-        value: 'revisions',
-      },
-      {
-        text: 'Completed?',
-        value: 'completed',
-      },
-      {
-        text: 'Project',
-        value: 'project.name',
-      },
-      {
-        text: 'Actions',
-        value: 'actions',
-      },
-    ],
+
   }),
   methods: {
     startTask(task) {
