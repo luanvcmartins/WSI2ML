@@ -8,8 +8,12 @@ def annotation_stats(annotations):
         annotation_label = annotation.label
         annotation_type = annotation.data["type"]
         points = annotation.data["points"]
+
         if annotation_type == "polygon":
-            area = Polygon([(point['x'], point['y']) for point in points]).area
+            if len(points) > 2:
+                area = Polygon([(point['x'], point['y']) for point in points]).area
+            else:
+                area = 0
         elif annotation_type == "rect":
             point1, point2 = points
             area = box(point1['x'], point1['y'], point2['x'], point2['y']).area

@@ -311,7 +311,7 @@ export default {
           this.$store.commit('set_session', resp);
           this.$router.push(`/session/${resp.id}`);
         })
-        .catch((err) => alert(err));
+        .catch((err) => this.$toast.error(`Oops, something went wrong:\n${err.response.data.msg}`));
     },
 
     loadTasks() {

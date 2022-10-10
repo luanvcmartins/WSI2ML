@@ -482,6 +482,7 @@ export default {
           self.annotationUpdate();
           this.$refs.classBalance.refresh();
           this.calculatePagination();
+          this.$toast('Successfully saved annotation', { timeout: 1000 });
         })
         .catch((err) => {
           alert(`Error while saving region: ${err}`);

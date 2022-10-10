@@ -16,7 +16,7 @@
                 {{ selectedLabel.name }}
               </v-btn>
             </template>
-            <v-list>
+            <v-list style="overflow: auto; max-height: 600px">
               <v-list-item @click="selectedLabel = item"
                            v-for="(item, index) in labels" :key="index">
                 <v-list-item-avatar>

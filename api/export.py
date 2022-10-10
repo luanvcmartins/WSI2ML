@@ -15,13 +15,19 @@ export_tasks = {}
 
 
 @export_api.route("list")
+@jwt_required()
 def list_projects():
+    if not current_user.can_export:
+        return jsonify({"msg": "Not allowed"}), 401
     projects = models.Project.query.all()
     return jsonify([x.to_dict() for x in projects])
 
 
 @export_api.route("list/by_task")
+@jwt_required()
 def list_task():
+    if not current_user.can_export:
+        return jsonify({"msg": "Not allowed"}), 401
     project_id = request.args['project_id']
     export_tasks = []
     tasks = models.AnnotationTask.query.filter(models.AnnotationTask.project_id == project_id).all()
@@ -50,7 +56,10 @@ def list_task():
 
 
 @export_api.route("list/by_slides")
+@jwt_required()
 def list_slide():
+    if not current_user.can_export:
+        return jsonify({"msg": "Not allowed"}), 401
     project_id = request.args['project_id']
 
     project_slides = db.session.execute("""SELECT slides.*
@@ -91,7 +100,10 @@ def list_slide():
 
 
 @export_api.route("reviews/by_slide")
+@jwt_required()
 def reviews_slide():
+    if not current_user.can_export:
+        return jsonify({"msg": "Not allowed"}), 401
     params = {"user_task_id": request.args['user_task_id'], "slide_id": request.args['slide_id']}
     revisions = db.session.execute("""
         SELECT user_tasks.id, users.name, count(*)
@@ -113,6 +125,8 @@ def reviews_slide():
 @export_api.route("review/by_task")
 @jwt_required()
 def review_by_task():
+    if not current_user.can_export:
+        return jsonify({"msg": "Not allowed"}), 401
     user_task_id = request.args['user_task_id']
     revisions = db.session.execute("""
             SELECT user_tasks.id, users.name, count(*)

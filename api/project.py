@@ -9,7 +9,10 @@ project_api = Blueprint("project_api", __name__)
 
 
 @project_api.route("new", methods=['POST'])
+@jwt_required()
 def new():
+    if not current_user.manages_projects:
+        return jsonify({"msg": "Not allowed"}), 401
     new_project = request.json
     # noinspection PyArgumentList
     project = models.Project(
@@ -32,7 +35,10 @@ def new():
 
 
 @project_api.route("edit", methods=["POST"])
+@jwt_required()
 def edit():
+    if not current_user.manages_projects:
+        return jsonify({"msg": "Not allowed"}), 401
     new_project = request.json
     db.session.query(models.Project).filter(models.Project.id == new_project['id']).update({
         "id": new_project["id"],
@@ -60,7 +66,10 @@ def edit():
 
 
 @project_api.route("valid_path", methods=["POST"])
+@jwt_required()
 def valid_path():
+    if not current_user.manages_projects:
+        return jsonify({"msg": "Not allowed"}), 401
     path = request.json['path']
     return jsonify({
         "valid_path": os.path.exists(path)
@@ -68,7 +77,10 @@ def valid_path():
 
 
 @project_api.route("tasks")
+@jwt_required()
 def tasks():
+    if not current_user.manages_tasks:
+        return jsonify({"msg": "Not allowed"}), 401
     project_id = request.args['project_id']
     tasks = models.AnnotationTask.query.join(models.UserTask).filter(models.UserTask.completed == True,
                                                                      models.AnnotationTask.project_id == project_id).all()
@@ -84,7 +96,10 @@ def tasks():
 
 
 @project_api.route("remove_label", methods=["POST"])
+@jwt_required()
 def remove_label():
+    if not current_user.manages_projects:
+        return jsonify({"msg": "Not allowed"}), 401
     label = request.json
     db.session.query(models.Label).filter(models.Label.id == label['id']).delete()
     db.session.commit()

@@ -1,3 +1,6 @@
+import json
+from werkzeug.exceptions import HTTPException
+
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
@@ -26,7 +29,7 @@ def create_app(context="development"):
     from api.tasks import task_api
     from api.export import export_api
     from api.apps import apps_api
-    CORS(app, supports_credentials=True)
+    CORS(app, origins=["http://localhost:*", "https://imgsig.accamargo.org.br"], supports_credentials=True)
     app.register_blueprint(user_api, url_prefix="/api/user")
     app.register_blueprint(session_api, url_prefix="/api/session")
     app.register_blueprint(project_api, url_prefix="/api/project")
@@ -36,6 +39,17 @@ def create_app(context="development"):
 
     db.init_app(app)
     jwt.init_app(app)
+
+    @app.errorhandler(Exception)
+    def handle_exception(e: Exception):
+        #if isinstance(e, HTTPException):
+        #    return e
+
+        return jsonify({
+            "code": e.args[0],
+            "name": e.args[1],
+            "msg": str(e),
+        }), 500
 
     @app.route("/")
     def index():
@@ -60,6 +74,12 @@ def create_app(context="development"):
             return f"user;{user.username}"
         else:
             return f"app;{user.id}"
+
+    @app.after_request
+    def add_security_headers(resp):
+        resp.headers['Content-Security-Policy'] = 'default-src \'self\''
+        resp.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        return resp
 
     return app
 

@@ -164,7 +164,7 @@
                 <template v-slot:item.actions="{ item }">
                   <v-tooltip bottom>
                     <template v-slot:activator="{ on, attrs }">
-                      <v-icon small class="mr-2"  v-bind="attrs" v-on="on" @click="showLabelData(item)">
+                      <v-icon small class="mr-2" v-bind="attrs" v-on="on" @click="showLabelData(item)">
                         mdi-label
                       </v-icon>
                     </template>
@@ -214,6 +214,7 @@ import UserEditor from '../components/UserEditor.vue';
 import ProjectEditor from '../components/ProjectEditor.vue';
 import TaskEditor from '../components/TaskEditor.vue';
 import TaskBatch from '../components/TaskBatch.vue';
+import { showErrorModal } from '@/utils';
 
 export default {
   name: 'Admin',
@@ -390,7 +391,10 @@ export default {
           this.$store.commit('set_session', resp);
           this.$router.push(`/session/${resp.id}`);
         })
-        .catch((err) => alert(err));
+        .catch((err) => {
+          this.$toast.error(`Oops, something went wrong:\n${err.response.data.msg}`);
+          // showErrorModal(this, err);
+        });
     },
     newUser() {
       this.editing = {
@@ -400,6 +404,8 @@ export default {
         manages_users: false,
         manages_tasks: false,
         manages_projects: false,
+        can_export: false,
+        access_overview: false,
       };
       this.mode = 'user';
       this.drawer = true;

@@ -8,6 +8,7 @@ Vue.use(VueAxios, {
   config: {
     baseURL: process.env.VUE_APP_BASE_URL,
   },
+
   interceptors: {
     beforeRequest(config, axiosInstance) {
       // Adding the jwt token, if we have one
@@ -27,6 +28,7 @@ Vue.use(VueAxios, {
       if (config.statusCode === 401) {
       }
     },
+
   },
 });
 export default axios;

@@ -34,12 +34,15 @@ export default {
   watch: {
     value: {
       immediate: true,
-      handler(new_value) {
-        this.user = _.cloneDeep(new_value);
+      handler(newValue) {
+        this.user = _.cloneDeep(newValue);
       },
     },
   },
-  data: () => ({ user: null, test: [] }),
+  data: () => ({
+    user: null,
+    test: [],
+  }),
   methods: {
     save() {
       if (this.user.id != null) {
@@ -72,13 +75,13 @@ export default {
 </script>
 
 <style scoped>
-  .chip-group {
-    white-space: normal;
-    flex-wrap: wrap;
-    max-width: 100%;
-  }
+.chip-group {
+  white-space: normal;
+  flex-wrap: wrap;
+  max-width: 100%;
+}
 
-  .chip-group * {
-    margin: 2px;
-  }
+.chip-group * {
+  margin: 2px;
+}
 </style>
