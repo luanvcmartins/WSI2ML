@@ -25,7 +25,7 @@
                       ></v-text-field>
                     </v-col>
                     <v-col v-if="projects != null" md="8" class="ma-0">
-                      <v-chip-group class="mr-2 ml-2" v-model="taskFilter.project">
+                      <v-chip-group class="mr-2 ml-2" v-model="taskFilter.project" column>
                         <v-chip filter :value="null" color="orange">
                           All projects
                         </v-chip>
@@ -41,7 +41,7 @@
                   </v-row>
                   <v-row class="mt-0">
                     <v-col md="12" class="pt-0 pb-0">
-                      <v-chip-group class="mr-2 ml-2 mb-2" v-model="taskFilter.user">
+                      <v-chip-group class="mr-2 ml-2 mb-2" v-model="taskFilter.user" column>
                         <v-chip filter :value="null" color="orange">
                           Anyone
                         </v-chip>

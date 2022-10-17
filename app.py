@@ -77,8 +77,10 @@ def create_app(context="development"):
 
     @app.after_request
     def add_security_headers(resp):
-        resp.headers['Content-Security-Policy'] = 'default-src \'self\''
+        resp.headers['Content-Security-Policy'] = 'default-src \'self\' fonts.gstatic.com cdn.jsdelivr.net; style-src * \'unsafe-inline\';'
         resp.headers['X-Frame-Options'] = 'SAMEORIGIN'
+        resp.headers['X-Content-Type-Options'] = 'nosniff'
+        resp.headers['Strict-Transport-Security'] = 'max-age=14400'
         return resp
 
     return app
