@@ -6,11 +6,11 @@
         <v-img>
 
         </v-img>
-        <span class="funded">This software was funded by FAPESP grant ?/?</span>
+        <span class="funded">This work was carried out at the Center for Artificial Intelligence (C4AI-USP), with support by the São Paulo Research Foundation (FAPESP grant #2019/07665-4 and #2020/15129-2) and by the IBM Corporation.</span>
       </v-col>
       <v-col class="fill-height text-xs-center" style="position: relative;" md="6" lg="4">
         <v-card class="centered-card">
-          <v-card-title>Login</v-card-title>
+          <v-card-title style="user-select: none;">WSI Annotation Tool</v-card-title>
           <v-card-text>
             <!--            <v-form>-->
             <v-text-field v-model="login_info.username" label="Username"></v-text-field>
@@ -22,7 +22,7 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn text @click="login">Login</v-btn>
+            <v-btn text @click="login" color="orange">Login</v-btn>
           </v-card-actions>
         </v-card>
       </v-col>
@@ -31,6 +31,8 @@
 </template>
 
 <script>
+import { POSITION } from 'vue-toastification';
+
 export default {
   name: 'Login',
   data: () => ({
@@ -51,7 +53,10 @@ export default {
         })
         .catch(() => {
           this.login_info.password = null;
-          alert('Check login information and try again.');
+          this.$toast.error('Failed to login, please check your login information and try again.', {
+            timeout: 10000,
+            position: POSITION.BOTTOM_CENTER,
+          });
         });
     },
   },

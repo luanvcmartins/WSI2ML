@@ -318,7 +318,7 @@ export default {
           this.currentSlide = session.task.slides[0];
           this.calculatePagination();
         } else if (session.task.type === 1) {
-          this.annotations = {};
+          this.annotations = loadAnnotations([]);
           this.currentSlide = session.task.task.slides[0];
         }
       },

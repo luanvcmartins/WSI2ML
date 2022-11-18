@@ -1524,24 +1524,26 @@ class AnnotationDrawer {
 
     const self = this;
     self.elementsOnScreen = [];
-    if (this.annotationSet != null) {
+    if (this.annotationSet != null && this.annotationSet.length > 0) {
       // console.log('updating');
       this.annotationSet.forEach((annotations) => {
         // Checking if annotation should be visible
-        annotations.forEach((annotation) => {
-          annotation.updateViewport(); // for collision checks
-          if (annotation.shouldBeVisible(self.currentViewport)) {
-            // Annotation would be visible on the screen, does the user want to see it?
-            if (self.filtering[annotation.label.name]
-              || annotation.state === 'overlay'
-              || (annotation.state === 'importing' && self.style[0].showImporting)) {
-              // This annotation must be drawn:
-              annotation.update();
-              annotation.draw();
-              self.elementsOnScreen.push(annotation);
+        if (annotations != null) {
+          annotations.forEach((annotation) => {
+            annotation.updateViewport(); // for collision checks
+            if (annotation.shouldBeVisible(self.currentViewport)) {
+              // Annotation would be visible on the screen, does the user want to see it?
+              if (self.filtering[annotation.label.name]
+                || annotation.state === 'overlay'
+                || (annotation.state === 'importing' && self.style[0].showImporting)) {
+                // This annotation must be drawn:
+                annotation.update();
+                annotation.draw();
+                self.elementsOnScreen.push(annotation);
+              }
             }
-          }
-        });
+          });
+        }
       });
     }
     if (this.currentTool != null) {

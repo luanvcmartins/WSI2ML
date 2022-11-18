@@ -16,7 +16,7 @@ services:
     build: .
     command: python3 app.py docker
     volumes:
-      - C:/Users/Luan/Desktop/sample_files/:/images
+      - <source wsi folder>:<target wsi folder>
     ports:
       - 2000:2000
     environment:
