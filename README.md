@@ -26,7 +26,8 @@ By default, we use `PostgreSQL` as the server. If a docker image doesn't exist, 
 You may want to customize the `docker-compose.yml` file for your environment; for instance, you may wish to set up your `volumes` to mount your project's folders. You also may find it important to change the default login information of the database.
 
 ### First use
-Once you deploy the application, you will use the login information `admin` with the password `admin` to login into the system for the first time. We strongly advise you to change the password or delete the user after you complete the first setup process. 
+Once you deploy the application, you will use the login information `admin` with the password `admin` to login into the system for the first time. We strongly advise you to change the password or delete the user after you complete the first setup process.
+
 1. Go to the `management` section and create a new project: the project's name, WSI folder, and annotation labels will be required. The project's description is optional. 
 
 2. Create a new user to delegate your tasks. The user's name, login and password must be provided. Additionally, users that require additional feature access may receive additional permissions. Annotators need no permissions. 
