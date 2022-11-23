@@ -15,9 +15,9 @@ For machine learning applications, the tool has the following workflow in mind:
  - Allow the annotation experts to validate the models by allowing them to visualize the model's predictions and improve their annotations.
 
 ## Docker
-Docker images are available and are likely the easiest way to deploy and use the application. Just download the repository's content, edit the `docker-compose.yml` file to your liking (you may want to mount your WSI directories), and then run docker-compose.
+Docker images are available and are likely the easiest way to deploy and use the application. Just clone the repository or download its content, edit the `docker-compose.yml` file to your liking (you may want to mount your WSI directories), and then run docker-compose.
 ```
-git <project_url> 
+git clone https://luanvcmartins@bitbucket.org/luanvcmartins/img-segmentation.git
 docker-compose build .
 docker-compose up -d
 ```
@@ -34,20 +34,26 @@ Once you deploy the application, you will use the login information `admin` with
 
 3. Create your first task: select the files for your task on the list and the users to annotate it. An optional task name can also be provided.
 
-## Funding
-This work was carried out at the Center for Artificial Intelligence (C4AI-USP), with support by the São Paulo Research Foundation (FAPESP grant #2019/07665-4 and 2020/15129-2) and by the IBM Corporation.
+## Thanks
+This work was carried out at the Center for Artificial Intelligence (C4AI-USP), with support by the São Paulo Research Foundation (FAPESP grant #2019/07665-4 and #2020/15129-2) and by the IBM Corporation.
 
 ## License 
 Copyright 2022 luanvcmartins
 
 Licensed under the Apache License, Version 2.0 (the "License");
+
 you may not use this file except in compliance with the License.
+
 You may obtain a copy of the License at
 
     http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
+
 distributed under the License is distributed on an "AS IS" BASIS,
+
 WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+
 See the License for the specific language governing permissions and
+
 limitations under the License.
