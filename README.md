@@ -1,8 +1,8 @@
-# WSI Annotation Tool
+# WSI2ML
 
-The WSI Annotation Tool is a straightforward annotation software for WSI files. It was built with the goal of simplifying the multidisciplinary effort required to create machine-learning datasets for pathology-related research. 
+The WSI2ML is a straightforward annotation software for WSI files. It was built aiming to simplify the multidisciplinary effort required to create machine-learning datasets for pathology-related research. 
 
-The software allows you to register users with different roles depending on their permissions, set up projects with images (by providing a folder) and annotation labels, and create and assign users to complete annotation tasks. Once your users have made enough annotations, they can be revised or exported to train ML models. Finally, your annotators can validate your model's annotation and improve the dataset if needed.  
+The software allows you to register users with different roles depending on their permissions, set up projects with images (by providing a folder) and annotation labels, and create and assign users to complete annotation tasks. Once your users have made enough annotations, they can be revised or exported to train ML models. Finally, the annotators can validate the model's annotation and improve the dataset if needed.  
 
 For machine learning applications, the tool has the following workflow in mind:
 
@@ -17,12 +17,12 @@ For machine learning applications, the tool has the following workflow in mind:
 ## Docker
 Docker images are available and are likely the easiest way to deploy and use the application. Just clone the repository or download its content, edit the `docker-compose.yml` file to your liking (you may want to mount your WSI directories), and then run docker-compose.
 ```
-git clone https://luanvcmartins@bitbucket.org/luanvcmartins/img-segmentation.git
+git clone https://bitbucket.org/luanvcmartins/img-segmentation.git
 docker-compose build .
 docker-compose up -d
 ```
 
-By default, we use `PostgreSQL` as the server. If a docker image doesn't exist, it will be automatically created and linked when using the provided `docker-compose.yml`, including with the correct database structure (given by `init-db.sql`).
+By default, we use `PostgreSQL` as the database. If a docker image doesn't exist, it will be automatically created and linked when using the provided `docker-compose.yml`, including with the correct database structure (given by `init-db.sql`).
 You may want to customize the `docker-compose.yml` file for your environment; for instance, you may wish to set up your `volumes` to mount your project's folders. You also may find it important to change the default login information of the database.
 
 ### First use
@@ -34,8 +34,8 @@ Once you deploy the application, you will use the login information `admin` with
 
 3. Create your first task: select the files for your task on the list and the users to annotate it. An optional task name can also be provided.
 
-## Thanks
-This work was carried out at the Center for Artificial Intelligence (C4AI-USP), with support by the São Paulo Research Foundation (FAPESP grant #2019/07665-4 and #2020/15129-2) and by the IBM Corporation.
+## Acknowledgments
+This work was carried out at the Center for Artificial Intelligence (C4AI-USP), with support by the São Paulo Research Foundation (FAPESP grant #2019/07665-4 and #2020/15129-2) and by the IBM Corporation. The WSI Annotation Tool was developed in collaboration with A. C. Camargo Cancer Center and it is under active development A. C. Camargo Cancer Center. and it is under active development.
 
 ## License 
 Copyright 2022 luanvcmartins

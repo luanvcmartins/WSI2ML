@@ -18,7 +18,7 @@ services:
     volumes:
       - <source wsi folder>:<target wsi folder>
     ports:
-      - 2000:2000
+      - "2000:2000"
     environment:
       - POSTGRES_NAME=postgres
       - POSTGRES_USER=postgres
