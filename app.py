@@ -1,79 +1,71 @@
-import json
-from werkzeug.exceptions import HTTPException
-
+import numpy as np
+from bson import ObjectId
 from flask import Flask, render_template, jsonify, request
-from flask_cors import CORS
-from flask_sqlalchemy import SQLAlchemy
+from flask.json.provider import DefaultJSONProvider
+from werkzeug.security import check_password_hash
 from flask_jwt_extended import JWTManager
-from config import app_config
-from flask_migrate import Migrate
-import os
+from flask_cors import CORS
+from config import Config
 import sys
 
-db = SQLAlchemy()
 jwt = JWTManager()
-migrate = Migrate()
 
 
 def create_app(context="development"):
     app = Flask(__name__,
                 static_folder="./client/dist/static",
                 template_folder="./client/dist")
-    app.config.from_object(app_config[context])
-    app.config.from_pyfile('config.py')
 
-    print("Starting server in context:", context)
+    app.config.from_object(Config())
+    app.config.from_pyfile('config.py')
+    from api import db
+
+
+    class MongoJSONProvider(DefaultJSONProvider):
+        def default(self, o):
+            if isinstance(o, np.ndarray):
+                return o.tolist()
+            if isinstance(o, ObjectId):
+                return str(o)
+            return super().default(o)
+
+    app.json = MongoJSONProvider(app)
+
+    jwt.init_app(app)
+    #CORS(app, origins=["http://localhost:*", "https://imgsig.accamargo.org.br"], supports_credentials=True)
+    CORS(app)
+
     from api.user import user_api
     from api.session import session_api
     from api.project import project_api
-    from api.tasks import task_api
-    from api.export import export_api
-    from api.apps import apps_api
-    CORS(app, origins=["http://localhost:*", "https://imgsig.accamargo.org.br"], supports_credentials=True)
+    # from api.tasks import task_api
+    # from api.export import export_api
+    # from api.apps import apps_api
     app.register_blueprint(user_api, url_prefix="/api/user")
     app.register_blueprint(session_api, url_prefix="/api/session")
     app.register_blueprint(project_api, url_prefix="/api/project")
-    app.register_blueprint(task_api, url_prefix="/api/task")
-    app.register_blueprint(export_api, url_prefix="/api/export")
-    app.register_blueprint(apps_api, url_prefix="/api/app")
+    # app.register_blueprint(task_api, url_prefix="/api/task")
+    # app.register_blueprint(export_api, url_prefix="/api/export")
+    # app.register_blueprint(apps_api, url_prefix="/api/app")
 
-    db.init_app(app)
-    jwt.init_app(app)
-
-    @app.errorhandler(Exception)
-    def handle_exception(e: Exception):
-        #if isinstance(e, HTTPException):
-        #    return e
-
-        return jsonify({
-            "code": e.args[0],
-            "name": e.args[1],
-            "msg": str(e),
-        }), 500
+    #
+    # @app.errorhandler(Exception)
+    # def handle_exception(e: Exception):
+    #     return jsonify({
+    #         "code": e.args[0],
+    #         "name": e.args[1],
+    #         "msg": str(e),
+    #     }), 500
 
     @app.route("/")
     def index():
         return render_template("index.html")
 
-    migrate.init_app(app, db)
-
-    import models
 
     @jwt.user_lookup_loader
     def load_user(_jwt_header, jwt_data):
-        content = jwt_data["sub"]
-        which, identification = content.split(";")
-        if which == 'user':
-            return models.User.query.filter_by(username=identification).first()
-        else:
-            return models.App.query.get(identification)
-
-    @jwt.user_identity_loader
-    def gen_user_id(user):
-        if isinstance(user, models.User):
-            return f"user;{user.username}"
-        else:
-            return f"app;{user.id}"
+        identification = jwt_data["sub"]
+        return db.users.find_one({"email": identification})
 
     @app.after_request
     def add_security_headers(resp):
@@ -81,7 +73,9 @@ def create_app(context="development"):
         resp.headers['X-Frame-Options'] = 'SAMEORIGIN'
         resp.headers['X-Content-Type-Options'] = 'nosniff'
         resp.headers['Strict-Transport-Security'] = 'max-age=14400'
+
         return resp
+
 
     return app
 
@@ -95,5 +89,4 @@ if __name__ == '__main__':
     else:
         # assuming production
         from waitress import serve
-
         serve(app, host="0.0.0.0", port=2000)

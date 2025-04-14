@@ -1,0 +1,9 @@
+*.pyc
+*.pyo
+__pycache__
+venv/
+.venv/
+*.log
+.cache
+.tmp
+example

@@ -1,95 +1,56 @@
+import json
+import os
 from typing import Any
 
-import json
-import models
+from bson import ObjectId
+
 from analyzer.session import Session
 from flask import Blueprint, jsonify, request, make_response
 from flask_jwt_extended import current_user, jwt_required
 
-from analyzer.stats import annotation_stats
-from app import db
+# from analyzer.stats import annotation_stats
+from api import db
 
 session_api = Blueprint("session_api", __name__)
 
 sessions = {}
+def get_session(session_id):
+    if session_id not in sessions:
+        task = db.tasks.aggregate([
+            {"$match":{"_id": ObjectId(session_id)}},
+            {"$lookup": {
+                "from": "projects",
+                "localField": "project",
+                "foreignField": "_id",
+                "as": "project",
+                "pipeline": [
+                    {"$lookup": {
+                        "from": "labels",
+                        "localField": "labels",
+                        "foreignField": "_id",
+                        "as": "labels",
+                    }}
+                ]
+            }},
+            {"$unwind": "$project"}
+        ]).next()
+        print(task)
+        sessions[session_id] = {
+            "_id": session_id,
+            "task": task,
+            "file": Session(task["file"])
+        }
+    return sessions[session_id]
 
 
-@session_api.route("create", methods=['POST'])
-@jwt_required()
-def create_session():
-    task = request.json
-    user_task = models.UserTask.query.get(task['id'])
-    allowed = current_user.manages_tasks
-    if user_task.type == 0:
-        if not allowed and user_task.user.id != current_user.id: return jsonify({}), 401
-    elif user_task.type == 1:
-        if not allowed and user_task.user.id != current_user.id: return jsonify({}), 401
-    elif user_task.type == 2:
-        if not allowed and user_task.app.id != current_user.id: return jsonify({}), 401
+@session_api.route("<session_id>", methods=['GET'])
+#@jwt_required()
+def create_session(session_id):
+    session = get_session(session_id)
 
-    if user_task.type == 1:
-        task = user_task.revision_task
-        slides = [slide.to_dict() for slide in user_task.revision_task.task.slides]
-    else:
-        task = user_task.annotation_task
-        slides = [slide.to_dict() for slide in user_task.annotation_task.slides]
-
-    # if task['type'] == 0:
-    #     user_task = models.UserTask.query.filter_by(annotation_task_id=task['id'], user_id=current_user.id).first()
-    #     slides = user_task.task.slides
-    # elif task['type'] == 1:
-    #     user_task = models.UserTask.query.filter_by(revision_task_id=task['id'], user_id=current_user.id).first()
-    #     slides = user_task.task.slides
-    # else:
-    #     if "user_task_id" not in task:
-    #         user_task = models.UserTask.query.filter_by(annotation_task_id=task['id'], app_id=current_user.id).first()
-    #     else:
-    #         user_task = models.UserTask.query.filter_by(id=task['user_task_id']).first()
-    #     slides = user_task.task.slides
-
-    session_id = user_task.id
-    if session_id in sessions:
-        new_session = sessions[session_id]
-    else:
-        new_session = Session(slides, user_task)
-        sessions[session_id] = new_session
-    session = user_task.to_dict()
-
-    if user_task.type == 1:
-        # revision task has the labelled data from all the user_tasks associated with it
-        session['revision'] = {}
-        for revision_task in task.revisions:
-            # data = db.session.query(models.Annotation, models.AnnotationRevised).filter(
-            #     models.Annotation.user_task_id == revision_id['id'],
-            #     models.AnnotationRevised.user_task_id == task['id'],
-            #     models.Annotation.id == models.AnnotationRevised.annotation_id).all()
-            # data = models.Annotation.query.filter_by(user_task_id=revision_id['id']).all()
-            user_feedback = db.session.query(models.AnnotationRevised).filter(
-                models.AnnotationRevised.user_task_id == user_task.id).subquery()
-            data = db.session.query(models.Annotation, user_feedback) \
-                .join(user_feedback, user_feedback.c.annotation_id == models.Annotation.id, isouter=True).filter(
-                models.Annotation.user_task_id == revision_task.id).all()
-            # db.session.query(models.Annotation, models.AnnotationRevised).select_from(models.Annotation) \
-            #     .outerjoin(models.AnnotationRevised) \
-            #     .filter(models.Annotation.user_task_id == revision_task['id']).all()
-            session['revision'][revision_task.id] = {
-                k['id']: [{
-                    **x[0].to_dict(),
-                    "feedback": {
-                        "id": x[1],
-                        "feedback": x[4],
-                        "label_id": x[5],
-                        "geometry": json.loads(x[6]) if x[6] is not None else None,
-                    }} for x in filter(lambda x: x[0].slide_id == k['id'], data)] for k in slides}
-    else:
-        # common annotation task, we will put the annotations we have associated with it:
-        data = models.Annotation.query.filter_by(user_task_id=session_id).all()
-        session['labelled'] = {k['id']: [x.to_dict() for x in filter(lambda x: x.slide_id == k['id'], data)] for k
-                               in slides}
-    session['viewer'] = new_session.get_info()
-    return jsonify(session)
-    # else:
-    #     return jsonify({"msg": "Unavailable"}), 401
+    return jsonify({
+        **session['task']
+    }), 200
 
 
 @session_api.route("list")
@@ -238,19 +199,19 @@ def class_balance(session_id, slide_id):
 
 
 # region TILE MANAGEMENT
-@session_api.route('<string:session_id>/<slug>_files/<int:level>/<int:col>_<int:row>.<format>')
-def tile(session_id, slug, level, col, row, format):
-    session: Session = sessions[session_id]
-    image_buffered = session.get_slide_tile(slug, level, (col, row), format.lower())
+@session_api.route('<string:session_id>_files/<int:level>/<int:col>_<int:row>.<format>')
+def tile(session_id, level, col, row, format):
+    session = get_session(session_id)
+    image_buffered = session["file"].get_slide_tile("default", level, (col, row), format.lower())
     resp = make_response(image_buffered.getvalue())
     resp.mimetype = 'image/%s' % format
     return resp
 
 
-@session_api.route('<string:session_id>/<slug>.dzi')
-def dzi(session_id, slug):
-    session = sessions[session_id]
-    resp = make_response(session.get_slide_info(slug))
+@session_api.route('<string:session_id>.dzi')
+def dzi(session_id):
+    session = get_session(session_id)
+    resp = make_response(session["file"].get_slide_info())
     resp.mimetype = 'application/xml'
     return resp
 # endregion

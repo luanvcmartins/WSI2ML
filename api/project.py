@@ -1,9 +1,12 @@
-import models
 import os, os.path
+from glob import glob
+from mimetypes import knownfiles
+
+from bson import ObjectId
 from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, current_user
-from app import db
-from analyzer.stats import annotation_stats
+# from analyzer.stats import annotation_stats
+from api import db
 
 project_api = Blueprint("project_api", __name__)
 
@@ -11,64 +14,130 @@ project_api = Blueprint("project_api", __name__)
 @project_api.route("new", methods=['POST'])
 @jwt_required()
 def new():
-    if not current_user.manages_projects:
+    if not current_user["manages_projects"]:
         return jsonify({"msg": "Not allowed"}), 401
     new_project = request.json
-    # noinspection PyArgumentList
-    project = models.Project(
-        name=new_project['name'],
-        description=new_project['description'],
-        folder=new_project['folder']
-    )
-    db.session.add(project)
-    db.session.commit()
-    for label in new_project['labels']:
-        label_obj = models.Label(
-            project_id=project.id,
-            name=label['name'],
-            color=label['color'],
-        )
-        db.session.add(label_obj)
-    db.session.commit()
 
-    return jsonify(project.to_dict())
-
-
-@project_api.route("edit", methods=["POST"])
-@jwt_required()
-def edit():
-    if not current_user.manages_projects:
-        return jsonify({"msg": "Not allowed"}), 401
-    new_project = request.json
-    db.session.query(models.Project).filter(models.Project.id == new_project['id']).update({
-        "id": new_project["id"],
+    db.projects.insert_one({
         "name": new_project["name"],
         "description": new_project["description"],
-        "folder": new_project["folder"]
+        "folder": new_project["folder"],
+        "labels": new_project["labels"]
     })
-    db.session.commit()
-    for label in new_project['labels']:
-        if 'id' in label:
-            # updating label data:
-            db.session.query(models.Label).filter(models.Label.id == label['id']).update({
-                "id": label["id"],
-                "name": label["name"],
-                "label_color": ";".join(map(str, label["color"]))
-            })
-        else:
-            db.session.add(models.Label(
-                project_id=new_project['id'],
-                name=label['name'],
-                color=label['color'],
-            ))
-        db.session.commit()
-    return jsonify(models.Project.query.get(new_project['id']).to_dict())
+
+    return "", 200
+
+
+@project_api.route("list")
+@jwt_required()
+def list_projects():
+    if not current_user["manages_projects"]:
+        return jsonify({"msg": "Not allowed"}), 401
+
+    projects = db.projects.aggregate([
+        {
+            "$lookup": {
+                "from": "labels",
+                "localField": "labels",
+                "foreignField": "_id",
+                "as": "labels",
+                "pipeline": [
+                    {"$match": {"enabled": True}}
+                ]
+            }
+        }
+    ])
+
+    return jsonify(list(projects))
+
+
+@project_api.route("edit", methods=['POST'])
+@jwt_required()
+def edit():
+    if not current_user["manages_projects"]:
+        return jsonify({"msg": "Not allowed"}), 401
+    project = request.json
+    project_id = project["_id"]
+
+    db.projects.update_one({"_id": ObjectId(project_id)}, {"$set": {
+        "name": project["name"],
+        "description": project["description"],
+        "folder": project["folder"]
+    }})
+
+    return "", 200
+
+
+@project_api.route("switch_status", methods=['POST'])
+@jwt_required()
+def switch_status():
+    if not current_user["manages_projects"]:
+        return jsonify({"msg": "Not allowed"}), 401
+
+    db.projects.update_one(
+        {"_id": ObjectId(request.json["_id"])},
+        [{"$set": {"enabled": {"$not": "$enabled"}}}]
+    )
+    return "", 200
+
+
+@project_api.route("label/new", methods=['POST'])
+@jwt_required()
+def new_label():
+    if not current_user["manages_projects"]:
+        return jsonify({"msg": "Not allowed"}), 401
+    item = db.labels.insert_one({
+        "name": request.json["name"],
+        "project": ObjectId(request.json["project"]),
+        "color": request.json["color"],
+        "enabled": True,
+        "description": request.json["description"],
+    })
+    db.projects.update_one(
+        {"_id": ObjectId(request.json["project"])},
+        {"$push": {"labels": item.inserted_id}}
+    )
+    return jsonify({
+        "_id": item.inserted_id,
+        "name": request.json["name"],
+        "project": request.json["project"],
+        "color": request.json["color"],
+        "enabled": True,
+        "description": request.json["description"],
+    }), 200
+
+
+@project_api.route("label/edit", methods=['POST'])
+@jwt_required()
+def edit_label():
+    if not current_user["manages_projects"]:
+        return jsonify({"msg": "Not allowed"}), 401
+    db.labels.update_one({"_id": ObjectId(request.json["_id"])}, {"$set": {
+        "name": request.json["name"],
+        "project": request.json["project"],
+        "color": request.json["color"],
+        "description": request.json["description"],
+    }})
+    return "", 200
+
+
+@project_api.route("label/switch_status", methods=['POST'])
+@jwt_required()
+def switch_label_status():
+    if not current_user["manages_projects"]:
+        return jsonify({"msg": "Not allowed"}), 401
+
+    db.labels.update_one(
+        {"_id": ObjectId(request.json["_id"])},
+        [{"$set": {"enabled": {"$not": "$enabled"}}}]
+    )
+    return "", 200
 
 
 @project_api.route("valid_path", methods=["POST"])
 @jwt_required()
 def valid_path():
-    if not current_user.manages_projects:
+    if not current_user["manages_projects"]:
         return jsonify({"msg": "Not allowed"}), 401
     path = request.json['path']
     return jsonify({
@@ -76,23 +145,72 @@ def valid_path():
     })
 
 
-@project_api.route("tasks")
+@project_api.route("<project_id>/tasks")
 @jwt_required()
-def tasks():
-    if not current_user.manages_tasks:
+def _tasks(project_id):
+    if not current_user["manages_projects"]:
         return jsonify({"msg": "Not allowed"}), 401
-    project_id = request.args['project_id']
-    tasks = models.AnnotationTask.query.join(models.UserTask).filter(models.UserTask.completed == True,
-                                                                     models.AnnotationTask.project_id == project_id).all()
-    resp = []
-    for task in tasks:
-        user_tasks = models.UserTask.query.filter(
-            models.UserTask.annotation_task_id == task.id, models.UserTask.completed == True).all()
-        resp.append({
-            **task.to_dict(include_project=False, include_assigned=False),
-            "user_tasks": [x.to_dict() for x in user_tasks]
-        })
-    return jsonify(resp)
+
+    project_id = ObjectId(project_id)
+    project = db.projects.find_one({"_id": project_id})
+    tasks = list(db.tasks.aggregate([
+        {"$match": {"project": project_id}},
+        {"$group": {"_id": "$file", "tasks": {"$push": "$$ROOT"}}}
+    ]))
+    users = list(db.users.find({}, {"_id": True, "email": True, "name": True }))
+
+    used_slides = list(db.tasks.aggregate([
+        {"$match": {"project": project_id}},
+        {"$group": {"_id": "", "files": { "$addToSet": "$file"}}},
+        {"$project": {"_id": 0, "files": 1}}
+    ]))
+
+    known_files = list(used_slides)[0] if len(used_slides) > 0 else []
+
+    return jsonify({
+        "project": project,
+        "tasks": tasks,
+        "users": users,
+        "files": glob(os.path.join(project["folder"], "**"), recursive=True),
+        "known_files": known_files
+    })
+
+
+@project_api.route("<project_id>/task/create", methods=["POST"])
+@jwt_required()
+def create_project_tasks(project_id):
+    if not current_user["manages_projects"]:
+        return jsonify({"msg": "Not allowed"}), 401
+
+    db.tasks.insert_many([{
+        "project": ObjectId(project_id),
+        "file": file,
+        "user": user,
+        "annotations": [],
+        "completed": False,
+        "enabled": True
+    } for user in request.json["users"] for file in request.json['files']])
+
+    return "", 200
+
+
+# @project_api.route("tasks")
+# @jwt_required()
+# def tasks():
+#     if not current_user.manages_tasks:
+#         return jsonify({"msg": "Not allowed"}), 401
+#     project_id = request.args['project_id']
+#     tasks = models.AnnotationTask.query.join(models.UserTask).filter(models.UserTask.completed == True,
+#                                                                      models.AnnotationTask.project_id == project_id).all()
+#     resp = []
+#     for task in tasks:
+#         user_tasks = models.UserTask.query.filter(
+#             models.UserTask.annotation_task_id == task.id, models.UserTask.completed == True).all()
+#         resp.append({
+#             **task.to_dict(include_project=False, include_assigned=False),
+#             "user_tasks": [x.to_dict() for x in user_tasks]
+#         })
+#     return jsonify(resp)
 
 
 @project_api.route("remove_label", methods=["POST"])
@@ -105,10 +223,6 @@ def remove_label():
     db.session.commit()
     return jsonify({"success": True})
 
-
-@project_api.route("list")
-def list_projects():
-    return jsonify([x.to_dict() for x in models.Project.query.all()])
 
 def gen_progress_query():
     if db.engine.name == 'sqlite':

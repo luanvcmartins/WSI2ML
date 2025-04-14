@@ -1,7 +1,11 @@
+import json
+
+from bson import ObjectId
 from flask import Blueprint, session, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, create_access_token, current_user
-import models
-from app import db, jwt
+from werkzeug.security import check_password_hash, generate_password_hash
+
+from api import db
 
 user_api = Blueprint("user_api", __name__)
 
@@ -9,59 +13,61 @@ user_api = Blueprint("user_api", __name__)
 @user_api.route("new", methods=['POST'])
 @jwt_required()
 def new():
-    if not current_user.manages_users:
+    if not current_user["manages_users"]:
         return jsonify({"msg": "Not an admin!"}), 401
 
     new_user = request.json
-    # noinspection PyArgumentList
-    user = models.User(
-        name=new_user['name'],
-        username=new_user['username'],
-        password=new_user['password'],
-        is_admin=new_user['is_admin'],
-        manages_apps=new_user['manages_apps'],
-        manages_users=new_user['manages_users'],
-        manages_tasks=new_user['manages_tasks'],
-        manages_projects=new_user['manages_projects'],
-        can_export=new_user['can_export']
-    )
-    db.session.add(user)
-    db.session.commit()
-    return jsonify(user.to_dict())
+    db.users.insert_one({
+        "name": new_user['name'],
+        "email": new_user['email'],
+        "enabled": True,
+        "password": generate_password_hash(new_user['password']),
+        "manages_apps": new_user['manages_apps'],
+        "manages_users": new_user['manages_users'],
+        "manages_tasks": new_user['manages_tasks'],
+        "manages_projects": new_user['manages_projects'],
+        "can_export": new_user['can_export'],
+        "access_overview": new_user['access_overview']
+    })
+    return "", 200
 
 
 @user_api.route("edit", methods=["POST"])
 @jwt_required()
 def edit():
-    if not current_user.manages_users:
+    if not current_user["manages_users"]:
         return jsonify({"msg": "Not an admin!"}), 401
 
     new_user = request.json
-    user = db.session.query(models.User).get(new_user["id"])
-    user.update(new_user)
-    db.session.commit()
-    return jsonify(user.to_dict())
+    user_id = new_user['_id']
+    del new_user['_id']
+    if "password" in new_user:
+        new_user['password'] = generate_password_hash(new_user['password'])
+    db.users.update_one({"_id": ObjectId(user_id)}, {"$set": new_user})
+
+    return "", 200
 
 
 @user_api.route("list")
 @jwt_required()
-def list():
-    logged_user = current_user
-    if not logged_user.manages_users:
+def _list():
+    if not current_user["manages_users"]:
         return jsonify({"msg": "Not an admin!"}), 401
-    return jsonify([x.to_dict() for x in models.User.query.all()])
+
+    return jsonify(list(db.users.find({}, {"password": False}).sort([("enabled", -1)])))
 
 
-@user_api.route("remove")
+@user_api.route("switch_access", methods=["POST"])
 @jwt_required()
-def remove():
-    logged_user = current_user
-    if not logged_user.manages_users:
+def switch_access():
+    if not current_user["manages_users"]:
         return jsonify({"msg": "Not an admin!"}), 401
-    user_id = request.args['user_id']
-    models.User.query.filter(models.User.id == user_id).delete()
-    db.session.execute("DELETE FROM user_tasks WHERE user_id = :user_id", {"user_id": user_id})
-    db.session.commit()
+
+    db.users.update_one(
+        {"_id": ObjectId(request.json['_id'])},
+        [{"$set": {"enabled": { "$not": "$enabled" }}}]
+    )
+
     return jsonify({"success": True})
 
 
@@ -75,16 +81,35 @@ def change_password():
     return jsonify({"success": True})
 
 
-@user_api.route("login", methods=["POST"])
+@user_api.route("login", strict_slashes=False, methods=["POST"])
 def login():
-    data = request.json
-    user = models.User.query.filter_by(username=data['username']).first()
-    if user is not None and user.verify_password(data['password']):
-        # user exists and knows the password:
-        token = create_access_token(user)
-        return jsonify({
-            "user": user.to_dict(),
-            "token": token
-        })
+    content = request.json
+
+    user = db['users'].find_one({"email": content["email"], "enabled": True})
+    if user is not None and check_password_hash(user['password'], content['password']):
+        del user['password']
+        token = create_access_token(identity=user['email'])
+        print("user", token)
+        return json.dumps({
+            "token": token,
+            "user": user
+        }, default=str)
     else:
-        return jsonify({"msg": "Unsuccessful login"}), 401
+        return jsonify({"success": False}), 401
+
+
+@user_api.route("create_admin", methods=["POST"])
+def create_admin():
+    if db.users.count_documents({}) == 0:
+        db.users.insert_one({
+            "name": "Admin",
+            "email": "admin",
+            "password": generate_password_hash("admin"),
+            "is_admin": True,
+            "manages_apps": True,
+            "manages_users": True,
+            "manages_tasks": True,
+            "manages_projects": True,
+            "can_export": True
+        })
+    return jsonify({})
