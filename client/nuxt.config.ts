@@ -8,7 +8,7 @@ export default defineNuxtConfig({
     ssr: false,
     target: 'static',
 
-    devtools: {enabled: true},
+    devtools: {enabled: false},
 
     css: [
         'vuetify/lib/styles/main.sass',

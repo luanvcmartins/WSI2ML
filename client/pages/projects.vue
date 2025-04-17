@@ -13,10 +13,7 @@
           {{ project.name }}
         </v-expansion-panel-title>
         <v-expansion-panel-text>
-          <v-row
-              justify="start"
-              no-gutters
-          >
+          <v-row justify="start" no-gutters>
             <v-col cols="12">
               <span class="title">{{ project._id }}</span>
             </v-col>
@@ -26,7 +23,7 @@
             </v-col>
             <v-btn variant="plain" @click="editProject(project)">Edit project</v-btn>
             <v-btn :to="`/project/${project._id}`">Navigate</v-btn>
-            <v-divider/>
+            <v-divider />
             <div>
               <v-card v-for="label in project.labels" :title="label.name"></v-card>
               <v-card title="New label" @click="newLabel(project)"></v-card>
@@ -39,36 +36,32 @@
       <v-card title="Project manager" subtitle="Create and edit projects">
         <div class="ml-4 mr-4">
           <v-form id="user-form" v-model="isValid" fast-fail>
-            <v-row
-                justify="start"
-                no-gutters
-            >
+            <v-row justify="start" no-gutters>
               <v-col cols="6">
-                <v-text-field
-                    v-model="project.name"
-                    :rules="fieldRequired"
-                    label="Name"
-                    required
-                    class="mr-1"
-                ></v-text-field>
+                <v-text-field v-model="project.name" :rules="fieldRequired" label="Name" required
+                  class="mr-1"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field
-                    class="ml-1"
-                    v-model="project.folder"
-                    :rules="fieldRequired"
-                    label="Folder"
-                    return-object
-                    required
-                ></v-text-field>
+                <v-text-field class="ml-1" v-model="project.folder" :rules="fieldRequired" label="Folder" return-object
+                  required></v-text-field>
               </v-col>
 
               <v-col cols="12">
-                <v-textarea
-                    v-model="project.description"
-                    label="Description"
-                    required
-                ></v-textarea>
+                <v-textarea v-model="project.description" label="Description" required></v-textarea>
+              </v-col>
+              <v-col cols="12">
+                <div class="text-center">
+                  <v-btn-toggle v-model="project.revision_strategy" mandatory>
+                    <v-btn value="auto">
+                      <v-icon start>mdi-auto-upload</v-icon>
+                      <span>Automatic</span>
+                    </v-btn>
+                    <v-btn value="manual">
+                      <v-icon start>mdi-pencil</v-icon>
+                      <span>Manual</span>
+                    </v-btn>
+                  </v-btn-toggle>
+                </div>
               </v-col>
             </v-row>
           </v-form>
@@ -85,31 +78,17 @@
           <v-form id="label-form" v-model="isValid" fast-fail>
             <v-row justify="start" no-gutters>
               <v-col cols="6">
-                <v-text-field
-                    v-model="label.name"
-                    :rules="fieldRequired"
-                    label="Name"
-                    required
-                    class="mr-1"
-                ></v-text-field>
+                <v-text-field v-model="label.name" :rules="fieldRequired" label="Name" required
+                  class="mr-1"></v-text-field>
               </v-col>
               <v-col cols="6">
-                <v-text-field
-                    v-model="label.description"
-                    label="Description"
-                    required
-                    class="mr-1"
-                ></v-text-field>
+                <v-text-field v-model="label.description" label="Description" required class="mr-1"></v-text-field>
               </v-col>
             </v-row>
           </v-form>
           <span>Color</span>
-          <v-color-picker
-              hide-inputs :swatches-max-height="100"
-              show-swatches
-              width="100%"
-              title="Color"
-              v-model="label.color"></v-color-picker>
+          <v-color-picker hide-inputs :swatches-max-height="100" show-swatches width="100%" title="Color"
+            v-model="label.color"></v-color-picker>
         </div>
         <v-card-actions>
           <v-btn @click="labelDialog = false">Cancel</v-btn>
@@ -120,8 +99,8 @@
   </v-container>
 </template>
 
-<script setup lang="ts">
-const {$axios} = useNuxtApp()
+<script setup>
+const { $axios } = useNuxtApp()
 import Swal from "sweetalert2"
 
 const store = useAuthStore()
@@ -141,7 +120,8 @@ const project = ref({
   name: "",
   description: "",
   folder: "",
-  labels: []
+  labels: [],
+  revision_strategy: "auto"
 })
 
 
@@ -169,19 +149,19 @@ function newProject() {
 
 function loadProjects() {
   $axios.get('/project/list')
-      .then((response) => {
-        projects.value = response.data
+    .then((response) => {
+      projects.value = response.data
+    })
+    .catch(error => {
+      Swal.fire({
+        icon: 'error',
+        title: 'Oops, something went wrong',
+        text: 'Reload the page and try again. If the problem persist, contact administrator'
       })
-      .catch(error => {
-        Swal.fire({
-          icon: 'error',
-          title: 'Oops, something went wrong',
-          text: 'Reload the page and try again. If the problem persist, contact administrator'
-        })
-      })
+    })
 }
 
-function newLabel(project: object) {
+function newLabel(project) {
   labelDialog.value = true
   label.value = {
     _id: null,
@@ -191,7 +171,7 @@ function newLabel(project: object) {
   }
 }
 
-function editProject(p: object) {
+function editProject(p) {
   project.value = p
   dialog.value = true
 }
@@ -203,31 +183,31 @@ function submit() {
   if (project.value._id != null) {
     // update user profile information
     $axios.post('project/edit', project.value)
-        .then((resp) => {
-          loadProjects()
-          dialog.value = false
+      .then((resp) => {
+        loadProjects()
+        dialog.value = false
+      })
+      .catch((err) => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops, something went wrong',
+          text: 'Try again later',
         })
-        .catch((err) => {
-          Swal.fire({
-            icon: 'error',
-            title: 'Oops, something went wrong',
-            text: 'Try again later',
-          })
-        });
+      });
   } else {
     // create new user profile
     $axios.post('project/new', project.value)
-        .then((resp) => {
-          loadProjects()
-          dialog.value = false
+      .then((resp) => {
+        loadProjects()
+        dialog.value = false
+      })
+      .catch((err) => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops, something went wrong',
+          text: 'Try again later',
         })
-        .catch((err) => {
-          Swal.fire({
-            icon: 'error',
-            title: 'Oops, something went wrong',
-            text: 'Try again later',
-          })
-        });
+      });
   }
 }
 
@@ -238,31 +218,31 @@ function submitLabel() {
   if (label.value._id != null) {
     // update user profile information
     $axios.post('project/label/edit', label.value)
-        .then((resp) => {
-          loadProjects()
-          labelDialog.value = false
+      .then((resp) => {
+        loadProjects()
+        labelDialog.value = false
+      })
+      .catch((err) => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops, something went wrong',
+          text: 'Try again later',
         })
-        .catch((err) => {
-          Swal.fire({
-            icon: 'error',
-            title: 'Oops, something went wrong',
-            text: 'Try again later',
-          })
-        });
+      });
   } else {
     // create new user profile
     $axios.post('project/label/new', label.value)
-        .then((resp) => {
-          loadProjects()
-          labelDialog.value = false
+      .then((resp) => {
+        loadProjects()
+        labelDialog.value = false
+      })
+      .catch((err) => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Oops, something went wrong',
+          text: 'Try again later',
         })
-        .catch((err) => {
-          Swal.fire({
-            icon: 'error',
-            title: 'Oops, something went wrong',
-            text: 'Try again later',
-          })
-        });
+      });
   }
 }
 
@@ -278,7 +258,6 @@ definePageMeta({
 </script>
 
 <style scoped>
-
 .swal2-container {
   z-index: 5000 !important;
 }

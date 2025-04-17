@@ -3,7 +3,7 @@
 
     <v-app-bar app color="primary" dark>
 
-      <v-toolbar-title>WSI2ML</v-toolbar-title>
+      <v-app-bar-title>WSI <strong color="darkorange">//</strong> ML</v-app-bar-title>
 
       <v-spacer></v-spacer>
 

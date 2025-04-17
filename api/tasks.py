@@ -1,17 +1,33 @@
 import analyzer.session
 import hashlib
-import models
 import uuid
 import os
 import re
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import jwt_required, current_user
-from app import db
 from itertools import combinations, cycle
 from random import shuffle
+from api import db
 
 task_api = Blueprint("task_api", __name__)
 
+@task_api.route("list", methods=["GET"])
+@jwt_required()
+def _list():
+    tasks = db.projects.aggregate([
+        {"$lookup": {
+            "from": "tasks",
+            "localField": "_id",
+            "foreignField": "project",
+            "as": "tasks",
+            "pipeline": [
+                {"$match": {"user._id": str(current_user["_id"])}}
+            ]
+        }},
+        # removing 'annotations' field
+        {"$unset": "tasks.annotations"}
+    ])
+    return jsonify(list(tasks))
 
 @task_api.route("new", methods=["POST"])
 @jwt_required()
@@ -169,39 +185,6 @@ def new_batch():
     db.session.commit()
     return jsonify({"new_tasks": new_task_counter, "user_tasks": new_user_task_counter})
 
-
-@task_api.route("list", methods=['GET'])
-@jwt_required()
-def task_list():
-    annotation_tasks = db.session.query(models.AnnotationTask, models.UserTask) \
-        .join(models.UserTask, models.UserTask.annotation_task_id == models.AnnotationTask.id) \
-        .filter(models.UserTask.user_id == current_user.id) \
-        .order_by(models.UserTask.completed).all()
-    review_tasks = db.session.query(models.RevisionTask, models.UserTask) \
-        .join(models.UserTask, models.UserTask.revision_task_id == models.RevisionTask.id) \
-        .filter(models.UserTask.user_id == current_user.id) \
-        .order_by(models.UserTask.completed).all()
-    annotation_tasks = list(annotation_tasks)
-    review_tasks = list(review_tasks)
-    next_annotation = {
-        **annotation_tasks[0][0].to_dict(),
-        **annotation_tasks[0][1].to_dict()
-    } if len(annotation_tasks) > 0 else None
-    next_revision = {**review_tasks[0][0].to_dict(), **review_tasks[0][1].to_dict()} if len(review_tasks) > 0 else None
-    return jsonify({
-        "annotation_status": {
-            "next": next_annotation,
-            "done": len([task for task in annotation_tasks if task[1].completed]),
-            "total": len(annotation_tasks)
-        },
-        "review_status": {
-            "next": next_revision,
-            "done": len([task for task in review_tasks if task[1].completed]),
-            "total": len(review_tasks)
-        },
-        "annotations": [{**x[0].to_dict(), **x[1].to_dict()} for x in annotation_tasks],
-        "review": [{**x[0].to_dict(), **x[1].to_dict()} for x in review_tasks]
-    })
 
 
 @task_api.route("management_list", methods=['GET'])

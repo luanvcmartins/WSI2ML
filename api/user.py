@@ -112,4 +112,5 @@ def create_admin():
             "manages_projects": True,
             "can_export": True
         })
-    return jsonify({})
+        return jsonify({})
+    return jsonify({"success": False}), 500

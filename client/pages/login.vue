@@ -24,6 +24,7 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
+            <v-btn text @click="createAdmin">First access?</v-btn>
             <v-btn text @click="login" color="orange">Login</v-btn>
           </v-card-actions>
         </v-card>
@@ -32,6 +33,7 @@
   </v-container>
 </template>
 <script setup>
+import Swal from 'sweetalert2'
 const { $axios } = useNuxtApp()
 const store = useAuthStore()
 const router = useRouter()
@@ -63,6 +65,16 @@ function login() {
           isLoading.value = false
         })
   }
+}
+
+function createAdmin() {
+  $axios.post('/user/create_admin').then((resp) => {
+    Swal.fire({
+      title: 'Admin created successfully!',
+      icon: 'success',
+      confirmButtonText: 'OK'
+    });
+  })
 }
 
 definePageMeta({

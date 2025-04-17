@@ -185,6 +185,7 @@ def create_project_tasks(project_id):
     db.tasks.insert_many([{
         "project": ObjectId(project_id),
         "file": file,
+        "title": os.path.basename(file),
         "user": user,
         "annotations": [],
         "completed": False,

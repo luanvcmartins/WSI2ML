@@ -1,15 +1,11 @@
 markupsafe
 Flask
 Werkzeug
-psycopg2
-#alembi
-SQLAlchemy
 Flask-Compress
 Flask-Cors
 Flask-JWT-Extended
 Flask-Login
-Flask-Migrate
-Flask-SQLAlchemy
 openslide-python
 waitress
 Shapely
+pymongo

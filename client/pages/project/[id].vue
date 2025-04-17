@@ -166,7 +166,14 @@ function delegateTasks() {
 }
 
 loadTasks()
+
+definePageMeta({
+  layout: 'default',
+  middleware: ['auth'],
+});
 </script>
 <style scoped>
-
+.swal2-container {
+  z-index: 9999 !important;
+}
 </style>

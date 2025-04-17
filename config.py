@@ -19,5 +19,5 @@ class Config(object):
     @property
     def MONGO_URI(self):
         if self.MONGO_USERNAME is not None:
-            return f"mongodb://{self.MONGO_USERNAME}:{self.MONGO_PASSWORD}@{self.MONGO_ADDRESS}:27017/{self.DATABASE}?authSource=admin"
+            return f"mongodb://{self.MONGO_USERNAME}:{self.MONGO_PASSWORD}@{self.MONGO_ADDRESS}:27017/{self.DATABASE}"
         return f"mongodb://{self.MONGO_ADDRESS}:27017/{self.DATABASE}"

@@ -1,70 +1,65 @@
 <template>
-  <v-container style="overflow: hidden" class="fill-height">
-    <Teleport v-for="task in tasks" :key="task._id" :to="`#div-${task._id}`">
-      <SlideManager :task="task"></SlideManager>
-    </Teleport>
-    <div id="gl-container" class="fill-height seadragon-viewer"></div>
-    <v-btn @click="loadTask('67fbc530d1cbe4a96028722b')"></v-btn>
-  </v-container>
+  <div>
+    <v-app-bar color="primary" density="compact">
+      <v-btn icon @click="$router.go(-1)">
+        <v-icon>mdi-arrow-left</v-icon>
+      </v-btn>
+      <v-app-bar-title>WSI <strong color="darkorange">//</strong> ML</v-app-bar-title>
+      <v-select v-model="selectedTasks" :items="userTasks" label="Select a task" multiple outlined dense hide-details>
+        <template v-slot:selection="{ item, index }">
+          <v-chip :text="item.value.file"></v-chip>
+        </template>
+        <template v-slot:item="{ props: itemProps, item }">
+          <v-list-item v-bind="itemProps" :title="item.raw.title" :subtitle="item.raw.file"></v-list-item>
+        </template>
+      </v-select>
+      <v-spacer></v-spacer>
+
+    </v-app-bar>
+
+    <v-container>
+      <Teleport v-for="task in openedTasks" :key="task._id" :to="`#div-${task._id}`">
+        <SlideManager :task="task"></SlideManager>
+      </Teleport>
+      <div id="gl-container" class="seadragon-viewer" style="height: calc(100%-48px);  margin-top: 48px;"></div>
+
+    </v-container>
+  </div>
 </template>
 <script setup>
 import 'golden-layout/dist/css/goldenlayout-base.css';
 import 'golden-layout/dist/css/themes/goldenlayout-light-theme.css';
 
-import { nextTick, onMounted, createApp, h, render } from 'vue';
+import { nextTick, onMounted } from 'vue';
 import { ComponentItem, GoldenLayout } from 'golden-layout';
 import SlideManager from '~/components/SlideManager.vue';
+import Swal from 'sweetalert2';
+
 
 const { $axios } = useNuxtApp();
 
-const tasks = ref([]);
+const defaultTask = ref()
+const taskToTab = {};
+const selectedTasks = ref([]);
+const userTasks = ref([]);
+const openedTasks = ref([]);
 let layout = null;
+
+import { useRoute } from "nuxt/app";
+const route = useRoute()
+const sessionId = computed(() => route.params.session_id);
+
+watch(() => {
+  selectedTasks.value.forEach(task => {
+    if (!(task._id in taskToTab) && task._id != sessionId.value) {
+      loadTask(task._id);
+      taskToTab[task._id] = task
+    }
+  })
+})
 
 onMounted(() => {
   nextTick(() => {
-    const config = {
-      type: 'row',
-      content: [
-        {
-          type: 'row',
-          content: []
-        }
-      ]
-      //     {
-      //       type: 'row',
-      //       content: [
-      //         {
-      //           type: "row",
-      //           content: []
-      //         }
-      //         // {
-      //         //   type: 'component',
-      //         //   componentState: {
-      //         //     _id: '67fbc530d1cbe4a96028722b',
-      //         //     project: {
-      //         //       file: 'file-a'
-      //         //     },
-      //         //   },
-      //         //   componentType: 'example', // must match registered type
-      //         //   title: 'Page Title 1',
-      //         //   id: 'Example',
-      //         // },
-      //         // {
-      //         //   type: 'component',
-      //         //   componentState: {
-      //         //     _id: '67fbc530d1cbe4a96028722c',
-      //         //     project: {
-      //         //       file: 'file-b'
-      //         //     },
-      //         //   },
-      //         //   componentType: 'example',
-      //         //   title: 'Page Title 2',
-      //         //   id: 'Example',
-      //         // },
-      //       ],
-      //     },
-      //   ],
-    };
     layout = new GoldenLayout(document.getElementById('gl-container'));
 
     layout.registerComponentFactoryFunction('example', (container, state) => {
@@ -73,37 +68,23 @@ onMounted(() => {
       mountEl.id = `div-${state._id}`;
       container.element.appendChild(mountEl);
 
-      tasks.value.push(state);
-      //
-      // const vm = h(SlideManager, { ...state });
-      // render(vm, mountEl); // from vue@3
-      //
-      // container.on('destroy', () => {
-      //   render(null, mountEl);
-      // });
-
-      // const slideApp = createApp(SlideManager, { ...state });
-      // slideApp._context = app._context;
-      // const mountEl = document.createElement('div');
-      // container.element.appendChild(mountEl);
-      // slideApp.mount(mountEl);
-      //
-      // container.on('destroy', () => {
-      //   slideApp.unmount();
-      // });
+      openedTasks.value.push(state);
     });
-
+    layout.resizeWithContainerAutomatically = true;
     layout.loadLayout({
       root: {
         type: 'column',
         content: [
           {
-            type: 'stack', // this is like a tab group
+            type: 'stack',
             content: []
           }
         ]
       }
     });
+
+    const sessionId = route.params.session_id;
+    loadTask(sessionId);
   });
 });
 
@@ -117,24 +98,46 @@ function findFirstStack(item) {
   return null;
 }
 
-function loadTask(sessionId) {
-  $axios.get(`/session/${sessionId}`)
-      .then(resp => {
-        const rootStack = findFirstStack(layout.root);
-        console.log(rootStack);
-        const task = resp.data;
-        rootStack.addItem(
-            {
-              type: 'component',
-              componentState: resp.data,
-              componentType: 'example',
-              title: task.file,
-            });
-      });
+function loadTasks() {
+  $axios.get(`/session/slide_list`)
+    .then((res) => {
+      userTasks.value = res.data
+    })
+    .catch((err) => {
+      console.error(err);
+      Swal.fire({
+        icon: 'error',
+        title: 'Something went wrong',
+      })
+    })
 }
+
+function loadTask(taskId) {
+  $axios.get(`/session/${taskId}`)
+    .then(resp => {
+      const rootStack = findFirstStack(layout.root);
+      console.log(rootStack);
+      const task = resp.data;
+      rootStack.addItem(
+        {
+          type: 'component',
+          componentState: resp.data,
+          componentType: 'example',
+          title: task.file,
+        });
+
+      if (sessionId === resp.data._id) {
+        selectedTasks.value.push(resp.data);
+      }
+    });
+
+}
+
+loadTasks();
 
 definePageMeta({
   layout: 'empty',
+  middleware: ['auth'],
 });
 </script>
 <style scoped>
@@ -145,5 +148,4 @@ definePageMeta({
   right: 0;
   bottom: 0;
 }
-
 </style>

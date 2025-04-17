@@ -1,6 +1,8 @@
+from datetime import datetime
 import json
 import os
 from typing import Any
+import uuid
 
 from bson import ObjectId
 
@@ -15,26 +17,31 @@ session_api = Blueprint("session_api", __name__)
 
 sessions = {}
 def get_session(session_id):
-    if session_id not in sessions:
-        task = db.tasks.aggregate([
-            {"$match":{"_id": ObjectId(session_id)}},
-            {"$lookup": {
-                "from": "projects",
-                "localField": "project",
-                "foreignField": "_id",
-                "as": "project",
-                "pipeline": [
-                    {"$lookup": {
-                        "from": "labels",
-                        "localField": "labels",
-                        "foreignField": "_id",
-                        "as": "labels",
-                    }}
-                ]
-            }},
-            {"$unwind": "$project"}
-        ]).next()
-        print(task)
+    task = list(db.tasks.aggregate([
+        {"$match":{"_id": ObjectId(session_id)}},
+        {"$lookup": {
+            "from": "projects",
+            "localField": "project",
+            "foreignField": "_id",
+            "as": "project",
+            "pipeline": [
+                {"$lookup": {
+                    "from": "labels",
+                    "localField": "labels",
+                    "foreignField": "_id",
+                    "as": "labels",
+                }}
+            ]
+        }},
+        {"$unwind": "$project"}
+    ]))
+    if len(task) == 0:
+        return None
+    print(task)
+    task = task[0]
+    if session_id in sessions:
+        sessions[session_id]['task'] = task
+    else:
         sessions[session_id] = {
             "_id": session_id,
             "task": task,
@@ -43,14 +50,44 @@ def get_session(session_id):
     return sessions[session_id]
 
 
+@session_api.route("slide_list", methods=["GET"])
+@jwt_required()
+def quick_list():
+    tasks = db.tasks.find({
+        "user._id": str(current_user["_id"]), 
+        "enabled": True
+    }, { "file": True, "_id": True})
+    return jsonify(list(tasks))
+
 @session_api.route("<session_id>", methods=['GET'])
-#@jwt_required()
+@jwt_required()
 def create_session(session_id):
     session = get_session(session_id)
 
     return jsonify({
         **session['task']
     }), 200
+    
+@session_api.route("<string:session_id>/annotation", methods=["POST"])
+@jwt_required()
+def annotate(session_id):
+    annotation = request.json
+    if annotation["_id"] is None:
+        # creating an pseudo id and additional metadata
+        annotation["_id"] = ObjectId()
+        annotation["user"] = current_user["_id"]
+        annotation["created_at"] = datetime.now().isoformat()
+        db.tasks.update_one(
+            {"_id": ObjectId(session_id)},
+            {"$push": {"annotations": annotation}}
+        )
+    else:
+        annotation["updated_at"] = datetime.now().isoformat()
+        db.tasks.update_one(
+            {"_id": ObjectId(session_id), "annotations._id": ObjectId(annotation["_id"])},
+            {"$set": {"annotations.$": annotation}}
+        )
+    return jsonify({"_id": annotation["_id"]})
 
 
 @session_api.route("list")
@@ -59,6 +96,19 @@ def list_sessions():
         "id": key,
         "data": value.get_info()
     } for key, value in sessions.items()])
+    
+@session_api.route("<string:session_id>/colleagues", methods=['GET'])
+@jwt_required()
+def list_colleagues_annotations(session_id):
+    session = get_session(session_id)
+    file = session["task"]["file"]
+    project = session["task"]["project"]
+    tasks = db.tasks.find({
+        "file": file, 
+        "project": project['_id'], 
+        "user._id": {"$ne": current_user["_id"]}
+    })
+    return jsonify(list(tasks))
 
 
 def get_default(item, key, default: Any = ""):
