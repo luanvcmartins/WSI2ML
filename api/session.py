@@ -16,9 +16,11 @@ from api import db
 session_api = Blueprint("session_api", __name__)
 
 sessions = {}
+
+
 def get_session(session_id):
     task = list(db.tasks.aggregate([
-        {"$match":{"_id": ObjectId(session_id)}},
+        {"$match": {"_id": ObjectId(session_id)}},
         {"$lookup": {
             "from": "projects",
             "localField": "project",
@@ -54,10 +56,11 @@ def get_session(session_id):
 @jwt_required()
 def quick_list():
     tasks = db.tasks.find({
-        "user._id": str(current_user["_id"]), 
+        "user._id": ObjectId(current_user["_id"]),
         "enabled": True
-    }, { "file": True, "_id": True})
+    }, {"file": True, "_id": True, "title": True})
     return jsonify(list(tasks))
+
 
 @session_api.route("<session_id>", methods=['GET'])
 @jwt_required()
@@ -67,16 +70,29 @@ def create_session(session_id):
     return jsonify({
         **session['task']
     }), 200
-    
+
+
+@session_api.route("<session_id>/completed", methods=['POST'])
+@jwt_required()
+def complete_session(session_id):
+    db.tasks.update_one(
+        {'_id': ObjectId(session_id)},
+        {'$set': {'completed': request.json['completed']}}
+    )
+    return ""
+
+
 @session_api.route("<string:session_id>/annotation", methods=["POST"])
 @jwt_required()
 def annotate(session_id):
     annotation = request.json
     if annotation["_id"] is None:
-        # creating an pseudo id and additional metadata
+        # creating a pseudo id and additional metadata
         annotation["_id"] = ObjectId()
-        annotation["user"] = current_user["_id"]
+        annotation["user"] = ObjectId(current_user["_id"])
         annotation["created_at"] = datetime.now().isoformat()
+        annotation['flagged'] = []
+        annotation["label"]["_id"] = ObjectId(annotation["label"]["_id"])
         db.tasks.update_one(
             {"_id": ObjectId(session_id)},
             {"$push": {"annotations": annotation}}
@@ -96,7 +112,8 @@ def list_sessions():
         "id": key,
         "data": value.get_info()
     } for key, value in sessions.items()])
-    
+
+
 @session_api.route("<string:session_id>/colleagues", methods=['GET'])
 @jwt_required()
 def list_colleagues_annotations(session_id):
@@ -104,12 +121,21 @@ def list_colleagues_annotations(session_id):
     file = session["task"]["file"]
     project = session["task"]["project"]
     tasks = db.tasks.find({
-        "file": file, 
-        "project": project['_id'], 
-        "user._id": {"$ne": current_user["_id"]}
+        "file": file,
+        "project": ObjectId(project['_id']),
+        "user._id": {"$ne": ObjectId(current_user["_id"])}
     })
     return jsonify(list(tasks))
 
+@session_api.route("<string:session_id>/flag", methods=['POST'])
+@jwt_required()
+def flag(session_id):
+    annotation = request.json
+    db.tasks.update_one(
+        {"_id": ObjectId(session_id), "annotations._id": ObjectId(annotation["_id"])},
+        {"$addToSet" if annotation['flag'] else "$pull": {"annotations.$.flagged": ObjectId(current_user["_id"])}}
+    )
+    return jsonify({"_id": annotation["_id"]})
 
 def get_default(item, key, default: Any = ""):
     return item[key] if key in item else default

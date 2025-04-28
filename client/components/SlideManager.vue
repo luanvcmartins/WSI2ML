@@ -1,10 +1,13 @@
 <template>
   <v-container fluid>
-    <div v-if="props.task._id != null" :id="`seadragon-viewer-${props.task._id}`" class="seadragon-viewer" />
+    <div v-if="task._id != null" :id="`seadragon-viewer-${task._id}`" class="seadragon-viewer"/>
 
     <v-card :class="['toolbox', 'navigation-toolbox', !zoomMenu ? 'small' : 'default']" @mouseenter="zoomMenu = true"
-      @mouseleave="zoomMenu = false">
-      <div class="text-center"><v-icon>mdi-magnify</v-icon> {{ zoom.toFixed(2) }}</div>
+            @mouseleave="zoomMenu = false">
+      <div class="text-center">
+        <v-icon>mdi-magnify</v-icon>
+        {{ zoom.toFixed(2) }}
+      </div>
       <div v-if="zoomMenu">
         <v-slider hide-details thumb-label dense v-model="zoom" :max="40" min="0.5" step="0">
           <template v-slot:thumb-label="{ modelValue }">
@@ -24,17 +27,19 @@
     </v-card>
 
     <v-card :class="['toolbox', 'annotation-toolbox', !annotationMenu ? 'small' : 'default']"
-      @mouseenter="annotationMenu = true" @mouseleave="annotationMenu = false">
+            @mouseenter="annotationMenu = true" @mouseleave="annotationMenu = false"
+            :disabled="!annotationsEnabled">
       <v-menu top :close-on-click="true" offset-y>
         <template v-slot:activator="{ props }">
           <v-btn style="width: 100%" variant="text" v-bind="props">
-            <v-icon v-if="selectedTool != null" :color="selectedLabel.color" class="mr-2" size="26">{{ selectedTool.icon
-            }}</v-icon>
+            <v-icon v-if="selectedTool != null" :color="selectedLabel.color" class="mr-2" size="26">
+              {{ selectedTool.icon }}
+            </v-icon>
             {{ selectedLabel.name }}
           </v-btn>
         </template>
         <v-list style="overflow: auto; max-height: 600px">
-          <v-list-item v-for="(item, index) in props.task.project.labels" @click="selectedLabel = item" :key="index">
+          <v-list-item v-for="(item, index) in task.project.labels" @click="selectedLabel = item" :key="index">
             <template v-slot:prepend>
               <v-avatar size="26" :color="item.color"></v-avatar>
             </template>
@@ -43,7 +48,7 @@
         </v-list>
       </v-menu>
       <div v-if="annotationMenu" class="text-center">
-        <v-divider />
+        <v-divider/>
         <v-btn-toggle density="compact" v-model="selectedTool" class="ma-0" mandatory>
           <v-btn v-for="tool in tools" :value="tool" variant="text" icon>
             <v-icon>{{ tool.icon }}</v-icon>
@@ -52,35 +57,80 @@
       </div>
     </v-card>
 
-    <v-card :class="['toolbox', 'annotation-list', mainPanelMenu ? 'extended' : '']" @mouseenter="mainPanelMenu = true"
-      @mouseleave="mainPanelMenu = false">
+    <v-card :class="['toolbox', 'annotation-list', mainPanelMenu ? 'extended' : '']"
+            @mouseenter="mainPanelMenu = true"
+            @mouseleave="mainPanelMenu = false">
 
       <div class="d-flex">
         <v-btn-toggle v-model="selectedAnnotationTab">
-          <v-btn v-for="tab in mainPanelTabs" :key="tab" :value="tab" :icon="tab.icon" height="40" variant="text"
-            width="40"></v-btn>
-          <v-btn v-if="mainPanelMenu" v-for="tab in colleaguesAnnotations" :key="tab" :value="tab" icon="mdi-account-group" height="40" variant="text"
-            width="40"></v-btn>
+          <v-btn v-for="tab in mainPanelTabs" :key="tab" :icon="tab.icon"
+                 :value="tab"
+                 height="40" variant="text"
+                 width="40"/>
+          <v-btn v-if="mainPanelMenu" v-for="(tab, index) in colleaguesAnnotations" :key="tab"
+                 :value="{ type: 'annotation', annotator: tab.user.name, annotationList: tab.annotations, layer: (index+1) }"
+                 icon="mdi-account-group" height="40" variant="text"
+                 width="40"/>
 
         </v-btn-toggle>
-        <v-btn v-if="mainPanelMenu && props.task.project.revision_strategy === 'auto'" icon="mdi-update" height="40"
-          variant="text" width="40" @click="listColleagues"></v-btn>
+        <v-btn v-if="mainPanelMenu && task.project.revision_strategy === 'auto'" icon="mdi-update" height="40"
+               variant="text" width="40" @click="listColleagues"></v-btn>
       </div>
-      <div :id="`annotation-list-${props.task._id}`" v-if="mainPanelMenu" style="height: calc(100% - 48px)">
-        <v-virtual-scroll :items="props.task.annotations" :height="annotationListHeight">
+      <div :id="`annotation-list-${task._id}`" v-if="mainPanelMenu" style="height: calc(100% - 48px)">
+        <v-card v-if="selectedAnnotationTab != null"
+                :title="selectedAnnotationTab.layer === 0 ? 'Annotation task' : `${selectedAnnotationTab.annotator}'s annotations`"
+                class="ma-1"
+                variant="tonal">
+          <template v-slot:prepend>
+            <v-btn
+                :icon="drawStyle[selectedAnnotationTab.layer].drawing ? 'mdi-eye' : 'mdi-eye-off'"
+                size="24" variant="flat"
+                @click="switchLayerVisibility(selectedAnnotationTab.layer)">
+            </v-btn>
+          </template>
+          <v-card-text>
+            <v-slider v-model="drawStyle[selectedAnnotationTab.layer].fillOpacity" :max="1" :min="0" step="0.05"
+                      label="Fill Opacity"
+                      hide-details>
+            </v-slider>
+            <v-slider v-model="drawStyle[selectedAnnotationTab.layer].lineWidth" :max="10" :min="1" step="1"
+
+                      label="Line Width" hide-details>
+            </v-slider>
+            <v-slider v-model="drawStyle[selectedAnnotationTab.layer].hoverOpacity" :max="1" :min="0" step="0.05"
+                      label="Hover Opacity"
+                      hide-details>
+            </v-slider>
+            <v-divider/>
+            <v-switch v-if="selectedAnnotationTab.layer === 0" hide-details v-model="task.completed"
+                      color="primary"
+                      label="Task completed"/>
+          </v-card-text>
+        </v-card>
+        <v-virtual-scroll :items="annotationListTab" :height="annotationListHeight">
           <template v-slot:default="{ item }">
-            <v-card variant="outlined" class="ma-1" @click="goToAnnotation(item)" append-icon="mdi-pencil"
-              @append-icon.click="editAnnotation(item)" :title="item.label.name">
+            <v-card variant="outlined" class="ma-1" @click="goToAnnotation(item)" :title="item.label.name">
               <template v-slot:append>
-                <v-btn @click.capture="editAnnotation(item)" icon size="24"><v-icon
-                    :color="item.label.color">mdi-pencil</v-icon></v-btn>
+                <v-btn variant="text"
+                       @click.capture="editAnnotation(item)"
+                       icon="mdi-pencil"
+                       size="24"
+                       :color="item.label.color"
+                       :disabled="!annotationsEnabled"
+                       v-if="selectedAnnotationTab.layer === 0"/>
+
+                <v-btn variant="text"
+                       @click.capture="flagAnnotation(item)"
+                       :icon="item.flagged.includes(authStore.user._id) ? 'mdi-flag-variant-off' : 'mdi-flag'"
+                       size="24"
+                       color="red"
+                       v-if="selectedAnnotationTab.layer !== 0"/>
               </template>
               <template v-slot:prepend>
-                <v-avatar :color="item.label.color" size="22" class="mr-2" />
+                <v-avatar :color="item.label.color" size="22" class="mr-2"/>
               </template>
             </v-card>
           </template>
-
         </v-virtual-scroll>
       </div>
 
@@ -91,17 +141,62 @@
 import { AnnotationDrawer } from '@/SliceDrawer';
 import OpenSeadragon from 'openseadragon';
 import { nextTick } from 'vue';
+import Swal from 'sweetalert2';
+import { useAuthStore } from '~/stores/auth.js';
 
 const { $axios } = useNuxtApp();
 
 const props = defineProps({
-  task: Object
+  modelValue: {
+    type: [Object],
+    required: true
+  }
 });
+const emit = defineEmits(['update:modelValue']);
+const task = computed(() => {
+  return props.modelValue;
+}, { immediate: true });
+watch(task, (newTask) => {
+  emit('update:modelValue', newTask);
+}, { deep: true });
+const taskCompleted = computed(() => {
+  return task.value.completed;
+});
+watch(taskCompleted, (newTaskCompleted) => {
+  annotationDrawer.tool = 'pointer';
+  $axios.post(`/session/${task.value._id}/completed`, { completed: newTaskCompleted })
+      .catch(e => {
+        Swal.fire({
+          'icon': 'error',
+          'title': 'Oops, something went wrong',
+          'text': 'Your changes have not been saved. Try again later.',
+        });
+      });
+});
+
 let viewer = null;
 let noEvents = false;
 const mainPanelMenu = ref(false);
 const annotationMenu = ref(false);
 
+const authStore = useAuthStore();
+
+const annotationListTab = computed(() => {
+  if (selectedAnnotationTab.value?.type === 'annotation') {
+    return selectedAnnotationTab.value.annotationList;
+  }
+});
+const annotationsEnabled = computed(() => {
+  /*
+  Annotations are only enabled if:
+   - The task belongs to the user
+   - The task is not completed
+   - The image degree is at 0
+   */
+  console.log('authStore:', authStore.user);
+  return task.value.user._id === authStore.user._id &&
+      task.value.completed === false && degree.value === 0;
+});
 const degree = ref(0);
 watch(degree, (val) => {
   viewer.viewport.setRotation(val);
@@ -114,7 +209,7 @@ watch(zoom, (val) => {
 });
 
 const colleaguesAnnotations = ref([]);
-
+const modelAnnotations = ref([]);
 
 //region TOOLS
 const tools = [
@@ -143,13 +238,17 @@ const mainPanelTabs = ref([
   {
     name: 'Configuration',
     icon: 'mdi-cog',
+    type: 'configuration'
   },
   {
     name: 'Annotations',
-    icon: 'mdi-format-list-bulleted'
+    icon: 'mdi-format-list-bulleted',
+    type: 'annotation',
+    layer: 0,
+    annotationList: task.value.annotations
   },
 
-])
+]);
 const selectedAnnotationTab = ref();
 const selectedTool = ref({
   name: 'Cursor',
@@ -171,43 +270,83 @@ watch(selectedLabel, (newLabel) => {
 });
 const annotationListHeight = ref(0);
 watch(mainPanelMenu, (newMenu) => {
-  if (newMenu == true) {
+  if (newMenu === true) {
     nextTick(() => {
-      annotationListHeight.value = document.getElementById(`annotation-list-${props.task._id}`).clientHeight;
+      annotationListHeight.value = document.getElementById(`annotation-list-${task.value._id}`).clientHeight;
     });
   }
-})
+});
 
-const drawStyle = ref([{
-  fillOpacity: 0.2,
-  lineWidth: 2,
-  hoverOpacity: 0.5,
-  showImporting: true,
-}, {
-  fillOpacity: 0.2,
-  lineWidth: 2,
-}])
+const drawStyle = ref({});
+watch(drawStyle, (newStyle) => {
+  annotationDrawer.style = Object.values(newStyle);
+  annotationDrawer.refresh();
+}, { deep: true });
+
+function switchLayerVisibility(layer) {
+  drawStyle.value[layer].drawing = !drawStyle.value[layer].drawing;
+  // full update required to apply this change
+  annotationDrawer.update();
+}
 
 function goToAnnotation(annotation) {
   annotationDrawer.peep(annotation._id);
 }
+
 function editAnnotation(annotation) {
   annotationDrawer.editAnnotation(annotation._id);
 }
 
+function flagAnnotation(annotation) {
+  const isFlagging = !annotation.flagged.includes(authStore.user._id)
+  $axios.post(`/session/${task.value._id}/flag`, {
+    '_id': annotation._id,
+    'flag': isFlagging
+  })
+      .then(res => {
+        if (isFlagging) {
+          annotation.flagged.push(authStore.user._id);
+        } else {
+          annotation.flagged = annotation.flagged.filter(item => item !== authStore.user._id)
+        }
+      })
+      .catch(e => {
+        console.log(e);
+        Swal.fire({
+          'icon': 'error',
+          'title': 'Oops, something went wrong',
+          'text': 'Your changes have not been saved. Try again later.',
+        });
+      });
+}
+
 function listColleagues() {
-  $axios.get(`/session/${props.task._id}/colleagues`).then(response => {
-    console.log(response.data);
-    colleaguesAnnotations.value = response.data;
-  });
+  $axios.get(`/session/${task.value._id}/colleagues`)
+      .then(response => {
+        nextTick(() => {
+          colleaguesAnnotations.value = response.data;
+          colleaguesAnnotations.value.forEach((colleagueTask, index) => {
+            annotationDrawer.loadAnnotations(colleagueTask.annotations, index + 1);
+            drawStyle.value[index + 1] = {
+              index: index + 1,
+              drawing: true,
+              fillOpacity: 0.2,
+              lineWidth: 2,
+              hoverOpacity: 0.5,
+              showImporting: true,
+              lineDash: [10, 3]
+            };
+          });
+
+        });
+      });
 }
 
 onMounted(() => {
   nextTick(() => {
-    console.log(props.task);
     viewer = OpenSeadragon({
-      id: `seadragon-viewer-${props.task._id}`,
-      tileSources: `${$axios.defaults.baseURL}/session/${props.task._id}.dzi`,
+      id: `seadragon-viewer-${task.value._id}`,
+      tileSources: `${$axios.defaults.baseURL}/session/${task.value._id}.dzi`,
       showNavigator: true,
       navigatorPosition: 'TOP_LEFT',
       navigatorRight: '16px',
@@ -226,47 +365,62 @@ onMounted(() => {
 
     // Instantiating annotation drawer
     annotationDrawer = new AnnotationDrawer(
-      viewer,
-      {
-        onViewportChanged: (viewport) => { },
-        onInfoUpdate: (info) => { },
-        onStateRestorerEvent: (data) => { },
-        onFinishNewDrawing: (annotation) => {
-          console.log({
-            _id: null,
-            label: annotation.label,
-            geometry: annotation.geometry
-          });
-          $axios.post(`/session/${props.task._id}/annotation`, {
-            _id: null,
-            label: annotation.label,
-            geometry: annotation.geometry
-          }).then((res) => {
-            annotation._id = res.data._id
-            annotationDrawer.annotationSet[0].push(annotation);
-          })
-        },
-        onFinishedEditing: (changed, annotation) => {
-          if (changed) {
-            $axios.post(`/session/${props.task._id}/annotation`, {
-              _id: annotation._id,
-              label: annotation.label,
-              geometry: annotation.geometry
-            }).then((res) => {
+        viewer,
+        {
+          onViewportChanged: (viewport) => {
+          },
+          onInfoUpdate: (info) => {
+          },
+          onStateRestorerEvent: (data) => {
+          },
+          onFinishNewDrawing: (annotation) => {
+            if (annotation.geometry.points.length >= 2) {
+              $axios.post(`/session/${task.value._id}/annotation`, {
+                _id: null,
+                label: annotation.label,
+                geometry: annotation.geometry
+              })
+                  .then((res) => {
+                    annotation._id = res.data._id;
+                    annotationDrawer.annotationSet[0].push(annotation);
+                    annotationDrawer.annotationMap[annotation._id] = annotation;
+                    task.value.annotations.push(annotation);
+                  });
+            }
+          },
+          onFinishedEditing: (changed, annotation) => {
+            if (changed) {
+              $axios.post(`/session/${task.value._id}/annotation`, {
+                _id: annotation._id,
+                label: annotation.label,
+                geometry: annotation.geometry
+              })
+                  .then((res) => {
 
-            })
-          }
-        },
-        onHover: (annotation) => { },
-        onLeave: (annotation) => { },
-        onClick: (annotation) => { },
-      }
+                  });
+            }
+          },
+          onHover: (annotation) => {
+          },
+          onLeave: (annotation) => {
+          },
+          onClick: (annotation) => {
+          },
+        }
     );
-    annotationDrawer.style = toRaw(drawStyle.value);
-    annotationDrawer.tool = 'pointer';
-    selectedLabel.value = props.task.project.labels[0];
-    annotationDrawer.label = props.task.project.labels[0];
-    annotationDrawer.loadAnnotations(toRaw(props.task.annotations));
+    drawStyle.value[0] = {
+      fillOpacity: 0.2,
+      lineWidth: 2,
+      hoverOpacity: 0.5,
+      lineDash: [],
+      drawing: true
+    };
+    nextTick(() => {
+      annotationDrawer.tool = 'pointer';
+      selectedLabel.value = task.value.project.labels[0];
+      annotationDrawer.label = task.value.project.labels[0];
+      annotationDrawer.loadAnnotations(toRaw(task.value.annotations));
+    });
 
   });
 });

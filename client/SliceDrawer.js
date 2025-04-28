@@ -826,15 +826,15 @@ class RectAnnotation extends Annotation {
         ctx.fillText('Preview, press ENTER to save', point0.x, point0.y);
       }
     } else if (this.state === 'idle') {
-      ctx.setLineDash([]);
+      ctx.setLineDash(style.lineDash);
       ctx.lineWidth = style.lineWidth;
-    } else if (this.state == 'creating') {
+    } else if (this.state === 'creating') {
       ctx.setLineDash([4, 5]);
       ctx.lineWidth = style.lineWidth;
     }
-    const opacityHex = (opacity * 255).toString(16);
+    const opacityHex = Math.round(opacity * 255).toString(16);
 
-    ctx.fillStyle = color + (opacityHex.length == 1 ? `0${opacityHex}` : opacityHex);
+    ctx.fillStyle = color + (opacityHex.length === 1 ? `0${opacityHex}` : opacityHex);
     ctx.strokeStyle = color;
 
     // drawing:
@@ -1001,11 +1001,11 @@ class CircleAnnotation extends Annotation {
     this.drawer.ctx.ellipse(position.x, position.y, radiusX, radiusY, 0, 2 * Math.PI, 0, false);
 
     // stylizing:
-    const opacityHex = (opacity * 255).toString(16);
-    this.drawer.ctx.fillStyle = color + (opacityHex.length == 1 ? `0${opacityHex}` : opacityHex);
+    const opacityHex = Math.round(opacity * 255).toString(16);
+    this.drawer.ctx.fillStyle = color + (opacityHex.length === 1 ? `0${opacityHex}` : opacityHex);
     this.drawer.ctx.strokeStyle = color;
     this.drawer.ctx.lineWidth = style.lineWidth;
-    if (this.state == 'creating') {
+    if (this.state === 'creating') {
       this.drawer.ctx.setLineDash([4, 5]);
       this.drawer.ctx.lineWidth = style.lineWidth;
     }
@@ -1088,14 +1088,14 @@ class PolygonAnnotation extends Annotation {
 
         this.drawer.ctx.fillStyle = color + "00";
       }
-    } else if (this.state == 'creating') {
+    } else if (this.state === 'creating') {
       this.drawer.ctx.setLineDash([4, 5]);
       this.drawer.ctx.lineWidth = style.lineWidth;
     }
 
-    const opacityHex = (opacity * 255).toString(16);
+    const opacityHex = Math.round(opacity * 255).toString(16);
 
-    this.drawer.ctx.fillStyle = color + (opacityHex.length == 1 ? `0${opacityHex}` : opacityHex);
+    this.drawer.ctx.fillStyle = color + (opacityHex.length === 1 ? `0${opacityHex}` : opacityHex);
     this.drawer.ctx.strokeStyle = color;
     this.drawer.ctx.lineWidth = style.lineWidth;
 
@@ -1368,6 +1368,7 @@ class AnnotationDrawer {
   /**
    * Load the annotations and instantiate the drawers.
    * @param annotations the list of annotations to load
+   * @param layer
    */
   loadAnnotations(annotations, layer = 0) {
     if (annotations == null) return [];
@@ -1376,7 +1377,11 @@ class AnnotationDrawer {
       circle: (annotation) => new CircleAnnotation(this, annotation),
       polygon: (annotation) => new PolygonAnnotation(this, annotation),
     };
-    this.annotationSet[0] = annotations.map((annotation) => {
+    if (this.annotationSet[layer] == null) {
+      this.annotationSet[layer] = [];
+      this.style[layer] = this.style[0];
+    }
+    this.annotationSet[layer] = annotations.map((annotation) => {
       annotation.layer = layer;
       const { type } = annotation.geometry;
       const annotationInstance = instantiators[type](annotation);
@@ -1506,9 +1511,9 @@ class AnnotationDrawer {
     self.elementsOnScreen = [];
     if (this.annotationSet != null && this.annotationSet.length > 0) {
       // console.log('updating');
-      this.annotationSet.forEach((annotations) => {
+      this.annotationSet.forEach((annotations, annotationSetIndex) => {
         // Checking if annotation should be visible
-        if (annotations != null) {
+        if (annotations != null && this.style[annotationSetIndex].drawing) {
           annotations.forEach((annotation) => {
             annotation.updateViewport(); // for collision checks
             if (annotation.shouldBeVisible(self.currentViewport)) {

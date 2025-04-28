@@ -39,14 +39,14 @@ def create_app(context="development"):
     from api.session import session_api
     from api.project import project_api
     from api.tasks import task_api
-    # from api.export import export_api
-    # from api.apps import apps_api
+    from api.export import export_api
+    from api.model_import import import_api
     app.register_blueprint(user_api, url_prefix="/api/user")
     app.register_blueprint(session_api, url_prefix="/api/session")
     app.register_blueprint(project_api, url_prefix="/api/project")
     app.register_blueprint(task_api, url_prefix="/api/task")
-    # app.register_blueprint(export_api, url_prefix="/api/export")
-    # app.register_blueprint(apps_api, url_prefix="/api/app")
+    app.register_blueprint(export_api, url_prefix="/api/export")
+    app.register_blueprint(import_api, url_prefix="/api/import")
 
     #
     # @app.errorhandler(Exception)

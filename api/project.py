@@ -22,7 +22,8 @@ def new():
         "name": new_project["name"],
         "description": new_project["description"],
         "folder": new_project["folder"],
-        "labels": new_project["labels"]
+        "labels": new_project["labels"],
+        "revision_strategy": new_project["revision_strategy"]
     })
 
     return "", 200
@@ -62,7 +63,8 @@ def edit():
     db.projects.update_one({"_id": ObjectId(project_id)}, {"$set": {
         "name": project["name"],
         "description": project["description"],
-        "folder": project["folder"]
+        "folder": project["folder"],
+        "revision_strategy": project["revision_strategy"],
     }})
 
     return "", 200
@@ -112,12 +114,21 @@ def new_label():
 def edit_label():
     if not current_user["manages_projects"]:
         return jsonify({"msg": "Not allowed"}), 401
-    db.labels.update_one({"_id": ObjectId(request.json["_id"])}, {"$set": {
+    label = {
         "name": request.json["name"],
         "project": request.json["project"],
         "color": request.json["color"],
         "description": request.json["description"],
-    }})
+    }
+    db.labels.update_one({"_id": ObjectId(request.json["_id"])}, {"$set": label})
+
+    # now we will also update all information on the annotations
+    label['_id'] = ObjectId(request.json["_id"])
+    db.tasks.update_many(
+        {},
+        {"$set": {"annotations.$[element].label": label}},
+        array_filters=[{"element.label._id": ObjectId(request.json["_id"])}]
+    )
     return "", 200
 
 
@@ -157,11 +168,11 @@ def _tasks(project_id):
         {"$match": {"project": project_id}},
         {"$group": {"_id": "$file", "tasks": {"$push": "$$ROOT"}}}
     ]))
-    users = list(db.users.find({}, {"_id": True, "email": True, "name": True }))
+    users = list(db.users.find({}, {"_id": True, "email": True, "name": True}))
 
     used_slides = list(db.tasks.aggregate([
         {"$match": {"project": project_id}},
-        {"$group": {"_id": "", "files": { "$addToSet": "$file"}}},
+        {"$group": {"_id": "", "files": {"$addToSet": "$file"}}},
         {"$project": {"_id": 0, "files": 1}}
     ]))
 
@@ -185,8 +196,11 @@ def create_project_tasks(project_id):
     db.tasks.insert_many([{
         "project": ObjectId(project_id),
         "file": file,
-        "title": os.path.basename(file),
-        "user": user,
+        "title": os.path.splitext(os.path.basename(file))[0],
+        "user": {
+            **user,
+            "_id": ObjectId(user['_id'])
+        },
         "annotations": [],
         "completed": False,
         "enabled": True

@@ -3,15 +3,19 @@
   <v-container class="fill-height pa-0" fluid>
     <v-row class="fill-height">
       <v-col class="hidden-sm-and-down"
-             style="position: relative; background-color: #37474f" md="6" lg="8">
+             style="position: relative; background-color: #5a3891;" md="6" lg="8">
         <v-img>
 
         </v-img>
         <span class="funded">This work was carried out at the Center for Artificial Intelligence (C4AI-USP), with support by the São Paulo Research Foundation (FAPESP grant #2019/07665-4 and #2020/15129-2) and by the IBM Corporation.</span>
       </v-col>
       <v-col class="fill-height text-xs-center" style="position: relative;" md="6" lg="4">
-        <v-card class="centered-card">
-          <v-card-title style="user-select: none;">WSI2ML</v-card-title>
+        <v-card class="centered-card rounded-b-lg">
+          <div style="user-select: none; background-color: #673ab7">
+            <v-card-title class="text-center">
+              <span class="app-title">WSI <strong style="color: darkorange;">//</strong> ML</span></v-card-title>
+            <v-card-subtitle class="text-white-0">Login to continue.</v-card-subtitle>
+          </div>
           <v-card-text>
             <!--            <v-form>-->
             <v-text-field v-model="user.email" label="E-mail"></v-text-field>
@@ -33,48 +37,51 @@
   </v-container>
 </template>
 <script setup>
-import Swal from 'sweetalert2'
-const { $axios } = useNuxtApp()
-const store = useAuthStore()
-const router = useRouter()
-const isLoading = ref(false)
+import Swal from 'sweetalert2';
+
+const { $axios } = useNuxtApp();
+const store = useAuthStore();
+const router = useRouter();
+const isLoading = ref(false);
 
 const user = reactive({
   email: '',
   password: ''
-})
+});
 
 function login() {
   if (user.email !== '' && user.password !== '') {
-    isLoading.value = true
+    isLoading.value = true;
     $axios.post('user/login', user)
         .then(resp => {
-          console.log(resp.data)
-          store.token = resp.data.token
-          store.user = resp.data.user
+          console.log(resp.data);
+          store.token = resp.data.token;
+          store.user = resp.data.user;
 
           if (store.token !== '') {
             $axios.defaults.headers.common = {
               'Authorization': `Bearer ${store.token}`
-            }
-            router.push("/")
+            };
+            router.push('/');
           }
-          isLoading.value = false
-        }).catch(err => {
-          console.log(err)
-          isLoading.value = false
+          isLoading.value = false;
         })
+        .catch(err => {
+          console.log(err);
+          isLoading.value = false;
+        });
   }
 }
 
 function createAdmin() {
-  $axios.post('/user/create_admin').then((resp) => {
-    Swal.fire({
-      title: 'Admin created successfully!',
-      icon: 'success',
-      confirmButtonText: 'OK'
-    });
-  })
+  $axios.post('/user/create_admin')
+      .then((resp) => {
+        Swal.fire({
+          title: 'Admin created successfully!',
+          icon: 'success',
+          confirmButtonText: 'OK'
+        });
+      });
 }
 
 definePageMeta({
@@ -109,6 +116,31 @@ definePageMeta({
   width: 400px;
   left: 50%;
   right: 50%;
+}
 
+
+@keyframes gradientAnimation {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+.app-title {
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: white;
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+  background: linear-gradient(270deg, orange, white, white);
+  background-size: 600% 600%;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: gradientAnimation 6s ease infinite;
+  animation-delay: 5s;
 }
 </style>

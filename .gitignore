@@ -7,3 +7,5 @@ venv/
 .cache
 .tmp
 example
+thumbnails
+repository

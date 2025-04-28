@@ -4,13 +4,13 @@
       <v-btn icon @click="$router.go(-1)">
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
-      <v-app-bar-title>WSI <strong color="darkorange">//</strong> ML</v-app-bar-title>
-      <v-select v-model="selectedTasks" :items="userTasks" label="Select a task" multiple outlined dense hide-details>
+      <v-app-bar-title>WSI <span style="color: darkorange">//</span> ML</v-app-bar-title>
+      <v-select v-model="selectedTasks" :items="userTasks" label="Select a task" return-object multiple outlined dense hide-details>
         <template v-slot:selection="{ item, index }">
           <v-chip :text="item.value.file"></v-chip>
         </template>
         <template v-slot:item="{ props: itemProps, item }">
-          <v-list-item v-bind="itemProps" :title="item.raw.title" :subtitle="item.raw.file"></v-list-item>
+          <v-list-item v-bind="itemProps" :title="item.raw.title" :subtitle="item.raw.completed ? 'Completed!' : 'Remaining to do!'"></v-list-item>
         </template>
       </v-select>
       <v-spacer></v-spacer>
@@ -18,10 +18,10 @@
     </v-app-bar>
 
     <v-container>
-      <Teleport v-for="task in openedTasks" :key="task._id" :to="`#div-${task._id}`">
-        <SlideManager :task="task"></SlideManager>
+      <Teleport v-for="(task, index) in openedTasks" :key="task._id" :to="`#div-${task._id}`">
+        <SlideManager v-model="openedTasks[index]"></SlideManager>
       </Teleport>
-      <div id="gl-container" class="seadragon-viewer" style="height: calc(100%-48px);  margin-top: 48px;"></div>
+      <div id="gl-container" class="seadragon-viewer" style="height: calc(100% - 48px);  margin-top: 48px;"></div>
 
     </v-container>
   </div>
@@ -38,7 +38,6 @@ import Swal from 'sweetalert2';
 
 const { $axios } = useNuxtApp();
 
-const defaultTask = ref()
 const taskToTab = {};
 const selectedTasks = ref([]);
 const userTasks = ref([]);
@@ -50,10 +49,11 @@ const route = useRoute()
 const sessionId = computed(() => route.params.session_id);
 
 watch(() => {
-  selectedTasks.value.forEach(task => {
-    if (!(task._id in taskToTab) && task._id != sessionId.value) {
-      loadTask(task._id);
-      taskToTab[task._id] = task
+  selectedTasks.value.forEach(cTask => {
+    if (!(cTask._id in taskToTab) && cTask._id !== sessionId.value) {
+      console.log(cTask);
+      loadTask(cTask._id);
+      taskToTab[cTask._id] = cTask
     }
   })
 })
