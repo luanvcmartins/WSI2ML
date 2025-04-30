@@ -134,7 +134,7 @@
           <v-btn v-if="constructionProgress.info.step === 5" @click="constructionProgress.dialog = false">Close</v-btn>
           <v-btn
               v-if="constructionProgress.info.step === 5"
-              @click="download(newDatasetRequest.project); constructionProgress.dialog = false"
+              @click="download(newDatasetRequest._id); constructionProgress.dialog = false"
               prepend-icon="mdi-download">Download
           </v-btn>
         </v-card-actions>
@@ -160,6 +160,7 @@ const newDatasetRequest = ref({
   users: [],
   only_slides: [],
   not_flagged_by: [],
+  _id: null
 });
 const constructionProgress = ref({
   dialog: false,
@@ -187,11 +188,11 @@ const fieldRequired = [
 
 function download(projectId) {
   // navigate to download page on new tab
-  window.open($axios.defaults.baseURL + '/export/download/' + projectId, '_blank');
+  window.open($axios.defaults.baseURL + 'export/download/' + projectId, '_blank');
 }
 
 function createDatasetVersion(projectId) {
-  const eventSource = SSE($axios.defaults.baseURL + '/export/' + projectId + '/new',
+  const eventSource = SSE($axios.defaults.baseURL + 'export/' + projectId + '/new',
       {
         headers: {
           ...$axios.defaults.headers.common,
@@ -209,8 +210,19 @@ function createDatasetVersion(projectId) {
       newDatasetVersionDialog.value = false;
       constructionProgress.value.dialog = true;
     } else if (data.step === 5) {
+      newDatasetRequest.value._id = data._id
       eventSource.close();
+      loadExports();
     }
+  });
+
+  eventSource.addEventListener('error', (event) => {
+    Swal.fire({
+      icon: 'error',
+      title: 'Error creating dataset version',
+      message: 'Something went wrong while creating the dataset version. Please try again later.'
+    });
+    eventSource.close();
   });
 }
 

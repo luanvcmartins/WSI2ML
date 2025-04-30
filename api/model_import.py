@@ -5,7 +5,7 @@ from datetime import datetime
 from bson import ObjectId
 from flask import Blueprint, jsonify, request, Response, stream_with_context, send_file
 from flask_jwt_extended import jwt_required, current_user
-
+from io import BytesIO
 from api import db
 
 import_api = Blueprint("import_api", __name__)
@@ -21,36 +21,76 @@ def list_ds_versions(project_id):
     return jsonify(list(annotations))
 
 
-@import_api.route("<version_id>/update")
+@import_api.route("<project_id>/upload", methods=['POST'])
 @jwt_required()
-def update_ds_version(version_id):
-    updated = request.files['file']
+def upload_ds_version(project_id):
+    uploaded = request.data
 
     return Response(stream_with_context(
-        upload_model_results(version_id, updated)
+        upload_model_results(project_id, uploaded)
     ), content_type="text/event-stream")
 
 
-def upload_model_results(dataset_id, upload_file):
+def upload_model_results(project_id, upload_file):
     yield f"data: {json.dumps({'step': 0, 'progress': 0, 'msg': 'Starting procedure'})}\n\n"
-    ds_version = db.datasets.find_one({"_id": ObjectId(dataset_id)})
-    with zipfile.ZipFile(upload_file, 'r') as zip_ref:
-        annotations = {}
+
+    
+    annotated_files = []
+    with zipfile.ZipFile(BytesIO(upload_file), 'r') as zip_ref:      
+        # metadata
+        metadata = zip_ref.getinfo('_metadata.json')
+        metadata_data = json.load(zip_ref.open(metadata))
+        dataset_id =  ObjectId(metadata_data['dataset']['_id'])
+        metadata = {
+            'dataset_id': dataset_id,
+            "dataset_name": metadata_data['dataset']['title'],
+            'enabled': True,
+            "model":{
+                'model_id': ObjectId(),
+                'name': metadata_data['model']['name'],
+                'type': metadata_data['model']['type'],
+                'description': metadata_data['description'] if 'description' in metadata_data else "",
+            },
+            'created_at': datetime.now(),
+            'created_by': current_user['_id'],
+            "project": ObjectId(project_id),
+        }
+          
+        # annotated slides
         total_files = len(zip_ref.infolist())
         for idx, file_info in enumerate(zip_ref.infolist()):
-            with zip_ref.open(file_info) as file:
-                annotations[file_info.filename] = json.load(file)
-            yield f"data: {json.dumps({'step': 1, 'progress': idx / total_files, 'msg': 'Processing file: ' + file_info.filename})}\n\n"
+            if file_info.filename != "_metadata.json":
+                with zip_ref.open(file_info) as file:
+                    annotations = json.load(file)
+                    annotated_files.append({
+                        "slide_hash": annotations[0]['slide_hash'],
+                        **metadata, 
+                        'annotations': [{
+                            "_id": ObjectId(),
+                            **annotation
+                        }  for annotation in annotations]
+                    }) 
+                yield f"data: {json.dumps({'step': 1, 'progress': (idx / total_files)*100, 'msg': 'Processing file: ' + file_info.filename})}\n\n"
 
-
-    yield f"data: {json.dumps({'step': 2, 'progress': 1, 'msg': 'Cleaning previous results'})}\n\n"
-    db.model_feedback.delete_many({"ds_version": ObjectId(dataset_id)})
+    yield f"data: {json.dumps({'step': 2, 'progress': 1, 'msg': 'Registering model'})}\n\n"
+    # upload list of uploaded models to datasets
+    db.datasets.update_one(
+        {"_id": ObjectId(metadata_data['dataset']['_id'])}, 
+        { "$push": { "model_feedback": metadata }}
+    )
+    
+    
+    yield f"data: {json.dumps({'step': 2, 'progress': 1, 'msg': 'Cleaning previous annotations'})}\n\n"
+    db.model_feedback.delete_many({"version": ObjectId(dataset_id), "model": metadata_data['model'], "created_at": datetime.now()})
 
     yield f"data: {json.dumps({'step': 3, 'progress': 1, 'msg': 'Registering new data'})}\n\n"
-    db.model_feedback.insert_many([{
-        "ds_version": ObjectId(dataset_id),
-        "project": ds_version['project'],
-        "created_at": datetime.now(),
-        **annotation
-    } for annotation in annotations])
+    db.model_feedback.insert_many(annotated_files)
     yield f"data: {json.dumps({'step': 4, 'progress': 1, 'msg': 'Completed'})}\n\n"
+
+@import_api.route('/<model_id>/remove', methods=['POST'])
+def remove_model(model_id):
+    # Remove the model from the database
+    db.model_feedback.delete_many({"model.model_id": ObjectId(model_id)})
+    db.datasets.update_one(
+        {"models._id": ObjectId(model_id)}, 
+    )

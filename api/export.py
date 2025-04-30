@@ -25,7 +25,11 @@ def list_projects():
             "from": "datasets",
             "localField": "_id",
             "foreignField": "project",
-            "as": "versions"
+            "as": "versions",
+            "pipeline": [
+                {"$sort": {"created_at": -1}},
+                {"$limit": 10}
+            ]
         }}
     ])
     return jsonify(list(ds))
@@ -63,8 +67,7 @@ def prepare_version(project_id):
     ui = db.tasks.aggregate([
         {"$match": {
             "project": ObjectId(project_id),
-            "enabled": True,
-            "completed": True
+            "enabled": True
         }},
         {"$lookup": {
             "from": "users",
@@ -95,7 +98,8 @@ def new_version(project_id):
         "only_slides": request.json['only_slides'],
         "created_by": ObjectId(current_user['_id']),
         "created_at": datetime.now(),
-        "status": 'creating'
+        "status": 'creating',
+        "model_feedback": []
     })
 
     return Response(stream_with_context(create_dataset_version(item.inserted_id)), content_type="text/event-stream")
@@ -130,21 +134,38 @@ def create_dataset_version(dataset_id):
         {"$match": query},
         {"$group": {
             "_id": "$title",
+            "file": {"$first": "$file"},
+            "slide_hash": {"$first": "$slide_hash"},
             "annotations": {"$push": "$annotations"},
         }},
     ]))
-    slide_annotations = {slide['_id']: [annotation for ua in slide['annotations'] for annotation in ua] for slide in
-                         slide_annotations}
+    slide_annotations = {
+        slide['_id']: {
+            # slide metadata:
+            'title': slide['_id'],
+            'file': slide['file'],
+            'slide_hash': slide['slide_hash'],
+            # all annotations for from all users
+            'annotations': [annotation for ua in slide['annotations'] for annotation in ua] 
+        } for slide in slide_annotations
+    }
+    
     yield f"data: {json.dumps({'step': 2, 'progress': 0, 'msg': 'Creating geojson file'})}\n\n"
     time.sleep(1)
 
     total_annotations = 0
-    annotation_count = {label['name']: 0 for label in
-                        db.labels.find({"project": str(ds_version['project']), "enabled": True})}
+    annotation_count = {
+        label['name']: 0 for label in db.labels.find({
+            "project": ds_version['project'], 
+            "enabled": True
+        })
+    }
 
     zip_stream = BytesIO()
     with zipfile.ZipFile(zip_stream, 'w') as zf:
-        for idx, (slide_title, annotations) in enumerate(slide_annotations.items()):
+        # writing geojson for each slide
+        for idx, (slide_title, slide_metadata) in enumerate(slide_annotations.items()):
+            annotations = slide_metadata['annotations']
             for annotation in annotations:
                 annotation_count[annotation['label']['name']] += 1
             total_annotations += len(annotations)
@@ -166,6 +187,23 @@ def create_dataset_version(dataset_id):
                     create_polygon(annotation) for annotation in annotations
                 ]
             }, indent=2, default=str))
+             
+        # writing metadata file
+        metadata_file = zipfile.ZipInfo("_metadata.json")
+        metadata_file.compress_type = zipfile.ZIP_DEFLATED
+        
+        metadata_content = {
+            "dataset": ds_version,
+            "labels": list(db.labels.find({"project": ds_version["project"], "enabled": True}, {
+                '_id': True,
+                'name': True,
+                'color': True
+            })),
+            "slides": {
+                slide_id:  slide_metadata["slide_hash"]
+             for slide_id, slide_metadata in slide_annotations.items()}
+        }
+        zf.writestr(metadata_file, json.dumps(metadata_content, indent=2, default=str))
 
     yield f"data: {json.dumps({'step': 4, 'progress': 1, 'msg': 'Saving zip file', 'total_annotations': total_annotations, 'annotation_count': annotation_count})}\n\n"
     time.sleep(1)
@@ -177,7 +215,7 @@ def create_dataset_version(dataset_id):
     db.datasets.update_one({"_id": ObjectId(dataset_id)}, {
         "$set": {"status": "ready", "annotation_count": annotation_count, "total_annotations": total_annotations}
     })
-    yield f"data: {json.dumps({'step': 5, 'progress': 1, 'msg': 'Done.', 'total_annotations': total_annotations, 'annotation_count': annotation_count})}\n\n"
+    yield f"data: {json.dumps({'step': 5, '_id': str(dataset_id), 'progress': 1, 'msg': 'Done.', 'total_annotations': total_annotations, 'annotation_count': annotation_count})}\n\n"
     time.sleep(1)
 
 

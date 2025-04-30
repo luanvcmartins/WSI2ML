@@ -88,35 +88,35 @@
 import {useRoute} from "nuxt/app";
 import Swal from "sweetalert2";
 
-const route = useRoute()
+const route = useRoute();
 const projectId = computed(() => {
   return route.params.id
-})
-const dialog = ref(false)
-const {$axios} = useNuxtApp()
-const tasks = ref({})
+});
+const dialog = ref(false);
+const {$axios} = useNuxtApp();
+const tasks = ref({});
 const createTaskRequest = ref({
   projectId: projectId,
   files: [],
   users: []
-})
+});
 const table = [
   {title: 'File', value: '_id'},
   {title: 'Tasks', value: 'tasks'},
   {title: 'Actions', key: 'actions', sortable: false},
-]
+];
 
 function loadTasks(): void {
   $axios.get(`/project/${projectId.value}/tasks`)
       .then((res) => {
-        tasks.value = res.data
+        tasks.value = res.data;
       })
       .catch((err) => {
         Swal.fire({
           icon: 'error',
           title: 'Something went wrong',
-        })
-      })
+        });
+      });
 }
 
 function submit() {
@@ -125,14 +125,16 @@ function submit() {
         Swal.fire({
           icon: 'success',
           title: 'Tasks created',
-        })
+        });
+        dialog.value = false;
+        loadTasks();
       })
       .catch((err) => {
         Swal.fire({
           icon: 'error',
           title: 'Something went wrong',
-        })
-      })
+        });
+      });
 }
 
 function autoAssign() {
@@ -145,7 +147,7 @@ function autoAssign() {
     if (result) {
       $axios.post("/tasks/create/auto_assign", {"id": projectId.value}).then((res) => {
 
-      })
+      });
     }
   })
 }

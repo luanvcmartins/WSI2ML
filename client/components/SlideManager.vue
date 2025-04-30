@@ -1,9 +1,9 @@
 <template>
   <v-container fluid>
-    <div v-if="task._id != null" :id="`seadragon-viewer-${task._id}`" class="seadragon-viewer"/>
+    <div v-if="task._id != null" :id="`seadragon-viewer-${task._id}`" class="seadragon-viewer" />
 
     <v-card :class="['toolbox', 'navigation-toolbox', !zoomMenu ? 'small' : 'default']" @mouseenter="zoomMenu = true"
-            @mouseleave="zoomMenu = false">
+      @mouseleave="zoomMenu = false">
       <div class="text-center">
         <v-icon>mdi-magnify</v-icon>
         {{ zoom.toFixed(2) }}
@@ -27,8 +27,8 @@
     </v-card>
 
     <v-card :class="['toolbox', 'annotation-toolbox', !annotationMenu ? 'small' : 'default']"
-            @mouseenter="annotationMenu = true" @mouseleave="annotationMenu = false"
-            :disabled="!annotationsEnabled">
+      @mouseenter="annotationMenu = true" @mouseleave="annotationMenu = false" v-if="task.project.labels.length > 0"
+      :disabled="!annotationsEnabled">
       <v-menu top :close-on-click="true" offset-y>
         <template v-slot:activator="{ props }">
           <v-btn style="width: 100%" variant="text" v-bind="props">
@@ -48,7 +48,7 @@
         </v-list>
       </v-menu>
       <div v-if="annotationMenu" class="text-center">
-        <v-divider/>
+        <v-divider />
         <v-btn-toggle density="compact" v-model="selectedTool" class="ma-0" mandatory>
           <v-btn v-for="tool in tools" :value="tool" variant="text" icon>
             <v-icon>{{ tool.icon }}</v-icon>
@@ -57,77 +57,60 @@
       </div>
     </v-card>
 
-    <v-card :class="['toolbox', 'annotation-list', mainPanelMenu ? 'extended' : '']"
-            @mouseenter="mainPanelMenu = true"
-            @mouseleave="mainPanelMenu = false">
+    <v-card :class="['toolbox', 'annotation-list', mainPanelMenu ? 'extended' : '']" @mouseenter="mainPanelMenu = true"
+      @mouseleave="mainPanelMenu = false">
 
       <div class="d-flex">
         <v-btn-toggle v-model="selectedAnnotationTab">
-          <v-btn v-for="tab in mainPanelTabs" :key="tab" :icon="tab.icon"
-                 :value="tab"
-                 height="40" variant="text"
-                 width="40"/>
+          <v-btn v-for="tab in mainPanelTabs" :key="tab" :icon="tab.icon" :value="tab" height="40" variant="text"
+            width="40" />
           <v-btn v-if="mainPanelMenu" v-for="(tab, index) in colleaguesAnnotations" :key="tab"
-                 :value="{ type: 'annotation', annotator: tab.user.name, annotationList: tab.annotations, layer: (index+1) }"
-                 icon="mdi-account-group" height="40" variant="text"
-                 width="40"/>
-
+            :value="{ type: 'annotation', annotator: tab.user.name, annotationList: tab.annotations, layer: (index + 1) }"
+            icon="mdi-account-group" height="40" variant="text" width="40" />
+          <v-btn v-if="mainPanelMenu" v-for="(tab, index) in modelsAnnotations" :key="tab"
+            :value="{ type: 'annotation', annotator: tab.model.name, annotationList: tab.annotations, layer: (index + 1) }"
+            icon="mdi-train-car-centerbeam-full" height="40" variant="text" width="40" />
         </v-btn-toggle>
         <v-btn v-if="mainPanelMenu && task.project.revision_strategy === 'auto'" icon="mdi-update" height="40"
-               variant="text" width="40" @click="listColleagues"></v-btn>
+          variant="text" width="40" @click="loadRevisions"></v-btn>
       </div>
       <div :id="`annotation-list-${task._id}`" v-if="mainPanelMenu" style="height: calc(100% - 48px)">
         <v-card v-if="selectedAnnotationTab != null"
-                :title="selectedAnnotationTab.layer === 0 ? 'Annotation task' : `${selectedAnnotationTab.annotator}'s annotations`"
-                class="ma-1"
-                variant="tonal">
+          :title="selectedAnnotationTab.layer === 0 ? 'Annotation task' : `${selectedAnnotationTab.annotator}'s annotations`"
+          class="ma-1" variant="tonal">
           <template v-slot:prepend>
-            <v-btn
-                :icon="drawStyle[selectedAnnotationTab.layer].drawing ? 'mdi-eye' : 'mdi-eye-off'"
-                size="24" variant="flat"
-                @click="switchLayerVisibility(selectedAnnotationTab.layer)">
+            <v-btn :icon="drawStyle[selectedAnnotationTab.layer].drawing ? 'mdi-eye' : 'mdi-eye-off'" size="24"
+              variant="flat" @click="switchLayerVisibility(selectedAnnotationTab.layer)">
             </v-btn>
           </template>
           <v-card-text>
             <v-slider v-model="drawStyle[selectedAnnotationTab.layer].fillOpacity" :max="1" :min="0" step="0.05"
-                      label="Fill Opacity"
-                      hide-details>
+              label="Fill Opacity" hide-details>
             </v-slider>
-            <v-slider v-model="drawStyle[selectedAnnotationTab.layer].lineWidth" :max="10" :min="1" step="1"
-
-                      label="Line Width" hide-details>
+            <v-slider v-model="drawStyle[selectedAnnotationTab.layer].lineWidth" :max="10" :min="0" step="1"
+              label="Line Width" hide-details>
             </v-slider>
             <v-slider v-model="drawStyle[selectedAnnotationTab.layer].hoverOpacity" :max="1" :min="0" step="0.05"
-                      label="Hover Opacity"
-                      hide-details>
+              label="Hover Opacity" hide-details>
             </v-slider>
-            <v-divider/>
-            <v-switch v-if="selectedAnnotationTab.layer === 0" hide-details v-model="task.completed"
-                      color="primary"
-                      label="Task completed"/>
+            <v-divider />
+            <v-switch v-if="selectedAnnotationTab.layer === 0" hide-details v-model="task.completed" color="primary"
+              label="Task completed" />
           </v-card-text>
         </v-card>
         <v-virtual-scroll :items="annotationListTab" :height="annotationListHeight">
           <template v-slot:default="{ item }">
             <v-card variant="outlined" class="ma-1" @click="goToAnnotation(item)" :title="item.label.name">
               <template v-slot:append>
-                <v-btn variant="text"
-                       @click.capture="editAnnotation(item)"
-                       icon="mdi-pencil"
-                       size="24"
-                       :color="item.label.color"
-                       :disabled="!annotationsEnabled"
-                       v-if="selectedAnnotationTab.layer === 0"/>
+                <v-btn variant="text" @click.capture="editAnnotation(item)" icon="mdi-pencil" size="24"
+                  :color="item.label.color" :disabled="!annotationsEnabled" v-if="selectedAnnotationTab.layer === 0" />
 
-                <v-btn variant="text"
-                       @click.capture="flagAnnotation(item)"
-                       :icon="item.flagged.includes(authStore.user._id) ? 'mdi-flag-variant-off' : 'mdi-flag'"
-                       size="24"
-                       color="red"
-                       v-if="selectedAnnotationTab.layer !== 0"/>
+                <v-btn variant="text" @click.capture="flagAnnotation(item)"
+                  :icon="item.flagged.includes(authStore.user._id) ? 'mdi-flag-variant-off' : 'mdi-flag'" size="24"
+                  color="red" v-if="selectedAnnotationTab.layer !== 0 && item.user != null" />
               </template>
               <template v-slot:prepend>
-                <v-avatar :color="item.label.color" size="22" class="mr-2"/>
+                <v-avatar :color="item.label.color" size="22" class="mr-2" /> 
               </template>
             </v-card>
           </template>
@@ -165,13 +148,13 @@ const taskCompleted = computed(() => {
 watch(taskCompleted, (newTaskCompleted) => {
   annotationDrawer.tool = 'pointer';
   $axios.post(`/session/${task.value._id}/completed`, { completed: newTaskCompleted })
-      .catch(e => {
-        Swal.fire({
-          'icon': 'error',
-          'title': 'Oops, something went wrong',
-          'text': 'Your changes have not been saved. Try again later.',
-        });
+    .catch(e => {
+      Swal.fire({
+        'icon': 'error',
+        'title': 'Oops, something went wrong',
+        'text': 'Your changes have not been saved. Try again later.',
       });
+    });
 });
 
 let viewer = null;
@@ -186,6 +169,10 @@ const annotationListTab = computed(() => {
     return selectedAnnotationTab.value.annotationList;
   }
 });
+const degree = ref(0);
+watch(degree, (val) => {
+  viewer.viewport.setRotation(val);
+});
 const annotationsEnabled = computed(() => {
   /*
   Annotations are only enabled if:
@@ -193,14 +180,16 @@ const annotationsEnabled = computed(() => {
    - The task is not completed
    - The image degree is at 0
    */
-  console.log('authStore:', authStore.user);
   return task.value.user._id === authStore.user._id &&
-      task.value.completed === false && degree.value === 0;
+    task.value.completed === false && degree.value === 0;
 });
-const degree = ref(0);
-watch(degree, (val) => {
-  viewer.viewport.setRotation(val);
-});
+watch(annotationsEnabled, (isEnabled) => {
+  if (isEnabled === false)
+    selectedTool.value = {
+      name: 'Cursor',
+      icon: 'mdi-cursor-default'
+    };
+})
 const zoomMenu = ref(false);
 const zoom = ref(1);
 watch(zoom, (val) => {
@@ -209,7 +198,7 @@ watch(zoom, (val) => {
 });
 
 const colleaguesAnnotations = ref([]);
-const modelAnnotations = ref([]);
+const modelsAnnotations = ref([]);
 
 //region TOOLS
 const tools = [
@@ -303,50 +292,79 @@ function flagAnnotation(annotation) {
     '_id': annotation._id,
     'flag': isFlagging
   })
-      .then(res => {
-        if (isFlagging) {
-          annotation.flagged.push(authStore.user._id);
-        } else {
-          annotation.flagged = annotation.flagged.filter(item => item !== authStore.user._id)
-        }
-      })
-      .catch(e => {
-        console.log(e);
-        Swal.fire({
-          'icon': 'error',
-          'title': 'Oops, something went wrong',
-          'text': 'Your changes have not been saved. Try again later.',
-        });
+    .then(res => {
+      if (isFlagging) {
+        annotation.flagged.push(authStore.user._id);
+      } else {
+        annotation.flagged = annotation.flagged.filter(item => item !== authStore.user._id)
+      }
+    })
+    .catch(e => {
+      console.log(e);
+      Swal.fire({
+        'icon': 'error',
+        'title': 'Oops, something went wrong',
+        'text': 'Your changes have not been saved. Try again later.',
       });
+    });
+}
+
+function loadRevisions(){
+  if (task.value.revision_strategy === 'auto'){
+    listColleagues();
+  }
+  listModelAnnotations();
 }
 
 function listColleagues() {
   $axios.get(`/session/${task.value._id}/colleagues`)
-      .then(response => {
-        nextTick(() => {
-          colleaguesAnnotations.value = response.data;
-          colleaguesAnnotations.value.forEach((colleagueTask, index) => {
-            annotationDrawer.loadAnnotations(colleagueTask.annotations, index + 1);
-            drawStyle.value[index + 1] = {
-              index: index + 1,
-              drawing: true,
-              fillOpacity: 0.2,
-              lineWidth: 2,
-              hoverOpacity: 0.5,
-              showImporting: true,
-              lineDash: [10, 3]
-            };
-          });
+    .then(response => {
+      nextTick(() => {
+        colleaguesAnnotations.value = response.data;
+        colleaguesAnnotations.value.forEach((colleagueTask, index) => {
+          annotationDrawer.loadAnnotations(colleagueTask.annotations, index + 1);
+          drawStyle.value[index + 1] = {
+            index: index + 1,
+            drawing: true,
+            fillOpacity: 0.2,
+            lineWidth: 2,
+            hoverOpacity: 0.5,
+            showImporting: true,
+            lineDash: [10, 3]
+          };
+        });
 
+      });
+    });
+}
+
+function listModelAnnotations() {
+  $axios.get(`/session/${task.value._id}/models`)
+    .then(response => {
+      nextTick(() => {
+        modelsAnnotations.value = response.data;
+        modelsAnnotations.value.forEach((modelTask, index) => {
+          annotationDrawer.loadAnnotations(modelTask.annotations, index + 1);
+          drawStyle.value[index + 1] = {
+            index: index + 1,
+            drawing: true,
+            fillOpacity: 0.2,
+            lineWidth: 2,
+            hoverOpacity: 0.5,
+            showImporting: true,
+            lineDash: [10, 3],
+            machineAnnotation: true
+          };
         });
       });
+    });
 }
 
 onMounted(() => {
   nextTick(() => {
     viewer = OpenSeadragon({
       id: `seadragon-viewer-${task.value._id}`,
-      tileSources: `${$axios.defaults.baseURL}/session/${task.value._id}.dzi`,
+      tileSources: `${$axios.defaults.baseURL}session/${task.value._id}.dzi`,
       showNavigator: true,
       navigatorPosition: 'TOP_LEFT',
       navigatorRight: '16px',
@@ -365,48 +383,48 @@ onMounted(() => {
 
     // Instantiating annotation drawer
     annotationDrawer = new AnnotationDrawer(
-        viewer,
-        {
-          onViewportChanged: (viewport) => {
-          },
-          onInfoUpdate: (info) => {
-          },
-          onStateRestorerEvent: (data) => {
-          },
-          onFinishNewDrawing: (annotation) => {
-            if (annotation.geometry.points.length >= 2) {
-              $axios.post(`/session/${task.value._id}/annotation`, {
-                _id: null,
-                label: annotation.label,
-                geometry: annotation.geometry
-              })
-                  .then((res) => {
-                    annotation._id = res.data._id;
-                    annotationDrawer.annotationSet[0].push(annotation);
-                    annotationDrawer.annotationMap[annotation._id] = annotation;
-                    task.value.annotations.push(annotation);
-                  });
-            }
-          },
-          onFinishedEditing: (changed, annotation) => {
-            if (changed) {
-              $axios.post(`/session/${task.value._id}/annotation`, {
-                _id: annotation._id,
-                label: annotation.label,
-                geometry: annotation.geometry
-              })
-                  .then((res) => {
+      viewer,
+      {
+        onViewportChanged: (viewport) => {
+        },
+        onInfoUpdate: (info) => {
+        },
+        onStateRestorerEvent: (data) => {
+        },
+        onFinishNewDrawing: (annotation) => {
+          if (annotation.geometry.points.length >= 2) {
+            $axios.post(`/session/${task.value._id}/annotation`, {
+              _id: null,
+              label: annotation.label,
+              geometry: annotation.geometry
+            })
+              .then((res) => {
+                annotation._id = res.data._id;
+                annotationDrawer.annotationSet[0].push(annotation);
+                annotationDrawer.annotationMap[annotation._id] = annotation;
+                task.value.annotations.push(annotation);
+              });
+          }
+        },
+        onFinishedEditing: (changed, annotation) => {
+          if (changed) {
+            $axios.post(`/session/${task.value._id}/annotation`, {
+              _id: annotation._id,
+              label: annotation.label,
+              geometry: annotation.geometry
+            })
+              .then((res) => {
 
-                  });
-            }
-          },
-          onHover: (annotation) => {
-          },
-          onLeave: (annotation) => {
-          },
-          onClick: (annotation) => {
-          },
-        }
+              });
+          }
+        },
+        onHover: (annotation) => {
+        },
+        onLeave: (annotation) => {
+        },
+        onClick: (annotation) => {
+        },
+      }
     );
     drawStyle.value[0] = {
       fillOpacity: 0.2,

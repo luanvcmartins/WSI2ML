@@ -5,20 +5,20 @@
         <v-icon>mdi-arrow-left</v-icon>
       </v-btn>
       <v-app-bar-title>WSI <span style="color: darkorange">//</span> ML</v-app-bar-title>
-      <v-select v-model="selectedTasks" :items="userTasks" label="Select a task" return-object multiple outlined dense hide-details>
+      <v-autocomplete v-model="selectedTasks" :items="userTasks" label="Select a task" return-object multiple outlined dense hide-details>
         <template v-slot:selection="{ item, index }">
-          <v-chip :text="item.value.file"></v-chip>
+          <v-chip density="compact" :text="selectedTasks.length" v-if="index===0"></v-chip>
         </template>
         <template v-slot:item="{ props: itemProps, item }">
           <v-list-item v-bind="itemProps" :title="item.raw.title" :subtitle="item.raw.completed ? 'Completed!' : 'Remaining to do!'"></v-list-item>
         </template>
-      </v-select>
+      </v-autocomplete>
       <v-spacer></v-spacer>
 
-    </v-app-bar>
+    </v-app-bar> 
 
     <v-container>
-      <Teleport v-for="(task, index) in openedTasks" :key="task._id" :to="`#div-${task._id}`">
+      <Teleport v-for="(task, index) in openedTasks" :to="`#div-${task._id}`">
         <SlideManager v-model="openedTasks[index]"></SlideManager>
       </Teleport>
       <div id="gl-container" class="seadragon-viewer" style="height: calc(100% - 48px);  margin-top: 48px;"></div>
@@ -99,7 +99,7 @@ function findFirstStack(item) {
 }
 
 function loadTasks() {
-  $axios.get(`/session/slide_list`)
+  $axios.get(`/session/${sessionId.value}/slide_list`)
     .then((res) => {
       userTasks.value = res.data
     })

@@ -1101,7 +1101,9 @@ class PolygonAnnotation extends Annotation {
 
     // drawing:
     this.drawer.ctx.fill(this.path);
-    this.drawer.ctx.stroke(this.path);
+    if (style.lineWidth > 0) {
+      this.drawer.ctx.stroke(this.path);
+    }
   }
 }
 
@@ -1189,7 +1191,7 @@ class AnnotationDrawer {
           this.currentTool.mouseEvent('click', e);
         } else {
           this.elementsOnScreen.forEach((element) => {
-            if (element.state !== 'overlay' && element.isHovering) {
+            if (this.style[element.layer].machineAnnotation && element.isHovering) {
               this.callback.onClick(element);
               this.events.annotationClicked(element);
             }
@@ -1216,7 +1218,7 @@ class AnnotationDrawer {
         this.elementsOnScreen.forEach((annotation) => {
           const intersects = annotation.intersects(e.position);
 
-          if (annotation.state !== 'overlay') {
+          if (!this.style[annotation.layer].machineAnnotation ) {
             const statusUpdateRequired = annotation.isHovering !== intersects;
             updateRequired = updateRequired
               || (intersects && statusUpdateRequired)

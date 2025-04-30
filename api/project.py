@@ -7,6 +7,7 @@ from flask import Blueprint, jsonify, request, current_app
 from flask_jwt_extended import jwt_required, current_user
 # from analyzer.stats import annotation_stats
 from api import db
+import openslide
 
 project_api = Blueprint("project_api", __name__)
 
@@ -192,11 +193,18 @@ def _tasks(project_id):
 def create_project_tasks(project_id):
     if not current_user["manages_projects"]:
         return jsonify({"msg": "Not allowed"}), 401
+    
+    
+    files = {file: {
+        'file': file, 
+        'slide_hash': openslide.open_slide(file).properties.get('openslide.quickhash-1', file)
+    } for file in request.json['files']}
 
     db.tasks.insert_many([{
         "project": ObjectId(project_id),
-        "file": file,
-        "title": os.path.splitext(os.path.basename(file))[0],
+        "file": file['file'],
+        "slide_hash": file['slide_hash'],
+        "title": os.path.splitext(os.path.basename(file['file']))[0],
         "user": {
             **user,
             "_id": ObjectId(user['_id'])
@@ -204,7 +212,7 @@ def create_project_tasks(project_id):
         "annotations": [],
         "completed": False,
         "enabled": True
-    } for user in request.json["users"] for file in request.json['files']])
+    } for user in request.json["users"] for file in files.values()])
 
     return "", 200
 
