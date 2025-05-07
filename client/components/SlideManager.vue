@@ -68,7 +68,7 @@
             :value="{ type: 'annotation', annotator: tab.user.name, annotationList: tab.annotations, layer: (index + 1) }"
             icon="mdi-account-group" height="40" variant="text" width="40" />
           <v-btn v-if="mainPanelMenu" v-for="(tab, index) in modelsAnnotations" :key="tab"
-            :value="{ type: 'annotation', annotator: tab.model.name, annotationList: tab.annotations, layer: (index + 1) }"
+            :value="{ type: 'annotation', annotator: tab.model.name, annotationList: tab.annotations, layer: (colleaguesAnnotations.length + index + 1) }"
             icon="mdi-train-car-centerbeam-full" height="40" variant="text" width="40" />
         </v-btn-toggle>
         <v-btn v-if="mainPanelMenu && task.project.revision_strategy === 'auto'" icon="mdi-update" height="40"
@@ -224,11 +224,6 @@ const tools = [
   }
 ];
 const mainPanelTabs = ref([
-  {
-    name: 'Configuration',
-    icon: 'mdi-cog',
-    type: 'configuration'
-  },
   {
     name: 'Annotations',
     icon: 'mdi-format-list-bulleted',

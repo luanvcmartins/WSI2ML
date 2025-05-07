@@ -39,6 +39,11 @@
                           :prepend-icon="task.completed ? 'mdi-checkbox-marked' : 'mdi-checkbox-blank-circle-outline'">{{ task.user.name }}</v-chip>
                 </v-chip-group>
               </template>
+
+
+              <template v-slot:item.actions="{ item }">
+                <v-btn :icon="item.enabled ? `mdi-delete` : 'mdi-checkbox'" size="32" variant="text" @click="switchItemStatus(item)"/> 
+              </template>
             </v-data-table>
           </v-card-text>
         </v-card>
@@ -135,6 +140,36 @@ function submit() {
           title: 'Something went wrong',
         });
       });
+}
+
+function switchItemStatus(item){
+  console.log(item)
+  Swal.fire({
+    icon: 'warning',
+    title: 'Are you sure?',
+    text: 'This will remove the task.',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Yes, delete it!'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      $axios.post(`/project/${projectId.value}/task/switch_status`, {slide_hash: item.slide_hash})
+          .then(() => {
+            Swal.fire({
+              icon: 'success',
+              title: 'Task disabled',
+            });
+            loadTasks();
+          })
+          .catch((err) => {
+            Swal.fire({
+              icon: 'error',
+              title: 'Something went wrong',
+            });
+          });
+    }
+  });
 }
 
 function autoAssign() {

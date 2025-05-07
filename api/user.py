@@ -75,11 +75,9 @@ def switch_access():
 @jwt_required()
 def change_password():
     data = request.json
-    me = models.User.query.get(current_user.id)
-    me.password = data['password']
-    db.session.commit()
+    db.users.update_one(
+        { "_id": current_user['_id']}, {"password": generate_password_hash(data['password'])})
     return jsonify({"success": True})
-
 
 @user_api.route("login", strict_slashes=False, methods=["POST"])
 def login():

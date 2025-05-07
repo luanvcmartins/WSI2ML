@@ -78,6 +78,7 @@ function fileDropped(event) {
 }
 
 function removeModel(model_id) {
+  console.log(model_id)
   Swal.fire({
     title: 'Are you sure?',
     text: "You won't be able to revert this!",
@@ -86,12 +87,13 @@ function removeModel(model_id) {
     confirmButtonText: 'Yes, delete it!'
   }).then((result) => {
     if (result.isConfirmed) {
-      $axios.post(`model_import/${model_id}/remove`).then(() => {
+      $axios.post(`import/${model_id}/delete`).then(() => {
         Swal.fire({
           title: 'Deleted!',
-          text:'This model results have been deleted.',
+          text: 'This model results have been deleted.',
           icon: 'success'
-      });
+        });
+        loadDatasetVersions();
       }).catch((error) => {
         console.error(error);
         Swal.fire({
@@ -131,6 +133,7 @@ function upload() {
           icon: 'success',
           title: 'Upload successful!'
         });
+        loadDatasetVersions();
         processing.value.dialog = false;
         eventSource.close();
       }

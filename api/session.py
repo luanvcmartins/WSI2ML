@@ -1,8 +1,7 @@
 from datetime import datetime
+from typing import Any
 import json
 import os
-from typing import Any
-import uuid
 
 from bson import ObjectId
 
@@ -16,7 +15,6 @@ from api import db
 session_api = Blueprint("session_api", __name__)
 
 sessions = {}
-
 
 def get_session(session_id, force_reload=True):
     if force_reload or session_id not in sessions:
@@ -155,139 +153,6 @@ def flag(session_id):
 
 def get_default(item, key, default: Any = ""):
     return item[key] if key in item else default
-
-
-@session_api.route("<string:session_id>/add_region", methods=['POST'])
-@jwt_required()
-def add_region(session_id):
-    current_task = models.UserTask.query.get(session_id)
-    if current_user.id != current_task.user_id:
-        return jsonify({"msg": "Not allowed"}), 401
-    region_data = request.json
-    region = models.Annotation(
-        user_task_id=session_id,
-        slide_id=region_data['slide_id'],
-        label_id=region_data['label']['id'],
-        data=region_data['geometry'],
-        title=get_default(region_data, 'title'),
-        description=get_default(region_data, 'description'),
-        properties=get_default(region_data, 'properties', {})
-    )
-    db.session.add(region)
-    db.session.commit()
-    return jsonify(region.to_dict())
-
-
-@session_api.route("<string:session_id>/edit_region", methods=['POST'])
-@jwt_required()
-def edit_region(session_id):
-    current_task = models.UserTask.query.get(session_id)
-    if current_user.id != current_task.user_id:
-        return jsonify({"msg": "Not allowed"}), 401
-    region_data = request.json
-    region = models.Annotation.query.filter_by(id=region_data['id']).first()
-    region.label_id = region_data['label']['id']
-    region.data = region_data['geometry']
-    if 'title' in region_data:
-        region.title = region_data['title']
-    if 'description' in region_data:
-        region.description = region_data['description']
-    if 'properties' in region_data:
-        region.properties = region_data['properties']
-    db.session.commit()
-    return jsonify(region.to_dict())
-
-
-@session_api.route("<string:session_id>/remove_annotation", methods=['POST'])
-@jwt_required()
-def remove_annotation(session_id):
-    current_task = models.UserTask.query.get(session_id)
-    if current_user.id != current_task.user_id:
-        return jsonify({"msg": "Not allowed"}), 401
-    region_data = request.json
-    region = db.session.query(models.Annotation).get(region_data['id'])
-    db.session.delete(region)
-    db.session.commit()
-    return jsonify({"success": True})
-
-
-@session_api.route("<string:session_id>/annotation_feedback", methods=['POST'])
-@jwt_required()
-def annotation_feedback(session_id):
-    current_task = models.UserTask.query.get(session_id)
-    if current_user.id != current_task.user_id:
-        return jsonify({"msg": "Not allowed"}), 401
-    annotation_data = request.json
-    user_task = sessions[session_id].user_task
-    if annotation_data['feedback']['id'] is not None:
-        # this is a feedback update:
-        feedback = models.AnnotationRevised.query.get(annotation_data['feedback']['id'])
-        feedback.feedback = annotation_data['feedback']['feedback']
-        feedback.label_id = annotation_data['feedback']['label_id']
-        feedback.data = annotation_data['feedback']['geometry']
-    else:
-        # this is a new feedback:
-        feedback = models.AnnotationRevised(
-            user_task_id=user_task.id,
-            annotation_id=annotation_data['id'],
-            feedback=annotation_data['feedback']['feedback'],
-            label_id=annotation_data['feedback']['label_id'],
-            data=annotation_data['feedback']['geometry']
-        )
-        db.session.add(feedback)
-    db.session.commit()
-    annotation = models.Annotation.query.get(annotation_data['id'])
-    annotation = annotation.to_dict(feedback=feedback, with_feedback=True)
-    return jsonify(annotation)
-
-
-@session_api.route("<string:session_id>/<string:slide_id>/importing", methods=['POST'])
-def importing(session_id, slide_id):
-    slide_annotations = request.json
-    for slide_annotation in slide_annotations:
-        db.session.add(models.Annotation(
-            user_task_id=session_id,
-            title=slide_annotation['title'] if 'title' in slide_annotation else None,
-            data=slide_annotation['geometry'],
-            properties=slide_annotation['properties'] if 'properties' in slide_annotation else None,
-            label_id=slide_annotation['label']['id'],
-            slide_id=slide_id
-        ))
-    db.session.commit()
-    return jsonify({"count": len(slide_annotations)})
-
-
-@session_api.route("<string:session_id>/<string:slide_id>/class_balance", methods=['POST'])
-def class_balance(session_id, slide_id):
-    if slide_id == 'all':
-        annotations = models.Annotation.query.filter_by(user_task_id=session_id).all()
-    else:
-        annotations = models.Annotation.query.filter_by(user_task_id=session_id, slide_id=slide_id).all()
-
-    counts = annotation_stats(annotations)
-
-    if len(counts) > 0:
-        total_area = max([count['area'] for count in counts.values()])
-        total_c_area = max([count['certain_area'] for count in counts.values()])
-        total_desc = max([count['desc'] for count in counts.values()])
-        total_count = max([count['count'] for count in counts.values()])
-        for value in counts.values():
-            if total_area > 0:
-                value['area_perc'] = value['area'] / total_area
-                value['area'] = "{:.2f}%".format(100 * (value['area'] / total_area))
-            if total_c_area > 0:
-                value['certain_area_perc'] = value['certain_area'] / total_c_area
-                value['certain_area'] = "{:.2f}%".format(100 * (value['certain_area'] / total_c_area))
-            if total_desc > 0:
-                value['desc_perc'] = value['desc'] / total_desc
-            else:
-                value['desc_perc'] = 0
-            if total_count > 0:
-                value['count_perc'] = value['count'] / total_count
-            else:
-                value['count_perc'] = 0
-
-    return jsonify(counts)
 
 
 # region TILE MANAGEMENT

@@ -13,31 +13,23 @@ from flask import Blueprint, jsonify, request, Response, stream_with_context, se
 from flask_jwt_extended import jwt_required, current_user
 
 from api import db
-
 export_api = Blueprint("export_api", __name__)
 
-@export_api.route("list")
+
+@export_api.route("<project_id>/list")
 @jwt_required()
-def list_projects():
-    ds = db.projects.aggregate([
-        # lookup all project information:
-        {"$lookup": {
-            "from": "datasets",
-            "localField": "_id",
-            "foreignField": "project",
-            "as": "versions",
-            "pipeline": [
-                {"$sort": {"created_at": -1}},
-                {"$limit": 10}
-            ]
-        }}
-    ])
+def list_projects(project_id):
+    if not current_user['can_export']:
+        return "", 403
+    ds = db.datasets.find({"project": ObjectId(project_id)}).sort({"created_at": -1})
     return jsonify(list(ds))
 
 
 @export_api.route("<project_id>/list")
 @jwt_required()
 def list_version_creation(project_id):
+    if not current_user['can_export']:
+        return "", 403
     annotations = db.tasks.aggregate([
         {"$match": {"project": ObjectId(project_id)}},
         {"$group": {
@@ -64,6 +56,8 @@ def thumbnail(path):
 @export_api.route("<project_id>/prepare_version")
 @jwt_required()
 def prepare_version(project_id):
+    if not current_user['can_export']:
+        return "", 403
     ui = db.tasks.aggregate([
         {"$match": {
             "project": ObjectId(project_id),
@@ -89,6 +83,8 @@ def prepare_version(project_id):
 @export_api.route("<project_id>/new", methods=["POST"])
 @jwt_required()
 def new_version(project_id):
+    if not current_user['can_export']:
+        return "", 403
     item = db.datasets.insert_one({
         "project": ObjectId(project_id),
         "title": request.json['title'],
@@ -116,7 +112,7 @@ def download(version_id):
 
 
 def create_dataset_version(dataset_id):
-    ds_version = db.datasets.find_one({"_id": ObjectId(dataset_id)})
+    ds_version = db.datasets.find_one({"_id": ObjectId(dataset_id)}, {"model_feedback": False, "status": False})
     yield f"data: {json.dumps({'step': 0, 'progress': 0, 'msg': 'Starting procedure'})}\n\n"
     time.sleep(1)
 

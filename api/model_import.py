@@ -14,6 +14,8 @@ import_api = Blueprint("import_api", __name__)
 @import_api.route("<project_id>/list")
 @jwt_required()
 def list_ds_versions(project_id):
+    if not current_user['can_export']:
+        return "", 403
     annotations = db.datasets.find({
         "project": ObjectId(project_id),
         "status": "ready"
@@ -21,9 +23,13 @@ def list_ds_versions(project_id):
     return jsonify(list(annotations))
 
 
+
+
 @import_api.route("<project_id>/upload", methods=['POST'])
 @jwt_required()
 def upload_ds_version(project_id):
+    if not current_user['can_export']:
+        return "", 403
     uploaded = request.data
 
     return Response(stream_with_context(
@@ -46,7 +52,7 @@ def upload_model_results(project_id, upload_file):
             "dataset_name": metadata_data['dataset']['title'],
             'enabled': True,
             "model":{
-                'model_id': ObjectId(),
+                '_id': ObjectId(),
                 'name': metadata_data['model']['name'],
                 'type': metadata_data['model']['type'],
                 'description': metadata_data['description'] if 'description' in metadata_data else "",
@@ -74,8 +80,11 @@ def upload_model_results(project_id, upload_file):
 
     yield f"data: {json.dumps({'step': 2, 'progress': 1, 'msg': 'Registering model'})}\n\n"
     # upload list of uploaded models to datasets
+    del metadata["enabled"]
+    del metadata['dataset_id']
+    metadata['_id'] = metadata['model']['_id']
     db.datasets.update_one(
-        {"_id": ObjectId(metadata_data['dataset']['_id'])}, 
+        {"_id": dataset_id }, 
         { "$push": { "model_feedback": metadata }}
     )
     
@@ -87,10 +96,15 @@ def upload_model_results(project_id, upload_file):
     db.model_feedback.insert_many(annotated_files)
     yield f"data: {json.dumps({'step': 4, 'progress': 1, 'msg': 'Completed'})}\n\n"
 
-@import_api.route('/<model_id>/remove', methods=['POST'])
+@import_api.route('/<model_id>/delete', methods=['POST'])
+@jwt_required()
 def remove_model(model_id):
+    if not current_user['can_export']:
+        return "", 403
     # Remove the model from the database
-    db.model_feedback.delete_many({"model.model_id": ObjectId(model_id)})
-    db.datasets.update_one(
-        {"models._id": ObjectId(model_id)}, 
+    db.model_feedback.delete_many({"model._id": ObjectId(model_id)})
+    db.datasets.update_many(
+        {}, 
+        {"$pull": {"model_feedback": {"_id": ObjectId(model_id)}}}
     )
+    return ""

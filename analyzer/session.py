@@ -30,7 +30,6 @@ def put_optional(property_list, slide, property_alias, property_name):
         property_list[property_alias] = slide.properties[property_name]
     return property_list
 
-
 def get_slide_properties(filename):
     slide = openslide.open_slide(filename)
 
