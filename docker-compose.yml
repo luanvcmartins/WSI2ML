@@ -5,28 +5,18 @@ services:
     image: mongo
     volumes:
       - wsi_data:/data/db
-  wsi_db:
-    image: postgres
-    volumes:
-      - wsi_data:/var/lib/postgresql/data
-      - ./init-db.sql:/docker-entrypoint-initdb.d/init-db.sql
-    environment:
-      - POSTGRES_NAME=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-    ports:
-      - "2001:5432"
   web:
     build: .
-    command: python3 app.py docker
+    command: python3 app.py
     volumes:
-      - <source wsi folder>:<target wsi folder>
+      - /home/bioinfo/aperio:/images
     ports:
       - "2000:2000"
     environment:
-      - POSTGRES_NAME=postgres
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - DATABASE=wsi2ml
+      - MONGO_ADDRESS=wsi_mongo
+      - MONGO_USERNAME=root
+      - MONGO_PASSWORD=example
     depends_on:
       - wsi_db
 

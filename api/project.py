@@ -24,7 +24,8 @@ def new():
         "description": new_project["description"],
         "folder": new_project["folder"],
         "labels": new_project["labels"],
-        "revision_strategy": new_project["revision_strategy"]
+        "revision_strategy": new_project["revision_strategy"],
+        "enabled": True
     })
 
     return "", 200
@@ -51,6 +52,11 @@ def list_projects():
     ])
 
     return jsonify(list(projects))
+
+@project_api.route("quick_list")
+@jwt_required()
+def quick_list():
+    return jsonify(list(db.projects.find({"enabled": True})))
 
 
 @project_api.route("edit", methods=['POST'])

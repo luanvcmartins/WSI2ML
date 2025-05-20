@@ -3,11 +3,6 @@
     <v-row>
       <v-col cols="12">
         <v-card :title="`Tasks to annotate`" subtitle="Select a slide to annotate or click the continue button">
-          <template v-slot:prepend>
-            <v-progress-circular rotate="180" size="60" width="15" :model-value="100-progress" color="primary text-center">
-              {{ progress }}%
-            </v-progress-circular>
-          </template>
           <v-card-actions>
             <v-btn color="primary" variant="tonal" prepend-icon="mdi-arrow-right" @click="nextSlide()">
               Continue
@@ -16,38 +11,52 @@
         </v-card>
       </v-col>
     </v-row>
-    <div class="d-flex flex-wrap justify-center mt-4">
-      <v-card theme="dark" class="ma-1"
-        :style="`max-width: 400px; background-image: url('${$axios.defaults.baseURL}/task/thumbnail/${userTask._id}'); background-size: cover; background-position: center; `"
-        v-for="userTask in tasks" :to="`/session/${userTask._id}`" :key="userTask._id">
+    <v-row>
+      <v-col cols="12">
+        <div>
+          <v-card title="Tasks" subtitle="My tasks">
 
-        <div style="backdrop-filter: brightness(0.7); height: 100%">
-          <v-card-title>{{ userTask.title }}</v-card-title>
-          <v-card-text class="bg-overlay text-white" style="width: 320px; height: 256px;">
-            <div class="d-flex justify-center align-center mt-auto"
-              style="position: absolute; bottom: 16px; width: 100%;">
-              <span v-if="userTask.completed" class="text-success d-flex align-center">
-                <v-icon class="mr-2">mdi-check-circle</v-icon>Completed
-              </span>
-              <span v-else class="text-warning d-flex align-center">
-                <v-icon class="mr-2">mdi-alert-circle</v-icon><strong>Not completed</strong>
-              </span>
-            </div>
-          </v-card-text>
+            <template v-slot:append>
+              <v-text-field 
+                style="width: 500px;" 
+                v-model="taskTableConfig.search"
+                append-inner-icon="mdi-magnify"
+                @keydown.enter.prevent="search"
+                @click:append-inner="search"
+                variant="outlined"
+                density="compact"
+                />
+            </template>
+            <v-data-table-server v-model:items-per-page="taskTableConfig.itemsPerPage" :items="tasks"
+              :headers="taskTableConfig.headers" :items-length="taskTableConfig.totalItems" @update:options="loadTasks">
+              <template v-slot:item.thumbnail="{ item }">
+                <img :src="$axios.defaults.baseURL + '/task/thumbnail/' + item._id" alt="Thumbnail" width="150"
+                  height="150" class="mr-2" />
+              </template>
+              <template v-slot:item.completed="{ item }">
+                {{ item.completed ? '✅ Completed' : '⏳ Pending' }}
+              </template>
+              <template v-slot:item.actions="{ item }">
+                <v-btn color="primary" variant="tonal" prepend-icon="mdi-arrow-right"
+                  @click="$router.push(`/session/${item._id}`)">
+                  View Session
+                </v-btn>
+              </template>
+              <template v-slot:no-data>
+                <div class="ma-1 text-center">
+                  <v-icon color="grey" large class="mb-2">mdi-inbox</v-icon>
+                  <div>No tasks to complete! Yet...</div>
+                </div>
+              </template>
+            </v-data-table-server>
+          </v-card>
         </div>
-      </v-card>
-
-      <v-card variant="flat" v-if="!tasks.length" class="ma-1 text-center">
-        <v-card-text>
-          <v-icon color="grey" large class="mb-2">mdi-inbox</v-icon>
-          <div>No tasks to complete! Yet...</div>
-        </v-card-text>
-      </v-card>
-    </div>
+      </v-col></v-row>
   </v-container>
 </template>
 <script setup>
 const { $axios } = useNuxtApp();
+import { ref, watch } from 'vue'
 import Swal from 'sweetalert2';
 
 const router = useRouter()
@@ -62,14 +71,17 @@ const progress = computed(() => {
   return (completed / tasks.value.length) * 100;
 });
 
-function nextSlide(){
+function nextSlide() {
   router.push(`/session/${tasks.value.filter(task => task.completed === false)[0]._id}`)
 }
 
-function loadTasks() {
-  $axios.get(`/task/${projectId.value}/list`)
+function loadTasks(config) {
+  // config.search = taskTableConfig.value.search
+  console.log("loadTasks", config)
+  $axios.get(`/task/${projectId.value}/list`, { params: {...config, search: taskTableConfig.value.search} })
     .then((res) => {
-      tasks.value = res.data;
+      tasks.value = res.data.data;
+      taskTableConfig.value.totalItems =  res.data.metadata.length > 0 ?res.data.metadata[0].total : 0;
     })
     .catch((err) => {
       Swal.fire({
@@ -79,7 +91,34 @@ function loadTasks() {
     });
 }
 
-loadTasks();
+// loadTasks();
+
+const taskTableConfig = ref({
+  headers: [
+    {
+      title: '',
+      align: 'start',
+      sortable: false,
+      key: 'thumbnail',
+    },
+    { title: 'Slide file', key: 'title', align: 'start' },
+    { title: 'Completed?', key: 'completed', align: 'end' },
+    { title: 'Continue', key: 'actions', align: 'end', sortable: false },
+  ],
+  totalItems: 0,
+  search: '',
+  itemsPerPage: 10
+})
+
+
+function search(){
+  loadTasks({
+    page: 1, 
+    itemsPerPage: taskTableConfig.value.itemsPerPage, 
+    search: taskTableConfig.value.search
+  });
+}
+
 
 definePageMeta({
   middleware: 'auth',

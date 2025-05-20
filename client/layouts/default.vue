@@ -132,7 +132,7 @@ const currentProject = computed(() => {
 const projects = ref([]);
 
 function loadProjects() {
-  $axios.get('/project/list')
+  $axios.get('/project/quick_list')
       .then((res) => {
         projects.value = res.data;
       })

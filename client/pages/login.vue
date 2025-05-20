@@ -68,6 +68,12 @@ function login() {
         })
         .catch(err => {
           console.log(err);
+          Swal.fire({
+            title: 'Unable to login',
+            text: "Wrong email or password. Please try again.",
+            icon: 'error'
+          });
+          user.password = "";
           isLoading.value = false;
         });
   }

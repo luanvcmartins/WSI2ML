@@ -31,14 +31,14 @@
       :disabled="!annotationsEnabled">
       <v-menu top :close-on-click="true" offset-y>
         <template v-slot:activator="{ props }">
-          <v-btn style="width: 100%" variant="text" v-bind="props">
+          <v-btn style="width: 100%;" variant="text" v-bind="props" :color="selectedLabel.color">
             <v-icon v-if="selectedTool != null" :color="selectedLabel.color" class="mr-2" size="26">
               {{ selectedTool.icon }}
             </v-icon>
             {{ selectedLabel.name }}
           </v-btn>
         </template>
-        <v-list style="overflow: auto; max-height: 600px">
+        <v-list style="overflow: auto; max-height: 600px" @mouseleave="annotationMenu = false" @mouseenter="annotationMenu = true">
           <v-list-item v-for="(item, index) in task.project.labels" @click="selectedLabel = item" :key="index">
             <template v-slot:prepend>
               <v-avatar size="26" :color="item.color"></v-avatar>
@@ -233,7 +233,7 @@ const mainPanelTabs = ref([
   },
 
 ]);
-const selectedAnnotationTab = ref();
+const selectedAnnotationTab = ref(mainPanelTabs.value[0]);
 const selectedTool = ref({
   name: 'Cursor',
   icon: 'mdi-cursor-default'
@@ -256,7 +256,7 @@ const annotationListHeight = ref(0);
 watch(mainPanelMenu, (newMenu) => {
   if (newMenu === true) {
     nextTick(() => {
-      annotationListHeight.value = document.getElementById(`annotation-list-${task.value._id}`).clientHeight;
+      annotationListHeight.value = document.getElementById(`annotation-list-${task.value._id}`).clientHeight - 218;
     });
   }
 });
@@ -478,6 +478,7 @@ onMounted(() => {
 
 .annotation-toolbox.small {
   width: 160px;
+  padding: 10px;
 }
 
 .annotation-toolbox.default {

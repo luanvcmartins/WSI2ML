@@ -21,8 +21,12 @@ def quick_list():
     tasks = db.tasks.aggregate([
         {"$match": {
             "user._id": current_user["_id"],
-            "enabled": True
+            "enabled": True,
+            "completed": False
         }},
+        # limit to first 10
+        {"$limit": 10},
+        
         {"$unset": "annotations"},
         {"$group": {
             "_id": "$project",
@@ -50,21 +54,24 @@ def quick_list():
 @task_api.route("<project_id>/list", methods=["GET"])
 @jwt_required()
 def project_list(project_id):
+    config = request.args
     tasks = db.tasks.aggregate([
         {"$match": {
             "user._id": current_user["_id"],
             "project": ObjectId(project_id),
-            "enabled": True
+            "enabled": True,
+            "title": {"$regex": config.get('search', ''), "$options": "i"}
         }},
         {"$unset": "annotations"},
-        # {"$lookup": {
-        #     "from": "projects",
-        #     "localField": "_id",
-        #     "foreignField": "_id",
-        #     "as": "project"
-        # }},
-        # {"$unwind": "$project"},
         {"$sort": {"tasks.completed": 1}},
+        {"$facet": {
+            "metadata": [ { "$count": "total" } ],
+            "data": [ 
+                {"$skip": (int(config.get('page', 0))-1)*int(config.get('itemsPerPage', 10))},
+                {"$limit": int(config.get('itemsPerPage', 10))},
+            ] 
+        }
+    }
         # {"$addFields": {"completed_count": {
         #     "$size": {"$filter": {
         #         "input": "$tasks",
@@ -73,7 +80,7 @@ def project_list(project_id):
         #     }}
         # }}}
     ])
-    return jsonify(list(tasks))
+    return jsonify(list(tasks)[0])
 
 
 @task_api.route("thumbnail/<session_id>", methods=["GET"])
