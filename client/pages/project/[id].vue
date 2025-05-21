@@ -88,7 +88,7 @@
     </v-dialog>
   </v-container>
 </template>
-<script setup lang="ts">
+<script setup>
 
 import {useRoute} from "nuxt/app";
 import Swal from "sweetalert2";
@@ -111,7 +111,7 @@ const table = [
   {title: 'Actions', key: 'actions', sortable: false},
 ];
 
-function loadTasks(): void {
+function loadTasks() {
   $axios.get(`/project/${projectId.value}/tasks`)
       .then((res) => {
         tasks.value = res.data;

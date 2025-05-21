@@ -93,7 +93,12 @@ def annotate(session_id):
         annotation["user"] = ObjectId(current_user["_id"])
         annotation["created_at"] = datetime.now().isoformat()
         annotation['flagged'] = []
-        annotation["label"]["_id"] = ObjectId(annotation["label"]["_id"])
+        annotation["label"] = { 
+            "_id": ObjectId(annotation["label"]["_id"]), 
+            "name": annotation["label"]["name"], 
+            "color": annotation["label"]["color"] 
+        }
+
         db.tasks.update_one(
             {"_id": ObjectId(session_id)},
             {"$push": {"annotations": annotation}}

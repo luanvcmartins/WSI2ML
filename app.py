@@ -32,8 +32,8 @@ def create_app():
     app.json = MongoJSONProvider(app)
 
     jwt.init_app(app)
-    #CORS(app, origins=["http://localhost:*", "https://imgsig.accamargo.org.br"], supports_credentials=True)
-    CORS(app)
+    CORS(app, origins=["http://localhost:*", "https://imgsig.accamargo.org.br"], supports_credentials=True)
+    #CORS(app)
 
     from api.user import user_api
     from api.session import session_api

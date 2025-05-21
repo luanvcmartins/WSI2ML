@@ -38,7 +38,8 @@
             {{ selectedLabel.name }}
           </v-btn>
         </template>
-        <v-list style="overflow: auto; max-height: 600px" @mouseleave="annotationMenu = false" @mouseenter="annotationMenu = true">
+        <v-list style="overflow: auto; max-height: 600px" @mouseleave="annotationMenu = false"
+          @mouseenter="annotationMenu = true">
           <v-list-item v-for="(item, index) in task.project.labels" @click="selectedLabel = item" :key="index">
             <template v-slot:prepend>
               <v-avatar size="26" :color="item.color"></v-avatar>
@@ -61,7 +62,7 @@
       @mouseleave="mainPanelMenu = false">
 
       <div class="d-flex">
-        <v-btn-toggle v-model="selectedAnnotationTab">
+        <v-btn-toggle v-model="selectedAnnotationTab" class="align-center">
           <v-btn v-for="tab in mainPanelTabs" :key="tab" :icon="tab.icon" :value="tab" height="40" variant="text"
             width="40" />
           <v-btn v-if="mainPanelMenu" v-for="(tab, index) in colleaguesAnnotations" :key="tab"
@@ -73,6 +74,13 @@
         </v-btn-toggle>
         <v-btn v-if="mainPanelMenu && task.project.revision_strategy === 'auto'" icon="mdi-update" height="40"
           variant="text" width="40" @click="loadRevisions"></v-btn>
+        <v-list-item density="compact" v-if="hoveredAnnotationPreview != null">
+          <template v-slot:prepend>
+            <v-avatar size="24" :color="hoveredAnnotationPreview.label.color"></v-avatar>
+          </template> 
+          <v-list-item-title>{{hoveredAnnotationPreview.label.name}}</v-list-item-title>
+          <v-list-item-subtitle>{{new Date(hoveredAnnotationPreview.created_at).toLocaleString()}}</v-list-item-subtitle>
+        </v-list-item>
       </div>
       <div :id="`annotation-list-${task._id}`" v-if="mainPanelMenu" style="height: calc(100% - 48px)">
         <v-card v-if="selectedAnnotationTab != null"
@@ -110,7 +118,7 @@
                   color="red" v-if="selectedAnnotationTab.layer !== 0 && item.user != null" />
               </template>
               <template v-slot:prepend>
-                <v-avatar :color="item.label.color" size="22" class="mr-2" /> 
+                <v-avatar :color="item.label.color" size="22" class="mr-2" />
               </template>
             </v-card>
           </template>
@@ -239,6 +247,7 @@ const selectedTool = ref({
   icon: 'mdi-cursor-default'
 });
 const selectedLabel = ref({});
+const hoveredAnnotationPreview = ref(null);
 //endregion
 
 let annotationDrawer = null;
@@ -304,8 +313,8 @@ function flagAnnotation(annotation) {
     });
 }
 
-function loadRevisions(){
-  if (task.value.revision_strategy === 'auto'){
+function loadRevisions() {
+  if (task.value.revision_strategy === 'auto') {
     listColleagues();
   }
   listModelAnnotations();
@@ -414,8 +423,11 @@ onMounted(() => {
           }
         },
         onHover: (annotation) => {
+          console.log(annotation)
+          hoveredAnnotationPreview.value = annotation;
         },
         onLeave: (annotation) => {
+          hoveredAnnotationPreview.value = null;
         },
         onClick: (annotation) => {
         },

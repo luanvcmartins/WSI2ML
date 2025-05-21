@@ -76,11 +76,6 @@
 
       <v-menu offset-y>
         <template v-slot:activator="{ props }">
-          <v-list-item v-if="currentProject != null"  >
-            <v-list-item-title>{{ currentProject.name }}</v-list-item-title>
-            <v-list-item-subtitle>{{ currentProject.description }}</v-list-item-subtitle>
-          </v-list-item>
-
           <v-btn v-bind="props" class="ma-1 rounded-lg">{{ store.user.name }}</v-btn>
         </template>
 

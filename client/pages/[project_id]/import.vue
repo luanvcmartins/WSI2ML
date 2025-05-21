@@ -26,8 +26,9 @@
         </v-list>
       </v-card>
     </div>
-    <div class="text-center" v-else>
-      No versions available.<br>
+    <div v-else class="ma-8 text-center">
+      <v-icon color="grey" size="48" class="mb-2">mdi-inbox</v-icon>
+      <div>No dataset version created yet.</div>
     </div>
 
     <v-dialog v-model="processing.dialog" persistent max-width="400px">

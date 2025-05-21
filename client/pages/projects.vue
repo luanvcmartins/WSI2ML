@@ -21,16 +21,16 @@
               <span class="text-body-1">{{ project.description }}</span>
             </v-col>
             <v-divider class="mt-2 mb-2" />
-            <div style="display: flex; gap: 10px;">
-              <v-card v-for="label in project.labels" :title="label.name" :key="label._id" :color="label.color">
+            <div class="d-flex flex-wrap gap-2 mt-4">
+              <v-card class="ma-1" v-for="label in project.labels" :title="label.name" :key="label._id" :color="label.color">
                 <template v-slot:prepend>
                   <v-btn variant="plain" icon @click="editLabel(label)" size="24">
                     <v-icon>mdi-pencil</v-icon>
                   </v-btn>
                 </template>
-                <v-card-text>{{ label.description }}</v-card-text>
+                <v-card-text>{{ label.description }}</v-card-text> 
               </v-card>
-              <v-card title="+ New label" class="d-flex align-center justify-center cursor-pointer"
+              <v-card title="+ New label"  class="ma-1 d-flex align-center justify-center cursor-pointer"
                 style="border: 1px dashed #9E9E9E; background-color: #F5F5F5;" @click="newLabel(project)">
               </v-card>
             </div>

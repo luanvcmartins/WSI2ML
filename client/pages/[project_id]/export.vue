@@ -21,6 +21,10 @@
               <v-spacer />
             </v-card-actions>
           </v-card>
+          <div v-if="exports.length === 0" class="ma-1 text-center">
+            <v-icon color="grey" size="48" class="mb-2">mdi-inbox</v-icon>
+            <div>No dataset version created yet.</div>
+          </div>
         </div>
       </v-card-text>
     </v-card>

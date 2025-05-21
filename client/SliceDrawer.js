@@ -683,6 +683,7 @@ class Annotation {
     this.layer = annotation.layer == null ? 0 : annotation.layer;
     this.feedback = null;
     this.state = annotation.state == null ? 'idle' : annotation.state;
+    this.created_at = annotation.created_at;
 
     // Annotation meta data:
     this.isHovering = false;
