@@ -22,7 +22,7 @@
         "--no-debugger",
         "--no-reload",
         "--port",
-        "2000"
+        "2005"
       ],
       "jinja": true,
       "autoStartBrowser": false

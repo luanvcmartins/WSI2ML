@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
-    "dev": "nuxt dev --dotenv .env.dev --host",
+    "dev": "BASE_URL=http://localhost:2005/api/ nuxt dev", 
     "generate": "nuxt generate --dotenv .env.prod",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"

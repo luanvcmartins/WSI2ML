@@ -73,38 +73,53 @@
       <!--          style="color: darkorange;">//</strong> ML</span>-->
 
 
-      <v-spacer></v-spacer>
 
-      <!--    <v-menu v-if="store.user != null" offset-y>-->
-      <!--      <template v-slot:activator="{ on, attrs }">-->
-      <!--        <v-card class="user-card"-->
-      <!--                dark-->
-      <!--                flat-->
-      <!--                outlined-->
-      <!--                color="primary lighten-1"-->
-      <!--                v-bind="attrs"-->
-      <!--                v-on="on">-->
-      <!--          <v-card-text>-->
-      <!--            <v-icon class="mr-1">mdi-dots-vertical-circle</v-icon>-->
-      <!--&lt;!&ndash;            {{ store.user.name }}&ndash;&gt;-->
-      <!--          </v-card-text>-->
-      <!--        </v-card>-->
-      <!--      </template>-->
-      <!--      <v-list>-->
-      <!--        <v-list-item @click="changePassword = true">-->
-      <!--          <v-list-item-title>Change password</v-list-item-title>-->
-      <!--        </v-list-item>-->
-      <!--        <v-divider></v-divider>-->
-      <!--        <v-list-item @click="logout">-->
-      <!--          <v-list-item-title>Logout</v-list-item-title>-->
-      <!--        </v-list-item>-->
-      <!--      </v-list>-->
-      <!--    </v-menu>-->
+      <v-menu offset-y>
+        <template v-slot:activator="{ props }">
+          <v-list-item v-if="currentProject != null"  >
+            <v-list-item-title>{{ currentProject.name }}</v-list-item-title>
+            <v-list-item-subtitle>{{ currentProject.description }}</v-list-item-subtitle>
+          </v-list-item>
 
-      <!--    <v-spacer></v-spacer>-->
-      <!--    <ChangePassword v-if="changePassword" v-model="changePassword"/>-->
+          <v-btn v-bind="props" class="ma-1 rounded-lg">{{ store.user.name }}</v-btn>
+        </template>
+
+        <v-list>
+          <v-list-item @click="changePasswordScreen = true">Change password</v-list-item>
+          <v-list-item @click="logout">Logout</v-list-item>
+        </v-list>
+      </v-menu>
     </v-app-bar>
 
+    <v-dialog v-model="changePasswordScreen" max-width="400">
+      <v-card title="Change Password" subtitle="Enter your new password for your account.">
+        <v-card-text>
+          <v-form>
+            <v-text-field
+              v-model="password.oldPassword"
+              label="Old Password"
+              type="password"
+              required
+            ></v-text-field>
+            <v-text-field
+              v-model="password.newPassword"
+              label="New Password"
+              type="password"
+              required
+            ></v-text-field>
+            <v-text-field
+              v-model="password.confirmPassword"
+              label="Confirm New Password"
+              type="password"
+              required
+            ></v-text-field>
+          </v-form>
+        </v-card-text>
+        <v-card-actions>
+          <v-btn color="primary" @click="changePassword">Submit</v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
 
     <v-main>
       <slot/>
@@ -113,11 +128,19 @@
 </template>
 <script setup>
 
+import Swal from 'sweetalert2';
 import { useAuthStore } from '../stores/auth.js';
 
 const store = useAuthStore();
 const { $axios } = useNuxtApp();
 const navDrawer = ref(true);
+
+const changePasswordScreen = ref(false);
+const password = reactive({
+  oldPassword: '',
+  newPassword: '',
+  confirmPassword: ''
+});
 
 const route = useRoute();
 const projectId = computed(() => {
@@ -130,6 +153,40 @@ const currentProject = computed(() => {
   return null;
 });
 const projects = ref([]);
+
+function changePassword() {
+  if (password.newPassword !== password.confirmPassword) {
+    Swal.fire({
+      icon: 'warning',
+      title: 'Passwords do not match',
+      text: "Please try again.",
+    });
+    return;
+  }
+  $axios.post('/user/change_password', password)
+      .then(() => {
+        Swal.fire({
+          icon: 'success',
+          title: 'Password changed successfully',
+          text: "Please log in again to apply changes.",
+        });
+        changePasswordScreen.value = false;
+        password.oldPassword = '';
+        password.newPassword = '';
+        password.confirmPassword = '';
+      })
+      .catch((err) => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error changing password',
+          text: "Please try again later. If the problem persists, contact administrator.",
+        });
+      });
+}
+
+function logout(){
+  window.location.href = '/';
+}
 
 function loadProjects() {
   $axios.get('/project/quick_list')

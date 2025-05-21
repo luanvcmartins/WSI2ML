@@ -87,10 +87,10 @@ def project_list(project_id):
 def thumbnail(session_id):
     task = db.tasks.find_one({"_id": ObjectId(session_id)})
     md5 = hashlib.md5(task['file'].encode()).hexdigest()
-    if not os.path.exists(f"./thumbnails/{md5}.jpg"):
+    if not os.path.exists(f"./repository/thumbnails/{md5}.jpg"):
         slide = openslide.open_slide(task['file'])
         sthumbnail = slide.get_thumbnail((256, 256))
-        os.makedirs("./thumbnails", exist_ok=True)
-        sthumbnail.save(f"./thumbnails/{md5}.jpg")
+        os.makedirs("./repository/thumbnails", exist_ok=True)
+        sthumbnail.save(f"./repository/thumbnails/{md5}.jpg")
 
-    return Response(open(f"./thumbnails/{md5}.jpg", "rb").read(), mimetype="image/jpg")
+    return Response(open(f"./repository/thumbnails/{md5}.jpg", "rb").read(), mimetype="image/jpg")

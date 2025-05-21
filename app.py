@@ -11,7 +11,7 @@ import sys
 jwt = JWTManager()
 
 
-def create_app(context="development"):
+def create_app():
     app = Flask(__name__,
                 static_folder="./client/dist/static",
                 template_folder="./client/dist")
@@ -48,15 +48,6 @@ def create_app(context="development"):
     app.register_blueprint(export_api, url_prefix="/api/export")
     app.register_blueprint(import_api, url_prefix="/api/import")
 
-    #
-    # @app.errorhandler(Exception)
-    # def handle_exception(e: Exception):
-    #     return jsonify({
-    #         "code": e.args[0],
-    #         "name": e.args[1],
-    #         "msg": str(e),
-    #     }), 500
-
     @app.route("/")
     def index():
         return render_template("index.html")
@@ -81,12 +72,7 @@ def create_app(context="development"):
 
 
 if __name__ == '__main__':
-    app = create_app("development" if len(sys.argv) == 1 else sys.argv[1])
+    app = create_app()
 
-    if len(sys.argv) == 1:
-        # assuming development
-        app.run(port=2000, host="0.0.0.0")
-    else:
-        # assuming production
-        from waitress import serve
-        serve(app, host="0.0.0.0", port=2000)
+    from waitress import serve
+    serve(app, host="0.0.0.0", port=2005)

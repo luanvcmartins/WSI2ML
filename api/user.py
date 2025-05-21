@@ -56,6 +56,20 @@ def _list():
 
     return jsonify(list(db.users.find({}, {"password": False}).sort([("enabled", -1)])))
 
+@user_api.route("change_password", methods=['POST'])
+@jwt_required()
+def change_password():
+    data = request.json
+    user_password = db.users.find_one({"email": current_user['email']}, {"password": 1})
+    if check_password_hash(user_password['password'], data['oldPassword']):
+        db.users.update_one(
+            {"_id": ObjectId(current_user['_id'])},
+            {"$set": {"password": generate_password_hash(data['newPassword'])}}
+        )
+        return "", 200
+    else:
+        return "", 401
+
 
 @user_api.route("switch_access", methods=["POST"])
 @jwt_required()
@@ -70,14 +84,6 @@ def switch_access():
 
     return jsonify({"success": True})
 
-
-@user_api.route("change_password", methods=['POST'])
-@jwt_required()
-def change_password():
-    data = request.json
-    db.users.update_one(
-        { "_id": current_user['_id']}, {"password": generate_password_hash(data['password'])})
-    return jsonify({"success": True})
 
 @user_api.route("login", strict_slashes=False, methods=["POST"])
 def login():
@@ -103,6 +109,7 @@ def create_admin():
             "name": "Admin",
             "email": "admin",
             "password": generate_password_hash("admin"),
+            "enabled": True,
             "is_admin": True,
             "manages_apps": True,
             "manages_users": True,

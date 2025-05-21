@@ -10,12 +10,14 @@
         <span class="funded">This work was carried out at the Center for Artificial Intelligence (C4AI-USP), with support by the São Paulo Research Foundation (FAPESP grant #2019/07665-4 and #2020/15129-2) and by the IBM Corporation.</span>
       </v-col>
       <v-col class="fill-height text-xs-center" style="position: relative;" md="6" lg="4">
-        <v-card class="centered-card rounded-b-lg">
-          <div style="user-select: none; background-color: #673ab7">
+        <v-card class="centered-card rounded-shaped" elevation="8">
+          <div style="user-select: none;">
             <v-card-title class="text-center">
               <span class="app-title">WSI <strong style="color: darkorange;">//</strong> ML</span></v-card-title>
             <v-card-subtitle class="text-white-0">Login to continue.</v-card-subtitle>
           </div>
+          <v-divider/>
+          
           <v-card-text>
             <!--            <v-form>-->
             <v-text-field v-model="user.email" label="E-mail"></v-text-field>
@@ -124,29 +126,10 @@ definePageMeta({
   right: 50%;
 }
 
-
-@keyframes gradientAnimation {
-  0% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-  100% {
-    background-position: 0% 50%;
-  }
-}
-
-.app-title {
-  font-size: 1.5rem;
-  font-weight: bold;
-  color: white;
-  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
-  background: linear-gradient(270deg, orange, white, white);
-  background-size: 600% 600%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  animation: gradientAnimation 6s ease infinite;
-  animation-delay: 5s;
+.app-title{
+  font-size: 28px;
+  font-weight: 900;
+  color: #363636;
+  margin-bottom: 16px;
 }
 </style>

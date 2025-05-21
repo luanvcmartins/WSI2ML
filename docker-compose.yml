@@ -1,25 +1,40 @@
-version: "3.9"
-
 services:
   wsi_mongo:
     image: mongo
     volumes:
       - wsi_data:/data/db
-  web:
+    restart: always
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+  backend:
     build: .
     command: python3 app.py
     volumes:
       - /home/bioinfo/aperio:/images
-    ports:
-      - "2000:2000"
+      - wsi_repository:/repository
     environment:
       - DATABASE=wsi2ml
       - MONGO_ADDRESS=wsi_mongo
       - MONGO_USERNAME=root
       - MONGO_PASSWORD=example
     depends_on:
-      - wsi_db
-
+      - wsi_mongo
+  web:
+    build: client
+    command: node /app/server/index.mjs
+    depends_on:
+      - backend
+  proxy:
+    image: nginx
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+    ports:
+      - "2000:80"
+    depends_on:
+      - web
+      - backend
 volumes:
   wsi_data:
+  wsi_repository:
 

@@ -35,7 +35,7 @@ Once you deploy the application, you will use the login information `admin` with
 3. Create your first task: select the files for your task on the list and the users to annotate it. An optional task name can also be provided.
 
 ## Acknowledgments
-This work was carried out at the Center for Artificial Intelligence (C4AI-USP), with support by the São Paulo Research Foundation (FAPESP grant #2019/07665-4 and #2020/15129-2) and by the IBM Corporation. The WSI Annotation Tool was developed in collaboration with A. C. Camargo Cancer Center and it is under active development A. C. Camargo Cancer Center. and it is under active development.
+This work was carried out at the Center for Artificial Intelligence (C4AI-USP), with support by the São Paulo Research Foundation (FAPESP grant #2019/07665-4 and #2020/15129-2) and by the IBM Corporation. 
 
 ## License 
 Copyright 2022 luanvcmartins
