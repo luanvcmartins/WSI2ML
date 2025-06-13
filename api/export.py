@@ -100,6 +100,13 @@ def new_version(project_id):
 
     return Response(stream_with_context(create_dataset_version(item.inserted_id)), content_type="text/event-stream")
 
+@export_api.route("<version_id>", methods=["DELETE"])
+@jwt_required()
+def delete_version(version_id):
+    if not current_user['can_export']:
+        return "", 403
+    db.datasets.delete_one({"_id": ObjectId(version_id)})
+    return ""
 
 @export_api.route("download/<version_id>")
 # @jwt_required()

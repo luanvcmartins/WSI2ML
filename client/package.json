@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "nuxt build",
-    "dev": "BASE_URL=http://localhost:2005/api/ nuxt dev", 
+    "dev": "nuxt dev --dotenv .env.dev",
     "generate": "nuxt generate --dotenv .env.prod",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare"
@@ -14,6 +14,7 @@
     "@pinia/nuxt": "^0.11.0",
     "axios": "^1.8.4",
     "dotenv": "^16.3.1",
+    "earcut": "^3.0.1",
     "golden-layout": "^2.6.0",
     "nuxt": "^3.16.2",
     "openseadragon": "^5.0.1",
