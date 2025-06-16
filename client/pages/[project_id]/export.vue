@@ -186,7 +186,6 @@ function createDatasetVersion() {
     });
 
   eventSource.addEventListener('message', (event) => {
-    console.log('Evento recebido:', event.data);
     const data = JSON.parse(event.data);
     constructionProgress.value.info = data;
     if (data.step === 0) {

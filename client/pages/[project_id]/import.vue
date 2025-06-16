@@ -138,6 +138,15 @@ function upload() {
         loadDatasetVersions();
         processing.value.dialog = false;
         eventSource.close();
+      } else if (data.step == 6){
+        // step == 6 means error 
+        Swal.fire({
+          icon: 'error',
+          title: 'Something went wrong',
+          text: data.msg
+        });
+        eventSource.close();
+        processing.value.dialog = false;
       }
     });
 

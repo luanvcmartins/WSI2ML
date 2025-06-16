@@ -121,7 +121,6 @@ def download(version_id):
 def create_dataset_version(dataset_id):
     ds_version = db.datasets.find_one({"_id": ObjectId(dataset_id)}, {"model_feedback": False, "status": False})
     yield f"data: {json.dumps({'step': 0, 'progress': 0, 'msg': 'Starting procedure'})}\n\n"
-    time.sleep(1)
 
     query = {"project": ds_version['project']}
     if len(ds_version['users']) > 0:
@@ -132,7 +131,7 @@ def create_dataset_version(dataset_id):
         query["annotations.flagged"] = {"$not": {"$elemMatch": {"$in": ds_version['not_flagged_by']}}}
 
     yield f"data: {json.dumps({'step': 1, 'progress': 0, 'msg': 'Gathering all annotations'})}\n\n"
-    time.sleep(1)
+
     slide_annotations = list(db.tasks.aggregate([
         {"$match": query},
         {"$group": {
@@ -154,7 +153,6 @@ def create_dataset_version(dataset_id):
     }
     
     yield f"data: {json.dumps({'step': 2, 'progress': 0, 'msg': 'Creating geojson file'})}\n\n"
-    time.sleep(1)
 
     total_annotations = 0
     annotation_count = {
@@ -180,7 +178,7 @@ def create_dataset_version(dataset_id):
                 'total_annotations': total_annotations
             }
             yield f"data: {json.dumps(info)}\n\n"
-            time.sleep(1)
+
             file_data = zipfile.ZipInfo(f"{slide_title}.geojson")
             file_data.compress_type = zipfile.ZIP_DEFLATED
 
@@ -209,7 +207,6 @@ def create_dataset_version(dataset_id):
         zf.writestr(metadata_file, json.dumps(metadata_content, indent=2, default=str))
 
     yield f"data: {json.dumps({'step': 4, 'progress': 1, 'msg': 'Saving zip file', 'total_annotations': total_annotations, 'annotation_count': annotation_count})}\n\n"
-    time.sleep(1)
     os.makedirs("./repository/datasets", exist_ok=True)
     zip_stream.seek(0)
     with open(f"./repository/datasets/{ds_version['title']}.zip", "wb+") as f:
@@ -219,7 +216,7 @@ def create_dataset_version(dataset_id):
         "$set": {"status": "ready", "annotation_count": annotation_count, "total_annotations": total_annotations}
     })
     yield f"data: {json.dumps({'step': 5, '_id': str(dataset_id), 'progress': 1, 'msg': 'Done.', 'total_annotations': total_annotations, 'annotation_count': annotation_count})}\n\n"
-    time.sleep(1)
+
 
 
 def create_polygon(annotation):
