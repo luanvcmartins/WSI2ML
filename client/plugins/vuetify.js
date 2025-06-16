@@ -2,14 +2,15 @@
 import '@mdi/font/css/materialdesignicons.css';
 import { VTreeview } from 'vuetify/labs/VTreeview';
 import 'vuetify/styles';
+import {md3} from 'vuetify/blueprints'
 import { createVuetify } from 'vuetify';
 
 export default defineNuxtPlugin((app) => {
-  const lightTheme = {
-    dark: true,
+  const light = {
+    dark: false,
     colors: {
-      background: '#FFFFFF',
-      surface: '#FFFFFF',
+      background: '#FEF7FF',
+      surface: '#FEF7FF',
       primary: '#673ab7',
       'primary-darken-1': '#5423ae',
       secondary: '#03DAC6',
@@ -20,14 +21,31 @@ export default defineNuxtPlugin((app) => {
       warning: '#ffa234',
     },
   };
+  const dark = {
+    dark: true,
+    colors: {
+      background: '#151218',
+      'on-background': '#E7E0E8',
+      surface: '#141218',
+      primary: '#D3BCFD',
+      'primary-darken-1': '#5423ae',
+      secondary: '#CDC2DB',
+      'secondary-darken-1': '#018786',
+      error: '#FFB4AB',
+      info: '#2196F3',
+      success: '#4CAF50',
+      warning: '#ffa234',
+    },
+  };
 
   const vuetify = createVuetify({
     theme: {
-      defaultTheme: 'lightTheme',
+      defaultTheme: 'light',
       themes: {
-        lightTheme,
+        light,dark
       },
     },
+    blueprint: md3,
     components: {
       VTreeview,
     },
