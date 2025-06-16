@@ -51,7 +51,7 @@
         <template v-slot:activator="{ props }">
           <v-list-item v-if="currentProject != null" v-bind="props" class="ma-1 rounded-lg">
             <v-list-item-title>{{ currentProject.name }}</v-list-item-title>
-            <v-list-item-subtitle>{{ currentProject.description }}</v-list-item-subtitle>
+            <v-list-item-subtitle style="max-width: 200px; text-wrap: nowrap;">{{ currentProject.description }}</v-list-item-subtitle>
           </v-list-item>
 
           <v-list-item v-else v-bind="props" class="ma-1 rounded-lg">
@@ -63,7 +63,7 @@
         <v-list>
           <v-list-item v-for="project in projects" :to="`/${project._id}/`">
             <v-list-item-title>{{ project.name }}</v-list-item-title>
-            <v-list-item-subtitle>{{ project.description }}</v-list-item-subtitle>
+            <v-list-item-subtitle  style="max-width: 200px;">{{ project.description }}</v-list-item-subtitle>
           </v-list-item>
         </v-list>
       </v-menu>
