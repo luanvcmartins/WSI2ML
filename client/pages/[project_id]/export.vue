@@ -11,6 +11,9 @@
         <div class="d-flex flex-wrap justify-center mt-4">
           <v-card variant="outlined" class="ma-2" v-for="version in exports" :title="version.title"
             :subtitle="version.created_at">
+            <template v-slot:append>
+              <v-btn variant="plain" icon="mdi-delete" @click="deleteVersion(version._id)" />
+            </template>
             <v-card-text>{{ version.description }}</v-card-text>
             <v-card-actions>
               <v-spacer />
@@ -164,6 +167,14 @@ function download(projectId) {
 }
 
 function createDatasetVersion() {
+  Swal.fire({
+    title: 'Creating dataset version',
+    text: 'Please wait...',
+    didOpen: () => {
+      Swal.showLoading();
+    }
+  })
+
   const eventSource = SSE($axios.defaults.baseURL + 'export/' + projectId.value + '/new',
     {
       headers: {
@@ -179,6 +190,7 @@ function createDatasetVersion() {
     const data = JSON.parse(event.data);
     constructionProgress.value.info = data;
     if (data.step === 0) {
+      Swal.close()
       newDatasetVersionDialog.value = false;
       constructionProgress.value.dialog = true;
     } else if (data.step === 5) {
@@ -213,6 +225,28 @@ function loadVersionCreation() {
         title: 'Something went wrong',
       });
     });
+}
+
+function deleteVersion(versionId) {
+  Swal.fire({
+    title: 'Are you sure you want to remove this dataset version?',
+    text: 'This action cannot be undone!',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'Yes, delete it!'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      $axios.delete(`/export/${versionId}`).then(resp => {
+        loadExports();
+      }).catch(err => {
+        Swal.fire({
+          icon: 'error',
+          title: 'Error deleting version',
+          text: 'An error occurred while deleting the dataset version. Please try again.',
+        });
+      });
+    }
+  });
 }
 
 function loadExports() {

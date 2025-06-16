@@ -37,4 +37,3 @@ services:
 volumes:
   wsi_data:
   wsi_repository:
-

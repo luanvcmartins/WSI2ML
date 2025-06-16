@@ -11,7 +11,7 @@ class Config(object):
 
     def __init__(self):
         self.DATABASE = os.environ.get("DATABASE")
-        self.MONGO_ADDRESS = os.environ.get("MONGO_ADDRESS")
+        self.MONGO_ADDRESS = os.environ.get("MONGO_ADDRESS", "localhost")
         self.MONGO_USERNAME = os.environ.get("MONGO_USERNAME", None)
         self.MONGO_PASSWORD = os.environ.get("MONGO_PASSWORD", None)
 
