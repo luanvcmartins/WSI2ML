@@ -42,7 +42,7 @@
 
 
               <template v-slot:item.actions="{ item }">
-                <v-btn :icon="item.enabled ? `mdi-delete` : 'mdi-checkbox'" size="32" variant="text" @click="switchItemStatus(item)"/> 
+                <v-btn :icon="item.enabled ? `mdi-delete` : 'mdi-progress-check'" size="32" variant="text" @click="switchItemStatus(item)"/> 
               </template>
             </v-data-table>
           </v-card-text>

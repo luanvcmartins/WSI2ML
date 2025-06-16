@@ -1,18 +1,18 @@
 <template>
   <v-container>
-    <div class="pa-5 text-center"
-      style="border-style: dashed; border-color: grey; border-width: 0.5px; cursor: pointer; border-radius: 30px;"
-      @click="$refs.fileInput.click()" @ondrop="fileDropped">
-      <v-icon size="64" color="primary">mdi-file-upload</v-icon><br>
-      <span class="mt-2">Click to select a file or drop it here.</span>
-    </div>
-
-    <v-form class="d-none">
-      <input type="file" ref="fileInput" @change="upload" />
-    </v-form>
-
 
     <div class="d-flex flex-wrap justify-center mt-4" v-if="datasets.length > 0">
+
+      <div class="pa-5 text-center"
+        style="border-style: dashed; border-color: grey; border-width: 0.5px; cursor: pointer; border-radius: 30px;"
+        @click="$refs.fileInput.click()" @ondrop="fileDropped">
+        <v-icon size="64" color="primary">mdi-file-upload</v-icon><br>
+        <span class="mt-2">Click to select a file or drop it here.</span>
+      </div>
+      <v-form class="d-none">
+        <input type="file" ref="fileInput" @change="upload" />
+      </v-form>
+
       <v-card variant="outlined" class="ma-2" v-for="dataset in datasets" :title="dataset.title"
         :subtitle="dataset.created_at">
         <v-card-text>{{ dataset.description }}</v-card-text>
@@ -29,6 +29,7 @@
     <div v-else class="ma-8 text-center">
       <v-icon color="grey" size="48" class="mb-2">mdi-inbox</v-icon>
       <div>No dataset version created yet.</div>
+      <v-btn variant="flat" color="primary" to="export">Create a dataset version</v-btn>
     </div>
 
     <v-dialog v-model="processing.dialog" persistent max-width="400px">
