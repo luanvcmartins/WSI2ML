@@ -47,6 +47,9 @@ def upload_model_results(project_id, upload_file):
             metadata = zip_ref.getinfo('_metadata.json')
             metadata_data = json.load(zip_ref.open(metadata))
             dataset_id =  ObjectId(metadata_data['dataset']['_id'])
+            if db.datasets.find_one({"_id": dataset_id }) is None:
+                # invalid dataset
+                yield f"data: {json.dumps({'step': 6, 'progress': 1, 'msg': 'Invalid dataset version. This dataset version doesn\'t belong to this project.'})}\n\n"
             metadata = {
                 'dataset_id': dataset_id,
                 "dataset_name": metadata_data['dataset']['title'],

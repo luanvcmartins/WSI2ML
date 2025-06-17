@@ -51,7 +51,6 @@ const sessionId = computed(() => route.params.session_id);
 watch(() => {
   selectedTasks.value.forEach(cTask => {
     if (!(cTask._id in taskToTab) && cTask._id !== sessionId.value) {
-      console.log(cTask);
       loadTask(cTask._id);
       taskToTab[cTask._id] = cTask
     }
@@ -63,7 +62,6 @@ onMounted(() => {
     layout = new GoldenLayout(document.getElementById('gl-container'));
 
     layout.registerComponentFactoryFunction('example', (container, state) => {
-      console.log('Sending state:', state);
       const mountEl = document.createElement('div');
       mountEl.id = `div-${state._id}`;
       container.element.appendChild(mountEl);
@@ -72,10 +70,15 @@ onMounted(() => {
     });
     layout.resizeWithContainerAutomatically = true;
     layout.loadLayout({
+      settings:{
+        showPopoutIcon: false,
+        popoutWholeStack: false,
+      },
       root: {
         type: 'column',
         content: [
           {
+            isClosable: false,
             type: 'stack',
             content: []
           }
@@ -123,7 +126,7 @@ function loadTask(taskId) {
           type: 'component',
           componentState: resp.data,
           componentType: 'example',
-          title: task.file,
+          title: task.title,
         });
 
       if (sessionId === resp.data._id) {

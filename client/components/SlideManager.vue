@@ -132,8 +132,8 @@
     <context-menu>
       <v-btn-group>
         <v-btn @click="" icon="mdi-arrow-left"></v-btn>
-        <v-btn @click="editAnnotation(hoveredAnnotationPreview)" prepend-icon="mdi-pencil">Edit</v-btn>
-        <v-btn @click="removeAnnotation(hoveredAnnotationPreview)" prepend-icon="mdi-delete">Remove</v-btn>
+        <v-btn v-if="!taskCompleted" @click="editAnnotation(hoveredAnnotationPreview)" prepend-icon="mdi-pencil">Edit</v-btn>
+        <v-btn v-if="!taskCompleted" @click="removeAnnotation(hoveredAnnotationPreview)" prepend-icon="mdi-delete">Remove</v-btn>
       </v-btn-group>
     </context-menu>
   </v-container>

@@ -46,6 +46,8 @@ Once you deploy the application, you will use the login information `admin` with
 ## Acknowledgments
 This work was carried out at the Center for Artificial Intelligence (C4AI-USP), with support by the São Paulo Research Foundation (FAPESP grant #2019/07665-4 and #2020/15129-2) and by the IBM Corporation. 
 
+Update 2 has been fully developed in A.C.Camargo Cancer Center.
+
 ## Citation 
 ```
 @inproceedings{10.1145/3617023.3617038,

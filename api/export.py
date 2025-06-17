@@ -105,7 +105,15 @@ def new_version(project_id):
 def delete_version(version_id):
     if not current_user['can_export']:
         return "", 403
+    content = db.datasets.find_one({"_id": ObjectId(version_id)})
+    if len(content["model_feedback"]) > 0:
+        db.model_feedback.delete_many({
+            "_id": {
+                "$in": [x['_id'] for x in content["model_feedback"]]
+            }
+        })
     db.datasets.delete_one({"_id": ObjectId(version_id)})
+
     return ""
 
 @export_api.route("download/<version_id>")

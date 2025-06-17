@@ -205,6 +205,7 @@ function createDatasetVersion() {
       title: 'Error creating dataset version',
       message: 'Something went wrong while creating the dataset version. Please try again later.'
     });
+    newDatasetVersionDialog.value = false;
     eventSource.close();
   });
 }
