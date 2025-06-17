@@ -104,12 +104,19 @@ def annotate(session_id):
             {"$push": {"annotations": annotation}}
         )
     else:
-        annotation["updated_at"] = datetime.now().isoformat()
         db.tasks.update_one(
             {"_id": ObjectId(session_id), "annotations._id": ObjectId(annotation["_id"])},
-            {"$set": {"annotations.$": annotation}}
+            {"$set": {
+                "annotations.$.label": annotation['label'],
+                "annotations.$.geometry": annotation['geometry'],
+                "annotations.$.updated_at": datetime.now().isoformat()
+            }}
         )
-    return jsonify({"_id": annotation["_id"], "created_at": annotation["created_at"]})
+    return jsonify({
+        "_id": annotation["_id"], 
+        "created_at": annotation["created_at"] if "created_at" in annotation else "",
+        "updated_at": annotation["updated_at"] if "updated_at" in annotation else "",
+    })
 
 @session_api.route("<string:session_id>/annotation", methods=["DELETE"])
 @jwt_required()

@@ -1,6 +1,7 @@
 <template>
   <v-container fluid>
-    <div v-if="task._id != null" :id="`seadragon-viewer-${task._id}`" class="seadragon-viewer" />
+    <div v-if="task._id != null" :id="`seadragon-viewer-${task._id}`" class="seadragon-viewer"
+      @contextmenu.prevent="onContextMenu" />
 
     <v-card :class="['toolbox', 'navigation-toolbox', !zoomMenu ? 'small' : 'default']" @mouseenter="zoomMenu = true"
       @mouseleave="zoomMenu = false">
@@ -127,11 +128,19 @@
           </template>
         </v-virtual-scroll>
       </div>
-
     </v-card>
+    <context-menu>
+      <v-btn-group>
+        <v-btn @click="" icon="mdi-arrow-left"></v-btn>
+        <v-btn @click="editAnnotation(hoveredAnnotationPreview)" prepend-icon="mdi-pencil">Edit</v-btn>
+        <v-btn @click="removeAnnotation(hoveredAnnotationPreview)" prepend-icon="mdi-delete">Remove</v-btn>
+      </v-btn-group>
+    </context-menu>
   </v-container>
 </template>
 <script setup>
+const { ContextMenu, openFromEvent,show } = useContextMenu();
+
 import { AnnotationDrawer } from '@/SliceDrawer';
 import OpenSeadragon from 'openseadragon';
 import { nextTick } from 'vue';
@@ -139,7 +148,10 @@ import Swal from 'sweetalert2';
 import { useAuthStore } from '~/stores/auth.js';
 
 const { $axios } = useNuxtApp();
-
+const onContextMenu = (ev) => {
+  if (hoveredAnnotationPreview.value != null)
+    openFromEvent(ev);
+};
 const props = defineProps({
   modelValue: {
     type: [Object],
@@ -250,7 +262,12 @@ const selectedTool = ref({
   icon: 'mdi-cursor-default'
 });
 const selectedLabel = ref({});
+const showContextMenu = ref(false);
 const hoveredAnnotationPreview = ref(null);
+
+watch(hoveredAnnotationPreview, ()=>{
+  show.value = false;
+})
 //endregion
 
 let annotationDrawer = null;
@@ -298,13 +315,12 @@ function removeAnnotation(annotation) {
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#3085d6',
-    cancelButtonColor: '#d33',
     confirmButtonText: 'Yes, delete it!'
   }).then((result) => {
     if (result.isConfirmed) {
-
+      console.log(toRaw(annotation))
       $axios.delete(`/session/${task.value._id}/annotation`, {
-        data: annotation
+        data: {_id: annotation._id }
       }).then(res => {
         task.value.annotations = task.value.annotations.filter(a => a._id !== annotation._id);
         selectedAnnotationTab.value.annotationList = task.value.annotations
@@ -440,7 +456,7 @@ onMounted(() => {
                 annotationDrawer.annotationSet[0].push(annotation);
                 annotationDrawer.annotationMap[annotation._id] = annotation;
                 task.value.annotations.push({
-                  _id:annotation._id,
+                  _id: annotation._id,
                   created_at: annotation.created_at,
                   geometry: annotation.geometry,
                   label: annotation.label,
@@ -480,13 +496,13 @@ onMounted(() => {
       lineDash: [],
       drawing: true
     };
+
     nextTick(() => {
       annotationDrawer.tool = 'pointer';
       selectedLabel.value = task.value.project.labels[0];
       annotationDrawer.label = task.value.project.labels[0];
       annotationDrawer.loadAnnotations(toRaw(task.value.annotations));
     });
-
   });
 });
 </script>
