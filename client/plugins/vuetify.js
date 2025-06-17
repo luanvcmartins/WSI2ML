@@ -26,7 +26,7 @@ export default defineNuxtPlugin((app) => {
     colors: {
       background: '#151218',
       'on-background': '#E7E0E8',
-      surface: '#141218',
+      surface: '#141515',
       primary: '#D3BCFD',
       'primary-darken-1': '#5423ae',
       secondary: '#CDC2DB',

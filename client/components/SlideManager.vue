@@ -77,9 +77,10 @@
         <v-list-item density="compact" v-if="hoveredAnnotationPreview != null">
           <template v-slot:prepend>
             <v-avatar size="24" :color="hoveredAnnotationPreview.label.color"></v-avatar>
-          </template> 
-          <v-list-item-title>{{hoveredAnnotationPreview.label.name}}</v-list-item-title>
-          <v-list-item-subtitle>{{new Date(hoveredAnnotationPreview.created_at).toLocaleString()}}</v-list-item-subtitle>
+          </template>
+          <v-list-item-title>{{ hoveredAnnotationPreview.label.name }}</v-list-item-title>
+          <v-list-item-subtitle>{{ new
+            Date(hoveredAnnotationPreview.created_at).toLocaleString() }}</v-list-item-subtitle>
         </v-list-item>
       </div>
       <div :id="`annotation-list-${task._id}`" v-if="mainPanelMenu" style="height: calc(100% - 48px)">
@@ -111,6 +112,8 @@
             <v-card variant="outlined" class="ma-1" @click="goToAnnotation(item)" :title="item.label.name">
               <template v-slot:append>
                 <v-btn variant="text" @click.capture="editAnnotation(item)" icon="mdi-pencil" size="24"
+                  :color="item.label.color" :disabled="!annotationsEnabled" v-if="selectedAnnotationTab.layer === 0" />
+                <v-btn variant="text" @click.capture="removeAnnotation(item)" icon="mdi-delete" size="24"
                   :color="item.label.color" :disabled="!annotationsEnabled" v-if="selectedAnnotationTab.layer === 0" />
 
                 <v-btn variant="text" @click.capture="flagAnnotation(item)"
@@ -289,6 +292,34 @@ function goToAnnotation(annotation) {
 function editAnnotation(annotation) {
   annotationDrawer.editAnnotation(annotation._id);
 }
+function removeAnnotation(annotation) {
+  Swal.fire({
+    title: 'Are you sure you want to delete this annotation?',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#d33',
+    confirmButtonText: 'Yes, delete it!'
+  }).then((result) => {
+    if (result.isConfirmed) {
+
+      $axios.delete(`/session/${task.value._id}/annotation`, {
+        data: annotation
+      }).then(res => {
+        task.value.annotations = task.value.annotations.filter(a => a._id !== annotation._id);
+        selectedAnnotationTab.value.annotationList = task.value.annotations
+        annotationDrawer.loadAnnotations(toRaw(task.value.annotations));
+      }).catch(err => {
+        Swal.fire({
+          'icon': 'error',
+          'title': 'Oops, something went wrong',
+          'text': 'Your changes have not been saved. Try again later.',
+        });
+      })
+    }
+  })
+}
+
 
 function flagAnnotation(annotation) {
   const isFlagging = !annotation.flagged.includes(authStore.user._id)
@@ -404,9 +435,18 @@ onMounted(() => {
             })
               .then((res) => {
                 annotation._id = res.data._id;
+                annotation.created_at = res.data.created_at;
+                annotation.updateImageLocation();
                 annotationDrawer.annotationSet[0].push(annotation);
                 annotationDrawer.annotationMap[annotation._id] = annotation;
-                task.value.annotations.push(annotation);
+                task.value.annotations.push({
+                  _id:annotation._id,
+                  created_at: annotation.created_at,
+                  geometry: annotation.geometry,
+                  label: annotation.label,
+                  layer: annotation.layer,
+                  flagged: []
+                });
               });
           }
         },

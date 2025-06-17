@@ -109,8 +109,17 @@ def annotate(session_id):
             {"_id": ObjectId(session_id), "annotations._id": ObjectId(annotation["_id"])},
             {"$set": {"annotations.$": annotation}}
         )
-    return jsonify({"_id": annotation["_id"]})
+    return jsonify({"_id": annotation["_id"], "created_at": annotation["created_at"]})
 
+@session_api.route("<string:session_id>/annotation", methods=["DELETE"])
+@jwt_required()
+def remove_annotation(session_id):
+    annotation = request.json
+    db.tasks.update_one(
+        {"_id": ObjectId(session_id)},
+        {"$pull": {"annotations": {"_id": ObjectId(annotation['_id'])}}},
+    )
+    return ""
 
 @session_api.route("list")
 def list_sessions():
