@@ -17,12 +17,12 @@
       <v-card-text>
         <div class="d-flex flex-wrap justify-center mt-4">
           <v-card theme="dark" class="ma-1"
-            :style="`max-width: 400px; background-image: url('${$axios.defaults.baseURL}/task/thumbnail/${userTask._id}'); background-size: cover; background-position: center; `"
+            :style="`max-width: 250px; background-image: url('${$axios.defaults.baseURL}/task/thumbnail/${userTask._id}'); background-size: cover; background-position: center; `"
             v-for="userTask in task.tasks" :to="`session/${userTask._id}`" :key="userTask._id">
 
             <div style="backdrop-filter: brightness(0.7); height: 100%">
               <v-card-title>{{ userTask.title }}</v-card-title>
-              <v-card-text class="bg-overlay text-white" style="width: 320px; height: 256px;">
+              <v-card-text class="bg-overlay text-white" style="width: 320px; height: 100px;">
                 <div class="d-flex justify-center align-center mt-auto"
                   style="position: absolute; bottom: 16px; width: 100%;">
                   <span v-if="userTask.completed" class="text-success d-flex align-center">
