@@ -1,16 +1,14 @@
-import hashlib
-import os
-import time
-from datetime import datetime
-from io import BytesIO
-import json
-import zipfile
-import math
-
-import openslide
-from bson import ObjectId
 from flask import Blueprint, jsonify, request, Response, stream_with_context, send_file
 from flask_jwt_extended import jwt_required, current_user
+from datetime import datetime
+from bson import ObjectId
+from io import BytesIO
+import zipfile
+import openslide
+import hashlib
+import math
+import json
+import os
 
 from api import db
 export_api = Blueprint("export_api", __name__)
@@ -203,6 +201,7 @@ def create_dataset_version(dataset_id):
         
         metadata_content = {
             "dataset": ds_version,
+            "created_at": datetime.now(),
             "labels": list(db.labels.find({"project": ds_version["project"], "enabled": True}, {
                 '_id': True,
                 'name': True,

@@ -463,6 +463,7 @@ onMounted(() => {
                   layer: annotation.layer,
                   flagged: []
                 });
+                annotationDrawer.update();
               });
           }
         },
