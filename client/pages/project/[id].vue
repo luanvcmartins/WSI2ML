@@ -26,7 +26,7 @@
         </v-card>
       </v-col>
       <v-col>
-        <v-card title="Tasks">
+        <v-card title="Tasks" :loading="isLoading">
           <v-card-text>
 
             <v-data-table
@@ -82,7 +82,7 @@
         <v-card-actions>
           <v-spacer/>
           <v-btn @click="dialog = false">Cancel</v-btn>
-          <v-btn @click="submit">Save</v-btn>
+          <v-btn @click="submit" :disabled="isLoading" :loading="isLoading">Save</v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -92,7 +92,7 @@
 
 import {useRoute} from "nuxt/app";
 import Swal from "sweetalert2";
-
+const isLoading = ref(true);  
 const route = useRoute();
 const projectId = computed(() => {
   return route.params.id
@@ -112,11 +112,14 @@ const table = [
 ];
 
 function loadTasks() {
+  isLoading.value = true;
   $axios.get(`/project/${projectId.value}/tasks`)
       .then((res) => {
+        isLoading.value = false;
         tasks.value = res.data;
       })
       .catch((err) => {
+        isLoading.value = false;
         Swal.fire({
           icon: 'error',
           title: 'Something went wrong',
@@ -125,8 +128,10 @@ function loadTasks() {
 }
 
 function submit() {
+  isLoading.value = true;
   $axios.post(`/project/${projectId.value}/task/create`, createTaskRequest.value)
       .then((res) => {
+        isLoading.value = false;
         Swal.fire({
           icon: 'success',
           title: 'Tasks created',
@@ -135,6 +140,7 @@ function submit() {
         loadTasks();
       })
       .catch((err) => {
+        isLoading.value = false;
         Swal.fire({
           icon: 'error',
           title: 'Something went wrong',
@@ -154,8 +160,10 @@ function switchItemStatus(item){
     confirmButtonText: 'Yes, delete it!'
   }).then((result) => {
     if (result.isConfirmed) {
+      isLoading.value = true;
       $axios.post(`/project/${projectId.value}/task/switch_status`, {slide_hash: item.slide_hash})
           .then(() => {
+            isLoading.value = false;
             Swal.fire({
               icon: 'success',
               title: 'Task disabled',
@@ -163,6 +171,7 @@ function switchItemStatus(item){
             loadTasks();
           })
           .catch((err) => {
+            isLoading.value = false;
             Swal.fire({
               icon: 'error',
               title: 'Something went wrong',

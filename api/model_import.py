@@ -23,8 +23,6 @@ def list_ds_versions(project_id):
     return jsonify(list(annotations))
 
 
-
-
 @import_api.route("<project_id>/upload", methods=['POST'])
 @jwt_required()
 def upload_ds_version(project_id):
@@ -49,7 +47,7 @@ def upload_model_results(project_id, upload_file):
             dataset_id =  ObjectId(metadata_data['dataset']['_id'])
             if db.datasets.find_one({"_id": dataset_id }) is None:
                 # invalid dataset
-                yield f"data: {json.dumps({'step': 6, 'progress': 1, 'msg': 'Invalid dataset version. This dataset version doesn\'t belong to this project.'})}\n\n"
+                yield f"data: {json.dumps({'step': 6, 'progress': 1, 'msg': 'Invalid dataset version. This dataset version no longer exists or doesn\'t belong to this project.'})}\n\n"
             metadata = {
                 'dataset_id': dataset_id,
                 "dataset_name": metadata_data['dataset']['title'],
