@@ -30,15 +30,19 @@
           </v-card-text>
           <v-card-actions>
             <v-spacer></v-spacer>
-            <v-btn text @click="createAdmin">First access?</v-btn>
-            <v-btn text @click="login" color="orange">Login</v-btn>
+            <v-btn @contextmenu.prevent="openFromEvent" @click="login" color="orange">Login</v-btn>
           </v-card-actions>
         </v-card>
       </v-col>
     </v-row>
+
+    <context-menu>
+      <v-btn text @click="createAdmin">First access?</v-btn>
+    </context-menu>
   </v-container>
 </template>
 <script setup>
+const { ContextMenu, openFromEvent,show } = useContextMenu();
 import Swal from 'sweetalert2';
 
 const { $axios } = useNuxtApp();
