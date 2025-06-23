@@ -17,21 +17,14 @@
           <v-card title="Tasks" subtitle="My tasks">
 
             <template v-slot:append>
-              <v-text-field 
-                style="width: 500px;" 
-                v-model="taskTableConfig.search"
-                append-inner-icon="mdi-magnify"
-                @keydown.enter.prevent="search"
-                @click:append-inner="search"
-                variant="outlined"
-                density="compact"
-                />
+              <v-text-field style="width: 500px;" cover v-model="taskTableConfig.search" append-inner-icon="mdi-magnify"
+                @keydown.enter.prevent="search" @click:append-inner="search" variant="outlined" density="compact" label="Type and press enter to search"/>
             </template>
             <v-data-table-server v-model:items-per-page="taskTableConfig.itemsPerPage" :items="tasks"
               :headers="taskTableConfig.headers" :items-length="taskTableConfig.totalItems" @update:options="loadTasks">
               <template v-slot:item.thumbnail="{ item }">
-                <img :src="$axios.defaults.baseURL + '/task/thumbnail/' + item._id" alt="Thumbnail" width="150"
-                  height="150" class="mr-2" />
+                <v-img :src="$axios.defaults.baseURL + '/task/thumbnail/' + item._id" alt="Thumbnail"
+                  width="150" height="100" cover  class="mr-2" />
               </template>
               <template v-slot:item.completed="{ item }">
                 {{ item.completed ? '✅ Completed' : '⏳ Pending' }}
@@ -39,7 +32,7 @@
               <template v-slot:item.actions="{ item }">
                 <v-btn color="primary" variant="tonal" prepend-icon="mdi-arrow-right"
                   @click="$router.push(`/session/${item._id}`)">
-                  View Session
+                  Open
                 </v-btn>
               </template>
               <template v-slot:no-data>
@@ -78,10 +71,10 @@ function nextSlide() {
 function loadTasks(config) {
   // config.search = taskTableConfig.value.search
   console.log("loadTasks", config)
-  $axios.get(`/task/${projectId.value}/list`, { params: {...config, search: taskTableConfig.value.search} })
+  $axios.get(`/task/${projectId.value}/list`, { params: { ...config, search: taskTableConfig.value.search } })
     .then((res) => {
       tasks.value = res.data.data;
-      taskTableConfig.value.totalItems =  res.data.metadata.length > 0 ?res.data.metadata[0].total : 0;
+      taskTableConfig.value.totalItems = res.data.metadata.length > 0 ? res.data.metadata[0].total : 0;
     })
     .catch((err) => {
       Swal.fire({
@@ -111,10 +104,10 @@ const taskTableConfig = ref({
 })
 
 
-function search(){
+function search() {
   loadTasks({
-    page: 1, 
-    itemsPerPage: taskTableConfig.value.itemsPerPage, 
+    page: 1,
+    itemsPerPage: taskTableConfig.value.itemsPerPage,
     search: taskTableConfig.value.search
   });
 }
