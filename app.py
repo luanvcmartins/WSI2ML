@@ -1,8 +1,7 @@
 import numpy as np
 from bson import ObjectId
-from flask import Flask, render_template, jsonify, request
+from flask import Flask, render_template
 from flask.json.provider import DefaultJSONProvider
-from werkzeug.security import check_password_hash
 from flask_jwt_extended import JWTManager
 from flask_cors import CORS
 from config import Config
@@ -31,7 +30,6 @@ def create_app():
 
     jwt.init_app(app)
     CORS(app, origins=["http://localhost:*", "https://imgsig.accamargo.org.br"], supports_credentials=True)
-    #CORS(app)
 
     from api.user import user_api
     from api.session import session_api
@@ -45,11 +43,6 @@ def create_app():
     app.register_blueprint(task_api, url_prefix="/api/task")
     app.register_blueprint(export_api, url_prefix="/api/export")
     app.register_blueprint(import_api, url_prefix="/api/import")
-
-    @app.route("/")
-    def index():
-        return render_template("index.html")
-
 
     @jwt.user_lookup_loader
     def load_user(_jwt_header, jwt_data):
