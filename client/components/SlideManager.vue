@@ -59,21 +59,21 @@
       </div>
     </v-card>
 
-    <v-card :class="['toolbox', 'annotation-list', mainPanelMenu ? 'extended' : '']" @mouseenter="mainPanelMenu = true"
+    <v-card :class="['toolbox', 'annotation-list', mainPanelOpen ? 'extended' : '']" @mouseenter="mainPanelMenu = true"
       @mouseleave="mainPanelMenu = false">
 
       <div class="d-flex">
         <v-btn-toggle v-model="selectedAnnotationTab" class="align-center">
           <v-btn v-for="tab in mainPanelTabs" :key="tab" :icon="tab.icon" :value="tab" height="40" variant="text"
             width="40" />
-          <v-btn v-if="mainPanelMenu" v-for="(tab, index) in colleaguesAnnotations" :key="tab"
+          <v-btn v-if="mainPanelOpen" v-for="(tab, index) in colleaguesAnnotations" :key="tab"
             :value="{ type: 'annotation', annotator: tab.user.name, annotationList: tab.annotations, layer: (index + 1) }"
             icon="mdi-account-group" height="40" variant="text" width="40" />
-          <v-btn v-if="mainPanelMenu" v-for="(tab, index) in modelsAnnotations" :key="tab"
+          <v-btn v-if="mainPanelOpen" v-for="(tab, index) in modelsAnnotations" :key="tab"
             :value="{ type: 'annotation', annotator: tab.model.name, annotationList: tab.annotations, layer: (colleaguesAnnotations.length + index + 1) }"
             icon="mdi-train-car-centerbeam-full" height="40" variant="text" width="40" />
         </v-btn-toggle>
-        <v-btn v-if="mainPanelMenu && task.project.revision_strategy === 'auto'" icon="mdi-update" height="40"
+        <v-btn v-if="mainPanelOpen && task.project.revision_strategy === 'auto'" icon="mdi-update" height="40"
           variant="text" width="40" @click="loadRevisions"></v-btn>
         <v-list-item density="compact" v-if="hoveredAnnotationPreview != null">
           <template v-slot:prepend>
@@ -84,7 +84,7 @@
             Date(hoveredAnnotationPreview.created_at).toLocaleString() }}</v-list-item-subtitle>
         </v-list-item>
       </div>
-      <div :id="`annotation-list-${task._id}`" v-if="mainPanelMenu" style="height: calc(100% - 48px)">
+      <div :id="`annotation-list-${task._id}`" v-if="mainPanelOpen" style="height: calc(100% - 48px)">
         <v-card v-if="selectedAnnotationTab != null"
           :title="selectedAnnotationTab.layer === 0 ? 'Annotation task' : `${selectedAnnotationTab.annotator}'s annotations`"
           class="ma-1" variant="tonal">
@@ -127,6 +127,7 @@
             </v-card>
           </template>
         </v-virtual-scroll>
+        <v-switch v-model="forceMainPanelOpen" label="Keep panel open"/>
       </div>
     </v-card>
     <context-menu>
@@ -182,8 +183,11 @@ watch(taskCompleted, (newTaskCompleted) => {
 
 let viewer = null;
 let noEvents = false;
-const mainPanelMenu = ref(false);
 const annotationMenu = ref(false);
+
+const forceMainPanelOpen = ref(false);
+const mainPanelMenu = ref(false);
+const mainPanelOpen = computed(()=> forceMainPanelOpen.value || mainPanelMenu.value)
 
 const authStore = useAuthStore();
 
@@ -285,7 +289,7 @@ const annotationListHeight = ref(0);
 watch(mainPanelMenu, (newMenu) => {
   if (newMenu === true) {
     nextTick(() => {
-      annotationListHeight.value = document.getElementById(`annotation-list-${task.value._id}`).clientHeight - 218;
+      annotationListHeight.value = document.getElementById(`annotation-list-${task.value._id}`).clientHeight - 268 ;//- 218;
     });
   }
 });
